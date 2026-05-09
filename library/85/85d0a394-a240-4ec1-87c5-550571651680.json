@@ -1285,7 +1285,8 @@
     "_usePostProcess": false,
     "_cameraType": -1,
     "_trackingType": 0,
-    "_id": "c6ev9iNY1JOrPbLxo/u71w"
+    "_id": "c6ev9iNY1JOrPbLxo/u71w",
+    "_cameraPriority": 0
   },
   {
     "__type__": "cc.UITransform",

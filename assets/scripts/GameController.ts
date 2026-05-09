@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label } from 'cc';
+import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, Button, EventHandler } from 'cc';
 import { SnakeGame } from './SnakeGame';
 import { Game2048 } from './Game2048';
 import { TetrisGame } from './TetrisGame';
@@ -23,6 +23,7 @@ export class GameController extends Component {
     private currentGameName: string = '';
     private currentGameScore: number = 0;
     private gameCards: { node: Node; gameId: string }[] = [];
+    private _cardClickCallbacks: Map<string, () => void> = new Map();
     
     onLoad() {
         // 确保节点大小
@@ -94,35 +95,44 @@ export class GameController extends Component {
         const vs = this.getVisibleSize();
         
         // 标题
-        const title = this.createLabel('🎮 Yanten快乐屋', 28, COLORS.primary, true);
-        title.setPosition(new Vec3(0, vs.height / 2 - 100, 0));
+        const title = this._createLabel('🎮 Yanten快乐屋', 24, COLORS.primary, true);
+        title.setPosition(new Vec3(0, vs.height / 2 - 120, 0));
         this.homeRoot.addChild(title);
         
-        // 游戏卡片
-        const cardW = 160, cardH = 160, gapX = 40, gapY = 40;
-        const startX = -(cardW + gapX) / 2;
-        const startY = (cardH + gapY) / 2;
+        // 游戏卡片 2x2
+        const cardW = 130, cardH = 130, gapX = 30, gapY = 30;
+        const totalW = cardW * 2 + gapX;
+        const totalH = cardH * 2 + gapY;
         const positions = [
-            new Vec3(startX, startY, 0),
-            new Vec3(startX + cardW + gapX, startY, 0),
-            new Vec3(startX, startY - cardH - gapY, 0),
-            new Vec3(startX + cardW + gapX, startY - cardH - gapY, 0),
+            new Vec3(-totalW / 2 + cardW / 2, totalH / 2 - cardH / 2, 0),
+            new Vec3(totalW / 2 - cardW / 2, totalH / 2 - cardH / 2, 0),
+            new Vec3(-totalW / 2 + cardW / 2, -totalH / 2 + cardH / 2, 0),
+            new Vec3(totalW / 2 - cardW / 2, -totalH / 2 + cardH / 2, 0),
         ];
         
         GameConfig.games.forEach((game, i) => {
-            const card = this.createCard(game);
+            const card = this._createCard(game);
             card.setPosition(positions[i]);
             this.homeRoot.addChild(card);
             this.gameCards.push({ node: card, gameId: game.id });
             
-            // 每张卡片自己监听触摸
-            card.on(Node.EventType.TOUCH_END, () => {
-                if (!this.isTransitioning) {
-                    console.log('✅ 点击卡片:', game.id);
-                    this.startGame(game.id);
-                }
-            });
+            // Button + EventHandler 接收点击
+            const btn = card.getComponent(Button);
+            if (!btn) return;
+            const eh = new EventHandler();
+            eh.target = this.node;
+            eh.component = 'GameController';
+            eh.handler = '_onCardClick';
+            eh.customEventData = game.id;
+            btn.clickEvents = [eh];
         });
+    }
+    
+    _onCardClick(event: Event, customEventData: string) {
+        if (!this.isTransitioning) {
+            console.log('✅ 点击卡片:', customEventData);
+            this.startGame(customEventData);
+        }
     }
     
     createCard(game: any): Node {

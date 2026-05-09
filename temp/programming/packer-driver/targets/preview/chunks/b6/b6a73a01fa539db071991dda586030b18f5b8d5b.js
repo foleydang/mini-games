@@ -1,7 +1,7 @@
 System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__unresolved_3", "__unresolved_4", "__unresolved_5", "__unresolved_6"], function (_export, _context) {
   "use strict";
 
-  var _reporterNs, _cclegacy, __checkObsolete__, __checkObsoleteInNamespace__, _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, input, Input, SnakeGame, Game2048, TetrisGame, Match3Game, GameConfig, COLORS, ScoreManager, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _crd, ccclass, property, DESIGN_WIDTH, DESIGN_HEIGHT, GameController;
+  var _reporterNs, _cclegacy, __checkObsolete__, __checkObsoleteInNamespace__, _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, SnakeGame, Game2048, TetrisGame, Match3Game, GameConfig, COLORS, ScoreManager, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _crd, ccclass, property, DESIGN_WIDTH, DESIGN_HEIGHT, GameController;
 
   function _initializerDefineProperty(target, property, descriptor, context) { if (!descriptor) return; Object.defineProperty(target, property, { enumerable: descriptor.enumerable, configurable: descriptor.configurable, writable: descriptor.writable, value: descriptor.initializer ? descriptor.initializer.call(context) : void 0 }); }
 
@@ -52,8 +52,6 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
       Sprite = _cc.Sprite;
       Color = _cc.Color;
       Label = _cc.Label;
-      input = _cc.input;
-      Input = _cc.Input;
     }, function (_unresolved_2) {
       SnakeGame = _unresolved_2.SnakeGame;
     }, function (_unresolved_3) {
@@ -73,7 +71,7 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
 
       _cclegacy._RF.push({}, "5092dxPBcpKPoyJOLjZlfFn", "GameController", undefined);
 
-      __checkObsolete__(['_decorator', 'Component', 'Node', 'Vec3', 'UITransform', 'Sprite', 'Color', 'Label', 'input', 'Input', 'EventTouch']);
+      __checkObsolete__(['_decorator', 'Component', 'Node', 'Vec3', 'UITransform', 'Sprite', 'Color', 'Label']);
 
       ({
         ccclass,
@@ -101,7 +99,6 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
           this.currentGameName = '';
           this.currentGameScore = 0;
           this.gameCards = [];
-          this.homeTouchHandler = null;
         }
 
         onLoad() {
@@ -139,12 +136,7 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
           this.showHome();
         }
 
-        onDestroy() {
-          // 清理全局触摸监听
-          if (this.homeTouchHandler) {
-            input.off(Input.EventType.TOUCH_END, this.homeTouchHandler);
-          }
-        }
+        onDestroy() {}
 
         ensureNodeSize(node, width, height) {
           if (!node) return;
@@ -197,37 +189,15 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
             this.gameCards.push({
               node: card,
               gameId: game.id
-            });
-          }); // 全局触摸监听
+            }); // 每张卡片自己监听触摸
 
-          this.homeTouchHandler = event => {
-            if (!this.homeRoot.active || this.isTransitioning) return;
-            var touchLoc = event.getUILocation();
-            var ht = this.homeRoot.getComponent(UITransform);
-            if (!ht) return;
-            var localPos = ht.convertToNodeSpaceAR(new Vec3(touchLoc.x, touchLoc.y, 0));
-
-            for (var {
-              node,
-              gameId
-            } of this.gameCards) {
-              if (!node.active) continue;
-              var ut = node.getComponent(UITransform);
-              if (!ut) continue;
-              var hw = ut.contentSize.width / 2;
-              var hh = ut.contentSize.height / 2;
-              var dx = localPos.x - node.position.x;
-              var dy = localPos.y - node.position.y;
-
-              if (Math.abs(dx) <= hw && Math.abs(dy) <= hh) {
-                console.log('✅ 点击卡片:', gameId);
-                this.startGame(gameId);
-                return;
+            card.on(Node.EventType.TOUCH_END, () => {
+              if (!this.isTransitioning) {
+                console.log('✅ 点击卡片:', game.id);
+                this.startGame(game.id);
               }
-            }
-          };
-
-          input.on(Input.EventType.TOUCH_END, this.homeTouchHandler);
+            });
+          });
         }
 
         createCard(game) {
@@ -237,27 +207,56 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
           t.setAnchorPoint(0.5, 0.5);
           var sp = card.addComponent(Sprite);
           sp.color = new Color(255, 255, 255, 220);
-          sp.type = Sprite.Type.SIMPLE; // 图标背景
+          sp.type = Sprite.Type.SIMPLE; // 图标背景 - 禁用触摸拦截
 
-          var iconBg = new Node('IconBg');
-          var ibg = iconBg.addComponent(UITransform);
-          ibg.setContentSize(70, 70);
-          var spBg = iconBg.addComponent(Sprite);
-          spBg.color = game.color;
-          spBg.type = Sprite.Type.SIMPLE;
+          var iconBg = this._createNoTouchNode('IconBg', 70, 70);
+
+          iconBg.getComponent(Sprite).color = game.color;
           iconBg.setPosition(new Vec3(0, 18, 0));
-          card.addChild(iconBg); // 图标
+          card.addChild(iconBg); // 图标 - 禁用触摸拦截
 
-          var icon = this.createLabel(game.icon, 36, Color.WHITE, true);
+          var icon = this._createNoTouchLabel(game.icon, 36, Color.WHITE, true);
+
           icon.setPosition(new Vec3(0, 18, 0));
-          card.addChild(icon); // 名称
+          card.addChild(icon); // 名称 - 禁用触摸拦截
 
-          var name = this.createLabel(game.name, 16, (_crd && COLORS === void 0 ? (_reportPossibleCrUseOfCOLORS({
+          var name = this._createNoTouchLabel(game.name, 16, (_crd && COLORS === void 0 ? (_reportPossibleCrUseOfCOLORS({
             error: Error()
           }), COLORS) : COLORS).text, true);
+
           name.setPosition(new Vec3(0, -52, 0));
           card.addChild(name);
           return card;
+        }
+
+        _createNoTouchNode(name, w, h) {
+          var node = new Node(name);
+          var ut = node.addComponent(UITransform);
+          ut.setContentSize(w, h);
+          var sp = node.addComponent(Sprite); // 透明材质 + 不拦截触摸的关键：把 layer 设为 0 但父卡片的 Sprite 仍然接收触摸
+          // 实际上在 Cocos 3.x 中，子节点有 UITransform 就会拦截，所以不用 Sprite
+
+          node.removeComponent(Sprite);
+          return node;
+        }
+
+        _createNoTouchLabel(text, size, color, bold) {
+          if (bold === void 0) {
+            bold = false;
+          }
+
+          var node = new Node('Label');
+          var t = node.addComponent(UITransform);
+          t.setContentSize(200, size * 1.5);
+          t.setAnchorPoint(0.5, 0.5);
+          var label = node.addComponent(Label);
+          label.string = text;
+          label.fontSize = size;
+          label.color = color;
+          label.horizontalAlign = Label.HorizontalAlign.CENTER;
+          label.verticalAlign = Label.VerticalAlign.CENTER;
+          if (bold) label.isBold = true;
+          return node;
         }
 
         startGame(gameId) {
