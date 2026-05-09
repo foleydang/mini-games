@@ -997,7 +997,7 @@
       ]
     },
     "cce:/internal/x/prerequisite-imports": {
-      "mTimestamp": 11394793.397,
+      "mTimestamp": 11881923.373167,
       "chunkId": "6d8fd2b0177941b032ddc0733af48a561fb60657",
       "imports": [
         {
@@ -2083,7 +2083,7 @@
     },
     "file:///Users/foleydang/github/mini-games/assets/scripts/GameController.ts": {
       "mTimestamp": {
-        "mtime": 1778349656557.1125,
+        "mtime": 1778350000381.5327,
         "uuid": "5092dc4f-05ca-4a3e-8c89-38b8d995f167"
       },
       "chunkId": "b6a73a01fa539db071991dda586030b18f5b8d5b",
@@ -2103,11 +2103,11 @@
           "loc": {
             "start": {
               "line": 1,
-              "column": 85
+              "column": 107
             },
             "end": {
               "line": 1,
-              "column": 89
+              "column": 111
             }
           }
         },

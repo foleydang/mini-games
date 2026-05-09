@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, Button, EventHandler } from 'cc';
+import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, Button, EventHandler, SystemEventType } from 'cc';
 import { SnakeGame } from './SnakeGame';
 import { Game2048 } from './Game2048';
 import { TetrisGame } from './TetrisGame';
@@ -21,44 +21,30 @@ export class GameController extends Component {
     private currentGame: any = null;
     private isTransitioning: boolean = false;
     private currentGameName: string = '';
-    private currentGameScore: number = 0;
-    private gameCards: { node: Node; gameId: string }[] = [];
     
     onLoad() {
-        // 确保节点大小
-        this._ensureNodeSize(this.homeRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
-        this._ensureNodeSize(this.gameRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
+        this._ensureSize(this.homeRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
+        this._ensureSize(this.gameRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
         
-        // 按钮默认隐藏
         this.backButton.active = false;
         this.pauseButton.active = false;
         this.shareButton.active = false;
         
-        // 设置返回按钮
         this.backButton.on(Node.EventType.TOUCH_END, () => {
-            if (!this.isTransitioning) {
-                this.saveScore();
-                this.showHome();
-            }
+            if (!this.isTransitioning) this.showHome();
         });
         
-        // 确保 Canvas 全屏
-        const canvas = this.node;
-        const canvasTransform = canvas.getComponent(UITransform);
-        if (canvasTransform) {
-            canvasTransform.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-        }
+        const ct = this.node.getComponent(UITransform);
+        if (ct) ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
         
         this.showHome();
     }
     
-    private _ensureNodeSize(node: Node, width: number, height: number) {
+    private _ensureSize(node: Node, w: number, h: number) {
         if (!node) return;
         let t = node.getComponent(UITransform);
         if (!t) t = node.addComponent(UITransform);
-        if (t.contentSize.width < width || t.contentSize.height < height) {
-            t.setContentSize(width, height);
-        }
+        t.setContentSize(Math.max(t.contentSize.width, w), Math.max(t.contentSize.height, h));
     }
     
     showHome() {
@@ -68,7 +54,6 @@ export class GameController extends Component {
         this.pauseButton.active = false;
         this.shareButton.active = false;
         this.homeRoot.removeAllChildren();
-        this.gameCards = [];
         this.createHomeUI();
     }
     
@@ -76,104 +61,77 @@ export class GameController extends Component {
         const vs = this.getVisibleSize();
         
         // 标题
-        const title = this._createLabel('🎮 Yanten快乐屋', 24, COLORS.primary, true);
-        title.setPosition(new Vec3(0, vs.height / 2 - 120, 0));
+        const title = this._makeLabel('🎮 Yanten快乐屋', 24, COLORS.primary, true);
+        title.setPosition(0, vs.height / 2 - 120);
         this.homeRoot.addChild(title);
         
-        // 游戏卡片 2x2
-        const cardW = 130, cardH = 130, gapX = 30, gapY = 30;
-        const totalW = cardW * 2 + gapX;
-        const totalH = cardH * 2 + gapY;
-        const positions = [
-            new Vec3(-totalW / 2 + cardW / 2, totalH / 2 - cardH / 2, 0),
-            new Vec3(totalW / 2 - cardW / 2, totalH / 2 - cardH / 2, 0),
-            new Vec3(-totalW / 2 + cardW / 2, -totalH / 2 + cardH / 2, 0),
-            new Vec3(totalW / 2 - cardW / 2, -totalH / 2 + cardH / 2, 0),
+        // 卡片
+        const W = 130, H = 130, GX = 30, GY = 30;
+        const tw = W * 2 + GX, th = H * 2 + GY;
+        const pos = [
+            new Vec3(-tw/2+W/2, th/2-H/2),
+            new Vec3(tw/2-W/2, th/2-H/2),
+            new Vec3(-tw/2+W/2, -th/2+H/2),
+            new Vec3(tw/2-W/2, -th/2+H/2),
         ];
         
-        GameConfig.games.forEach((game, i) => {
-            const card = this._createCard(game);
-            card.setPosition(positions[i]);
+        GameConfig.games.forEach((g, i) => {
+            const card = this._makeCard(g);
+            card.setPosition(pos[i]);
             this.homeRoot.addChild(card);
-            this.gameCards.push({ node: card, gameId: game.id });
             
-            // Button + EventHandler
-            let btn = card.getComponent(Button);
-            if (!btn) btn = card.addComponent(Button);
-            btn.transition = Button.Transition.SCALE;
-            btn.zoomScale = 0.92;
-            btn.target = card;
-            btn.clickEvents = [];
-            
-            const eh = new EventHandler();
-            eh.target = this.node;
-            eh.component = 'GameController';
-            eh.handler = '_onCardClick';
-            eh.customEventData = game.id;
-            btn.clickEvents.push(eh);
+            // 关键：直接用 node.on 监听，不用 Button
+            card.on(SystemEventType.TOUCH_END, () => {
+                if (!this.isTransitioning) {
+                    console.log('✅ 点击了:', g.id);
+                    this.startGame(g.id);
+                }
+            });
         });
     }
     
-    _onCardClick(event: any, customEventData: string) {
-        if (!this.isTransitioning) {
-            console.log('✅ 点击卡片:', customEventData);
-            this.startGame(customEventData);
-        }
-    }
-    
-    _createCard(game: any): Node {
+    _makeCard(g: any): Node {
         const card = new Node('Card');
         const t = card.addComponent(UITransform);
         t.setContentSize(130, 130);
-        t.setAnchorPoint(0.5, 0.5);
         
-        const sp = card.addComponent(Sprite);
-        sp.color = new Color(255, 255, 255, 220);
-        sp.type = Sprite.Type.SIMPLE;
+        // 背景
+        const bg = card.addComponent(Sprite);
+        bg.color = new Color(255, 255, 255, 230);
+        bg.type = Sprite.Type.SIMPLE;
         
-        // 图标背景
-        const iconBg = new Node('IconBg');
-        const ibg = iconBg.addComponent(UITransform);
-        ibg.setContentSize(60, 60);
-        const spBg = iconBg.addComponent(Sprite);
-        spBg.color = game.color;
-        spBg.type = Sprite.Type.SIMPLE;
-        iconBg.setPosition(new Vec3(0, 15, 0));
-        card.addChild(iconBg);
-        
-        // 图标 emoji
-        const icon = this._createLabel(game.icon, 30, Color.WHITE, true);
-        icon.setPosition(new Vec3(0, 15, 0));
+        // 所有子节点都设为极小 size，不拦截触摸
+        const icon = this._makeLabel(g.icon, 28, Color.WHITE, true);
+        icon.setPosition(0, 12);
+        // 关键：让 label 的 UITransform 极小，不拦截
+        icon.getComponent(UITransform).setContentSize(1, 1);
         card.addChild(icon);
         
-        // 游戏名称
-        const name = this._createLabel(game.name, 14, COLORS.text, true);
-        name.setPosition(new Vec3(0, -42, 0));
+        const name = this._makeLabel(g.name, 12, COLORS.text, true);
+        name.setPosition(0, -40);
+        name.getComponent(UITransform).setContentSize(1, 1);
         card.addChild(name);
         
         return card;
     }
     
-    _createLabel(text: string, size: number, color: Color, bold: boolean = false): Node {
-        const node = new Node('Label');
-        const t = node.addComponent(UITransform);
+    _makeLabel(text: string, size: number, color: Color, bold: boolean): Node {
+        const n = new Node('L');
+        const t = n.addComponent(UITransform);
         t.setContentSize(200, size * 1.5);
-        t.setAnchorPoint(0.5, 0.5);
-        const label = node.addComponent(Label);
-        label.string = text;
-        label.fontSize = size;
-        label.color = color;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        if (bold) label.isBold = true;
-        return node;
+        const l = n.addComponent(Label);
+        l.string = text;
+        l.fontSize = size;
+        l.color = color;
+        if (bold) l.isBold = true;
+        return n;
     }
     
-    startGame(gameId: string) {
+    startGame(id: string) {
         if (this.isTransitioning) return;
         this.isTransitioning = true;
-        this.currentGameName = GameConfig.games.find(g => g.id === gameId)?.name || '';
-        console.log(`开始游戏: ${this.currentGameName} (${gameId})`);
+        this.currentGameName = GameConfig.games.find(g => g.id === id)?.name || '';
+        console.log(`开始: ${this.currentGameName}`);
         
         try {
             this.homeRoot.active = false;
@@ -183,65 +141,36 @@ export class GameController extends Component {
             this.shareButton.active = true;
             this.gameRoot.removeAllChildren();
             
-            // 游戏容器
-            const container = new Node('GameContainer');
+            const container = new Node('GC');
             container.layer = 1073741824;
-            const ct = container.addComponent(UITransform);
-            ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-            ct.setAnchorPoint(0.5, 0.5);
+            container.addComponent(UITransform).setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
             this.gameRoot.addChild(container);
             
-            const gameNode = new Node('Game');
-            gameNode.layer = 1073741824;
-            container.addChild(gameNode);
+            const gn = new Node('Game');
+            gn.layer = 1073741824;
+            container.addChild(gn);
             
-            switch (gameId) {
-                case 'match3':
-                    this.currentGame = gameNode.addComponent(Match3Game);
-                    break;
-                case 'snake':
-                    this.currentGame = gameNode.addComponent(SnakeGame);
-                    break;
-                case '2048':
-                    this.currentGame = gameNode.addComponent(Game2048);
-                    break;
-                case 'tetris':
-                    this.currentGame = gameNode.addComponent(TetrisGame);
-                    break;
-            }
+            const comps: any = { match3: Match3Game, snake: SnakeGame, '2048': Game2048, tetris: TetrisGame };
+            this.currentGame = gn.addComponent(comps[id]);
             
-            if (this.currentGame) {
-                if (gameId === 'match3') {
-                    this.currentGame.gridRoot = container;
-                    this.currentGame.uiRoot = container;
-                } else {
-                    this.currentGame.gameArea = container;
-                    this.currentGame.uiRoot = container;
-                }
+            if (id === 'match3') {
+                this.currentGame.gridRoot = container;
+                this.currentGame.uiRoot = container;
+            } else {
+                this.currentGame.gameArea = container;
+                this.currentGame.uiRoot = container;
             }
             
             this.isTransitioning = false;
-            console.log('✅ 游戏组件已添加');
+            console.log('✅ 已添加游戏');
         } catch (e: any) {
-            console.error('startGame 出错:', e?.message || e);
+            console.error('出错:', e?.message || e);
             this.isTransitioning = false;
         }
     }
     
     getVisibleSize() {
-        const canvas = this.node;
-        const t = canvas?.getComponent(UITransform);
-        if (t) return { width: t.contentSize.width, height: t.contentSize.height };
-        return { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
-    }
-    
-    saveScore() {
-        if (this.currentGame && this.currentGameName) {
-            const score = this.currentGame.score || 0;
-            ScoreManager.saveHighScore(
-                GameConfig.games.find(g => g.name === this.currentGameName)?.id || '',
-                score
-            );
-        }
+        const t = this.node.getComponent(UITransform);
+        return t ? { width: t.contentSize.width, height: t.contentSize.height } : { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
     }
 }
