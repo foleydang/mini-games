@@ -1,5 +1,5 @@
 import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, tween, Tween, Input, input, EventTouch, MathUtil } from 'cc';
-import { GameController } from './GameController';
+import { COLORS } from './GameConfig';
 import { StorageManager } from './StorageManager';
 const { ccclass, property } = _decorator;
 
@@ -105,7 +105,7 @@ export class Match3Game extends Component {
         node.addComponent(UITransform).setContentSize(this.cellSize - 6, this.cellSize - 6);
         
         const sprite = node.addComponent(Sprite);
-        sprite.color = GameController.COLORS.gems[this.gems[row][col]];
+        sprite.color = COLORS.gems[this.gems[row][col]];
         
         // 存储格子信息
         node['gemRow'] = row;
