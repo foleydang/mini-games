@@ -1279,7 +1279,7 @@
     "_shutter": 7,
     "_iso": 0,
     "_screenScale": 1,
-    "_visibility": 1108344832,
+    "_visibility": 1073741824,
     "_targetTexture": null,
     "_postProcess": null,
     "_usePostProcess": false,
@@ -1319,7 +1319,9 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "_cameraComponent": null,
+    "_cameraComponent": {
+      "__id__": 29
+    },
     "_alignCanvasWithScreen": true,
     "_id": "2aI8v+d0xJa7c6OM7srBSc"
   },
