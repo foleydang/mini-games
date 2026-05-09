@@ -23,12 +23,11 @@ export class GameController extends Component {
     private currentGameName: string = '';
     private currentGameScore: number = 0;
     private gameCards: { node: Node; gameId: string }[] = [];
-    private _cardClickCallbacks: Map<string, () => void> = new Map();
     
     onLoad() {
         // 确保节点大小
-        this.ensureNodeSize(this.homeRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
-        this.ensureNodeSize(this.gameRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
+        this._ensureNodeSize(this.homeRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
+        this._ensureNodeSize(this.gameRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
         
         // 按钮默认隐藏
         this.backButton.active = false;
@@ -43,18 +42,8 @@ export class GameController extends Component {
             }
         });
         
-        // 设置暂停按钮
-        this.pauseButton.on(Node.EventType.TOUCH_END, () => {
-            console.log('暂停按钮点击');
-        });
-        
-        // 设置分享按钮
-        this.shareButton.on(Node.EventType.TOUCH_END, () => {
-            console.log('分享按钮点击');
-        });
-        
         // 确保 Canvas 全屏
-        const canvas = this.node; // GameController 挂在 Canvas 上
+        const canvas = this.node;
         const canvasTransform = canvas.getComponent(UITransform);
         if (canvasTransform) {
             canvasTransform.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
@@ -63,9 +52,7 @@ export class GameController extends Component {
         this.showHome();
     }
     
-    onDestroy() {}
-    
-    private ensureNodeSize(node: Node, width: number, height: number) {
+    private _ensureNodeSize(node: Node, width: number, height: number) {
         if (!node) return;
         let t = node.getComponent(UITransform);
         if (!t) t = node.addComponent(UITransform);
@@ -82,12 +69,6 @@ export class GameController extends Component {
         this.shareButton.active = false;
         this.homeRoot.removeAllChildren();
         this.gameCards = [];
-        
-        // 清理旧的监听
-        if (this.homeTouchHandler) {
-            input.off(Input.EventType.TOUCH_END, this.homeTouchHandler);
-        }
-        
         this.createHomeUI();
     }
     
@@ -116,66 +97,64 @@ export class GameController extends Component {
             this.homeRoot.addChild(card);
             this.gameCards.push({ node: card, gameId: game.id });
             
-            // Button + EventHandler 接收点击
-            const btn = card.getComponent(Button);
-            if (!btn) return;
+            // Button + EventHandler
+            let btn = card.getComponent(Button);
+            if (!btn) btn = card.addComponent(Button);
+            btn.transition = Button.Transition.SCALE;
+            btn.zoomScale = 0.92;
+            btn.target = card;
+            btn.clickEvents = [];
+            
             const eh = new EventHandler();
             eh.target = this.node;
             eh.component = 'GameController';
             eh.handler = '_onCardClick';
             eh.customEventData = game.id;
-            btn.clickEvents = [eh];
+            btn.clickEvents.push(eh);
         });
     }
     
-    _onCardClick(event: Event, customEventData: string) {
+    _onCardClick(event: any, customEventData: string) {
         if (!this.isTransitioning) {
             console.log('✅ 点击卡片:', customEventData);
             this.startGame(customEventData);
         }
     }
     
-    createCard(game: any): Node {
+    _createCard(game: any): Node {
         const card = new Node('Card');
         const t = card.addComponent(UITransform);
-        t.setContentSize(160, 160);
+        t.setContentSize(130, 130);
         t.setAnchorPoint(0.5, 0.5);
         
         const sp = card.addComponent(Sprite);
         sp.color = new Color(255, 255, 255, 220);
         sp.type = Sprite.Type.SIMPLE;
         
-        // 图标背景 - 禁用触摸拦截
-        const iconBg = this._createNoTouchNode('IconBg', 70, 70);
-        iconBg.getComponent(Sprite).color = game.color;
-        iconBg.setPosition(new Vec3(0, 18, 0));
+        // 图标背景
+        const iconBg = new Node('IconBg');
+        const ibg = iconBg.addComponent(UITransform);
+        ibg.setContentSize(60, 60);
+        const spBg = iconBg.addComponent(Sprite);
+        spBg.color = game.color;
+        spBg.type = Sprite.Type.SIMPLE;
+        iconBg.setPosition(new Vec3(0, 15, 0));
         card.addChild(iconBg);
         
-        // 图标 - 禁用触摸拦截
-        const icon = this._createNoTouchLabel(game.icon, 36, Color.WHITE, true);
-        icon.setPosition(new Vec3(0, 18, 0));
+        // 图标 emoji
+        const icon = this._createLabel(game.icon, 30, Color.WHITE, true);
+        icon.setPosition(new Vec3(0, 15, 0));
         card.addChild(icon);
         
-        // 名称 - 禁用触摸拦截
-        const name = this._createNoTouchLabel(game.name, 16, COLORS.text, true);
-        name.setPosition(new Vec3(0, -52, 0));
+        // 游戏名称
+        const name = this._createLabel(game.name, 14, COLORS.text, true);
+        name.setPosition(new Vec3(0, -42, 0));
         card.addChild(name);
         
         return card;
     }
     
-    _createNoTouchNode(name: string, w: number, h: number): Node {
-        const node = new Node(name);
-        const ut = node.addComponent(UITransform);
-        ut.setContentSize(w, h);
-        const sp = node.addComponent(Sprite);
-        // 透明材质 + 不拦截触摸的关键：把 layer 设为 0 但父卡片的 Sprite 仍然接收触摸
-        // 实际上在 Cocos 3.x 中，子节点有 UITransform 就会拦截，所以不用 Sprite
-        node.removeComponent(Sprite);
-        return node;
-    }
-    
-    _createNoTouchLabel(text: string, size: number, color: Color, bold: boolean = false): Node {
+    _createLabel(text: string, size: number, color: Color, bold: boolean = false): Node {
         const node = new Node('Label');
         const t = node.addComponent(UITransform);
         t.setContentSize(200, size * 1.5);
@@ -197,7 +176,6 @@ export class GameController extends Component {
         console.log(`开始游戏: ${this.currentGameName} (${gameId})`);
         
         try {
-            // 切换场景
             this.homeRoot.active = false;
             this.gameRoot.active = true;
             this.backButton.active = true;
@@ -207,14 +185,14 @@ export class GameController extends Component {
             
             // 游戏容器
             const container = new Node('GameContainer');
-            container.layer = 1073741824; // UI_2D 层
+            container.layer = 1073741824;
             const ct = container.addComponent(UITransform);
             ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
             ct.setAnchorPoint(0.5, 0.5);
             this.gameRoot.addChild(container);
             
             const gameNode = new Node('Game');
-            gameNode.layer = 1 << 21;
+            gameNode.layer = 1073741824;
             container.addChild(gameNode);
             
             switch (gameId) {
@@ -248,21 +226,6 @@ export class GameController extends Component {
             console.error('startGame 出错:', e?.message || e);
             this.isTransitioning = false;
         }
-    }
-    
-    createLabel(text: string, size: number, color: Color, bold: boolean = false): Node {
-        const node = new Node('Label');
-        const t = node.addComponent(UITransform);
-        t.setContentSize(200, size * 1.5);
-        t.setAnchorPoint(0.5, 0.5);
-        const label = node.addComponent(Label);
-        label.string = text;
-        label.fontSize = size;
-        label.color = color;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        if (bold) label.isBold = true;
-        return node;
     }
     
     getVisibleSize() {
