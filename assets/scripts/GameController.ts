@@ -1,9 +1,10 @@
-import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, Button, Layout, tween, director } from 'cc';
+import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, Button, tween, director } from 'cc';
 import { SnakeGame } from './SnakeGame';
 import { Game2048 } from './Game2048';
 import { TetrisGame } from './TetrisGame';
 import { Match3Game } from './Match3Game';
 import { GameConfig, COLORS } from './GameConfig';
+import { ScoreManager } from './ScoreManager';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameController')
@@ -28,8 +29,10 @@ export class GameController extends Component {
     }
     
     createHomeUI() {
-        const title = this.createLabel('🎮 游戏大厅', 36, COLORS.primary);
-        title.setPosition(new Vec3(0, 250, 0));
+        const visibleSize = this.getVisibleSize();
+        
+        const title = this.createLabel('🎮 Yanten快乐屋', 36, COLORS.primary, true);
+        title.setPosition(new Vec3(0, visibleSize.height / 2 - 80, 0));
         this.homeRoot.addChild(title);
         
         const positions = [
@@ -41,6 +44,14 @@ export class GameController extends Component {
             const card = this.createCard(game);
             card.setPosition(positions[i]);
             this.homeRoot.addChild(card);
+            
+            const score = ScoreManager.getHighScore(game.id);
+            if (score > 0) {
+                const scoreLabel = this.createLabel(`🏆 ${score}`, 14, new Color(255, 180, 0));
+                scoreLabel.setPosition(new Vec3(0, -65, 0));
+                card.addChild(scoreLabel);
+            }
+            
             card.on(Node.EventType.TOUCH_END, () => this.startGame(game.id));
         });
     }
@@ -55,16 +66,16 @@ export class GameController extends Component {
         
         const iconBg = new Node('IconBg');
         iconBg.addComponent(Sprite).color = game.color;
-        iconBg.addComponent(UITransform).setContentSize(100, 100);
-        iconBg.setPosition(new Vec3(0, 20, 0));
+        iconBg.addComponent(UITransform).setContentSize(80, 80);
+        iconBg.setPosition(new Vec3(0, 15, 0));
         card.addChild(iconBg);
         
-        const icon = this.createLabel(game.icon, 50, Color.WHITE, true);
-        icon.setPosition(new Vec3(0, 20, 0));
+        const icon = this.createLabel(game.icon, 40, Color.WHITE, true);
+        icon.setPosition(new Vec3(0, 15, 0));
         card.addChild(icon);
         
-        const name = this.createLabel(game.name, 18, COLORS.text, true);
-        name.setPosition(new Vec3(0, -50, 0));
+        const name = this.createLabel(game.name, 16, COLORS.text, true);
+        name.setPosition(new Vec3(0, -55, 0));
         card.addChild(name);
         
         const btn = card.addComponent(Button);
@@ -78,7 +89,7 @@ export class GameController extends Component {
         if (this.isTransitioning) return;
         this.isTransitioning = true;
         
-        tween(this.homeRoot).to(0.3, { scale: new Vec3(0.9, 0.9, 1) }).call(() => {
+        tween(this.homeRoot).to(0.3, { scale: new Vec3(0.9, 0.9, 1), opacity: 0 }).call(() => {
             this.homeRoot.active = false;
             this.gameRoot.active = true;
             this.backButton.active = true;
@@ -89,40 +100,28 @@ export class GameController extends Component {
             
             switch (gameId) {
                 case 'match3':
-                    const match3 = gameNode.addComponent(Match3Game);
-                    match3.gridRoot = this.gameRoot;
-                    match3.uiRoot = this.gameRoot;
+                    this.currentGame = gameNode.addComponent(Match3Game);
                     break;
                 case 'snake':
-                    const snake = gameNode.addComponent(SnakeGame);
-                    snake.gameArea = this.gameRoot;
+                    this.currentGame = gameNode.addComponent(SnakeGame);
                     break;
                 case '2048':
-                    const g2048 = gameNode.addComponent(Game2048);
-                    g2048.gameArea = this.gameRoot;
+                    this.currentGame = gameNode.addComponent(Game2048);
                     break;
                 case 'tetris':
-                    const tetris = gameNode.addComponent(TetrisGame);
-                    tetris.gameArea = this.gameRoot;
+                    this.currentGame = gameNode.addComponent(TetrisGame);
                     break;
             }
             
-            this.setupBackButton();
+            if (this.currentGame) {
+                (this.currentGame as any).gameArea = this.gameRoot;
+            }
             
             this.gameRoot.scale = new Vec3(0.9, 0.9, 1);
             tween(this.gameRoot).to(0.3, { scale: new Vec3(1, 1, 1) }).call(() => {
                 this.isTransitioning = false;
             }).start();
         }).start();
-    }
-    
-    setupBackButton() {
-        this.backButton.off(Node.EventType.TOUCH_END);
-        this.backButton.on(Node.EventType.TOUCH_END, () => {
-            if (!this.isTransitioning) {
-                this.showHome();
-            }
-        });
     }
     
     createLabel(text: string, size: number, color: Color, bold: boolean = false): Node {
@@ -133,5 +132,10 @@ export class GameController extends Component {
         label.color = color;
         if (bold) label.isBold = true;
         return node;
+    }
+    
+    getVisibleSize() {
+        const canvas = director.getScene().getChildByName('Canvas');
+        return canvas.getComponent(UITransform).contentSize;
     }
 }
