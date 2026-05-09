@@ -5,6 +5,8 @@ import { TetrisGame } from './TetrisGame';
 import { Match3Game } from './Match3Game';
 import { GameConfig, COLORS } from './GameConfig';
 import { ScoreManager } from './ScoreManager';
+import { PauseMenu } from './PauseMenu';
+import { ShareManager } from './ShareManager';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameController')
@@ -12,12 +14,30 @@ export class GameController extends Component {
     @property(Node) homeRoot: Node = null!;
     @property(Node) gameRoot: Node = null!;
     @property(Node) backButton: Node = null!;
+    @property(Node) pauseButton: Node = null!;
+    @property(Node) shareButton: Node = null!;
     
     private currentGame: Component = null;
     private isTransitioning: boolean = false;
+    private pauseMenu: PauseMenu = null;
+    private currentGameName: string = '';
+    private currentGameScore: number = 0;
     
     onLoad() {
         this.showHome();
+        this.createPauseMenu();
+    }
+    
+    createPauseMenu() {
+        const pauseNode = new Node('PauseMenu');
+        this.node.addChild(pauseNode);
+        this.pauseMenu = pauseNode.addComponent(PauseMenu);
+        pauseNode.active = false;
+        
+        // 监听返回首页事件
+        pauseNode.on('goHome', () => {
+            this.showHome();
+        });
     }
     
     showHome() {
@@ -88,11 +108,14 @@ export class GameController extends Component {
     startGame(gameId: string) {
         if (this.isTransitioning) return;
         this.isTransitioning = true;
+        this.currentGameName = GameConfig.games.find(g => g.id === gameId)?.name || '';
         
         tween(this.homeRoot).to(0.3, { scale: new Vec3(0.9, 0.9, 1), opacity: 0 }).call(() => {
             this.homeRoot.active = false;
             this.gameRoot.active = true;
             this.backButton.active = true;
+            if (this.pauseButton) this.pauseButton.active = true;
+            if (this.shareButton) this.shareButton.active = true;
             this.gameRoot.removeAllChildren();
             
             const gameNode = new Node('Game');
@@ -118,6 +141,7 @@ export class GameController extends Component {
             }
             
             this.gameRoot.scale = new Vec3(0.9, 0.9, 1);
+            this.setupGameButtons();
             tween(this.gameRoot).to(0.3, { scale: new Vec3(1, 1, 1) }).call(() => {
                 this.isTransitioning = false;
             }).start();
@@ -137,5 +161,56 @@ export class GameController extends Component {
     getVisibleSize() {
         const canvas = director.getScene().getChildByName('Canvas');
         return canvas.getComponent(UITransform).contentSize;
+    }
+    
+    // 设置游戏内按钮
+    setupGameButtons() {
+        // 返回按钮
+        this.backButton.off(Node.EventType.TOUCH_END);
+        this.backButton.on(Node.EventType.TOUCH_END, () => {
+            if (!this.isTransitioning) {
+                this.saveScore();
+                this.showHome();
+            }
+        });
+        
+        // 暂停按钮
+        if (this.pauseButton) {
+            this.pauseButton.off(Node.EventType.TOUCH_END);
+            this.pauseButton.on(Node.EventType.TOUCH_END, () => {
+                this.showPauseMenu();
+            });
+        }
+        
+        // 分享按钮
+        if (this.shareButton) {
+            this.shareButton.off(Node.EventType.TOUCH_END);
+            this.shareButton.on(Node.EventType.TOUCH_END, () => {
+                ShareManager.shareGame(this.currentGameName, this.currentGameScore);
+            });
+        }
+    }
+    
+    // 显示暂停菜单
+    showPauseMenu() {
+        if (this.pauseMenu) {
+            this.pauseMenu.show(
+                this.currentGameName,
+                this.currentGameScore,
+                () => { console.log('游戏暂停'); },
+                () => { console.log('游戏继续'); }
+            );
+        }
+    }
+    
+    // 保存分数
+    saveScore() {
+        if (this.currentGame && this.currentGameName) {
+            const score = (this.currentGame as any).score || 0;
+            ScoreManager.saveHighScore(
+                GameConfig.games.find(g => g.name === this.currentGameName)?.id || '',
+                score
+            );
+        }
     }
 }
