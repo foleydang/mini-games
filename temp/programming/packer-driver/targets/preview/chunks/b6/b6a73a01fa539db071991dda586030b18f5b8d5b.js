@@ -1,7 +1,7 @@
-System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__unresolved_3", "__unresolved_4", "__unresolved_5", "__unresolved_6"], function (_export, _context) {
+System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__unresolved_3", "__unresolved_4", "__unresolved_5"], function (_export, _context) {
   "use strict";
 
-  var _reporterNs, _cclegacy, __checkObsolete__, __checkObsoleteInNamespace__, _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, Button, EventHandler, SnakeGame, Game2048, TetrisGame, Match3Game, GameConfig, COLORS, ScoreManager, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _crd, ccclass, property, DESIGN_WIDTH, DESIGN_HEIGHT, GameController;
+  var _reporterNs, _cclegacy, __checkObsolete__, __checkObsoleteInNamespace__, _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, SnakeGame, Game2048, TetrisGame, Match3Game, GameConfig, COLORS, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _crd, ccclass, property, DESIGN_WIDTH, DESIGN_HEIGHT, GameController;
 
   function _initializerDefineProperty(target, property, descriptor, context) { if (!descriptor) return; Object.defineProperty(target, property, { enumerable: descriptor.enumerable, configurable: descriptor.configurable, writable: descriptor.writable, value: descriptor.initializer ? descriptor.initializer.call(context) : void 0 }); }
 
@@ -33,10 +33,6 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
     _reporterNs.report("COLORS", "./GameConfig", _context.meta, extras);
   }
 
-  function _reportPossibleCrUseOfScoreManager(extras) {
-    _reporterNs.report("ScoreManager", "./ScoreManager", _context.meta, extras);
-  }
-
   return {
     setters: [function (_unresolved_) {
       _reporterNs = _unresolved_;
@@ -52,8 +48,6 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
       Sprite = _cc.Sprite;
       Color = _cc.Color;
       Label = _cc.Label;
-      Button = _cc.Button;
-      EventHandler = _cc.EventHandler;
     }, function (_unresolved_2) {
       SnakeGame = _unresolved_2.SnakeGame;
     }, function (_unresolved_3) {
@@ -65,15 +59,13 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
     }, function (_unresolved_6) {
       GameConfig = _unresolved_6.GameConfig;
       COLORS = _unresolved_6.COLORS;
-    }, function (_unresolved_7) {
-      ScoreManager = _unresolved_7.ScoreManager;
     }],
     execute: function () {
       _crd = true;
 
       _cclegacy._RF.push({}, "5092dxPBcpKPoyJOLjZlfFn", "GameController", undefined);
 
-      __checkObsolete__(['_decorator', 'Component', 'Node', 'Vec3', 'UITransform', 'Sprite', 'Color', 'Label', 'Button', 'EventHandler']);
+      __checkObsolete__(['_decorator', 'Component', 'Node', 'Vec3', 'UITransform', 'Sprite', 'Color', 'Label']);
 
       ({
         ccclass,
@@ -99,170 +91,153 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
           this.currentGame = null;
           this.isTransitioning = false;
           this.currentGameName = '';
-          this.currentGameScore = 0;
-          this.gameCards = [];
+          this.cards = [];
         }
 
         onLoad() {
-          // 确保节点大小
-          this._ensureNodeSize(this.homeRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
+          this._sz(this.homeRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
 
-          this._ensureNodeSize(this.gameRoot, DESIGN_WIDTH, DESIGN_HEIGHT); // 按钮默认隐藏
-
+          this._sz(this.gameRoot, DESIGN_WIDTH, DESIGN_HEIGHT);
 
           this.backButton.active = false;
           this.pauseButton.active = false;
-          this.shareButton.active = false; // 设置返回按钮
-
+          this.shareButton.active = false;
           this.backButton.on(Node.EventType.TOUCH_END, () => {
-            if (!this.isTransitioning) {
-              this.saveScore();
-              this.showHome();
+            if (!this.isTransitioning) this._goHome();
+          });
+          var ct = this.node.getComponent(UITransform);
+          if (ct) ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT); // 关键：在 homeRoot 上监听触摸，做命中测试
+
+          this.homeRoot.on(Node.EventType.TOUCH_END, ev => {
+            if (!this.homeRoot.active || this.isTransitioning) return;
+            var loc = ev.getUILocation();
+            var ht = this.homeRoot.getComponent(UITransform);
+            if (!ht) return;
+            var lp = ht.convertToNodeSpaceAR(new Vec3(loc.x, loc.y, 0));
+
+            for (var c of this.cards) {
+              if (Math.abs(lp.x - c.x) <= c.w / 2 && Math.abs(lp.y - c.y) <= c.h / 2) {
+                console.log('✅ clicked:', c.id);
+
+                this._start(c.id);
+
+                return;
+              }
             }
-          }); // 确保 Canvas 全屏
+          });
 
-          var canvas = this.node;
-          var canvasTransform = canvas.getComponent(UITransform);
-
-          if (canvasTransform) {
-            canvasTransform.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-          }
-
-          this.showHome();
+          this._goHome();
         }
 
-        _ensureNodeSize(node, width, height) {
-          if (!node) return;
-          var t = node.getComponent(UITransform);
-          if (!t) t = node.addComponent(UITransform);
-
-          if (t.contentSize.width < width || t.contentSize.height < height) {
-            t.setContentSize(width, height);
-          }
+        _sz(n, w, h) {
+          if (!n) return;
+          var t = n.getComponent(UITransform);
+          if (!t) t = n.addComponent(UITransform);
+          t.setContentSize(Math.max(t.contentSize.width, w), Math.max(t.contentSize.height, h));
         }
 
-        showHome() {
+        _goHome() {
           this.homeRoot.active = true;
           this.gameRoot.active = false;
           this.backButton.active = false;
           this.pauseButton.active = false;
           this.shareButton.active = false;
           this.homeRoot.removeAllChildren();
-          this.gameCards = [];
-          this.createHomeUI();
-        }
+          this.cards = [];
 
-        createHomeUI() {
-          var vs = this.getVisibleSize(); // 标题
+          var vs = this._vs(); // 标题
 
-          var title = this._createLabel('🎮 Yanten快乐屋', 24, (_crd && COLORS === void 0 ? (_reportPossibleCrUseOfCOLORS({
+
+          var title = this._lbl('🎮 Yanten快乐屋', 24, (_crd && COLORS === void 0 ? (_reportPossibleCrUseOfCOLORS({
             error: Error()
           }), COLORS) : COLORS).primary, true);
 
           title.setPosition(new Vec3(0, vs.height / 2 - 120, 0));
-          this.homeRoot.addChild(title); // 游戏卡片 2x2
+          this.homeRoot.addChild(title); // 卡片
 
-          var cardW = 130,
-              cardH = 130,
-              gapX = 30,
-              gapY = 30;
-          var totalW = cardW * 2 + gapX;
-          var totalH = cardH * 2 + gapY;
-          var positions = [new Vec3(-totalW / 2 + cardW / 2, totalH / 2 - cardH / 2, 0), new Vec3(totalW / 2 - cardW / 2, totalH / 2 - cardH / 2, 0), new Vec3(-totalW / 2 + cardW / 2, -totalH / 2 + cardH / 2, 0), new Vec3(totalW / 2 - cardW / 2, -totalH / 2 + cardH / 2, 0)];
+          var W = 130,
+              H = 130,
+              GX = 30,
+              GY = 30;
+          var tw = W * 2 + GX,
+              th = H * 2 + GY;
+          var positions = [new Vec3(-tw / 2 + W / 2, th / 2 - H / 2, 0), new Vec3(tw / 2 - W / 2, th / 2 - H / 2, 0), new Vec3(-tw / 2 + W / 2, -th / 2 + H / 2, 0), new Vec3(tw / 2 - W / 2, -th / 2 + H / 2, 0)];
           (_crd && GameConfig === void 0 ? (_reportPossibleCrUseOfGameConfig({
             error: Error()
-          }), GameConfig) : GameConfig).games.forEach((game, i) => {
-            var card = this._createCard(game);
+          }), GameConfig) : GameConfig).games.forEach((g, i) => {
+            var card = this._card(g);
 
             card.setPosition(positions[i]);
             this.homeRoot.addChild(card);
-            this.gameCards.push({
+            this.cards.push({
               node: card,
-              gameId: game.id
-            }); // Button + EventHandler
-
-            var btn = card.getComponent(Button);
-            if (!btn) btn = card.addComponent(Button);
-            btn.transition = Button.Transition.SCALE;
-            btn.zoomScale = 0.92;
-            btn.target = card;
-            btn.clickEvents = [];
-            var eh = new EventHandler();
-            eh.target = this.node;
-            eh.component = 'GameController';
-            eh.handler = '_onCardClick';
-            eh.customEventData = game.id;
-            btn.clickEvents.push(eh);
+              id: g.id,
+              x: positions[i].x,
+              y: positions[i].y,
+              w: W,
+              h: H
+            });
           });
         }
 
-        _onCardClick(event, customEventData) {
-          if (!this.isTransitioning) {
-            console.log('✅ 点击卡片:', customEventData);
-            this.startGame(customEventData);
-          }
-        }
-
-        _createCard(game) {
-          var card = new Node('Card');
-          var t = card.addComponent(UITransform);
+        _card(g) {
+          var c = new Node('C');
+          var t = c.addComponent(UITransform);
           t.setContentSize(130, 130);
-          t.setAnchorPoint(0.5, 0.5);
-          var sp = card.addComponent(Sprite);
-          sp.color = new Color(255, 255, 255, 220);
-          sp.type = Sprite.Type.SIMPLE; // 图标背景
+          c.addComponent(Sprite).color = new Color(255, 255, 255, 230); // 子节点不要 UITransform，用纯 Node + setComponent 不注册触摸
 
-          var iconBg = new Node('IconBg');
-          var ibg = iconBg.addComponent(UITransform);
-          ibg.setContentSize(60, 60);
-          var spBg = iconBg.addComponent(Sprite);
-          spBg.color = game.color;
-          spBg.type = Sprite.Type.SIMPLE;
-          iconBg.setPosition(new Vec3(0, 15, 0));
-          card.addChild(iconBg); // 图标 emoji
-
-          var icon = this._createLabel(game.icon, 30, Color.WHITE, true);
-
-          icon.setPosition(new Vec3(0, 15, 0));
-          card.addChild(icon); // 游戏名称
-
-          var name = this._createLabel(game.name, 14, (_crd && COLORS === void 0 ? (_reportPossibleCrUseOfCOLORS({
+          var icon = new Node('I');
+          var il = icon.addComponent(Label);
+          il.string = g.icon;
+          il.fontSize = 28;
+          il.color = Color.WHITE;
+          il.isBold = true;
+          icon.setPosition(0, 12);
+          c.addChild(icon);
+          var nm = new Node('N');
+          var nl = nm.addComponent(Label);
+          nl.string = g.name;
+          nl.fontSize = 12;
+          nl.color = (_crd && COLORS === void 0 ? (_reportPossibleCrUseOfCOLORS({
             error: Error()
-          }), COLORS) : COLORS).text, true);
-
-          name.setPosition(new Vec3(0, -42, 0));
-          card.addChild(name);
-          return card;
+          }), COLORS) : COLORS).text;
+          nl.isBold = true;
+          nm.setPosition(0, -40);
+          c.addChild(nm);
+          return c;
         }
 
-        _createLabel(text, size, color, bold) {
-          if (bold === void 0) {
-            bold = false;
-          }
-
-          var node = new Node('Label');
-          var t = node.addComponent(UITransform);
-          t.setContentSize(200, size * 1.5);
-          t.setAnchorPoint(0.5, 0.5);
-          var label = node.addComponent(Label);
-          label.string = text;
-          label.fontSize = size;
-          label.color = color;
-          label.horizontalAlign = Label.HorizontalAlign.CENTER;
-          label.verticalAlign = Label.VerticalAlign.CENTER;
-          if (bold) label.isBold = true;
-          return node;
+        _lbl(text, size, color, bold) {
+          var n = new Node('L');
+          n.addComponent(UITransform).setContentSize(200, size * 1.5);
+          var l = n.addComponent(Label);
+          l.string = text;
+          l.fontSize = size;
+          l.color = color;
+          if (bold) l.isBold = true;
+          return n;
         }
 
-        startGame(gameId) {
+        _vs() {
+          var t = this.node.getComponent(UITransform);
+          return t ? {
+            width: t.contentSize.width,
+            height: t.contentSize.height
+          } : {
+            width: DESIGN_WIDTH,
+            height: DESIGN_HEIGHT
+          };
+        }
+
+        _start(id) {
           var _games$find;
 
           if (this.isTransitioning) return;
           this.isTransitioning = true;
           this.currentGameName = ((_games$find = (_crd && GameConfig === void 0 ? (_reportPossibleCrUseOfGameConfig({
             error: Error()
-          }), GameConfig) : GameConfig).games.find(g => g.id === gameId)) == null ? void 0 : _games$find.name) || '';
-          console.log("\u5F00\u59CB\u6E38\u620F: " + this.currentGameName + " (" + gameId + ")");
+          }), GameConfig) : GameConfig).games.find(g => g.id === id)) == null ? void 0 : _games$find.name) || '';
+          console.log("start: " + this.currentGameName);
 
           try {
             this.homeRoot.active = false;
@@ -270,85 +245,43 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
             this.backButton.active = true;
             this.pauseButton.active = true;
             this.shareButton.active = true;
-            this.gameRoot.removeAllChildren(); // 游戏容器
+            this.gameRoot.removeAllChildren();
+            var gc = new Node('GC');
+            gc.layer = 1073741824;
+            gc.addComponent(UITransform).setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
+            this.gameRoot.addChild(gc);
+            var gn = new Node('G');
+            gn.layer = 1073741824;
+            gc.addChild(gn);
+            var comps = {
+              match3: _crd && Match3Game === void 0 ? (_reportPossibleCrUseOfMatch3Game({
+                error: Error()
+              }), Match3Game) : Match3Game,
+              snake: _crd && SnakeGame === void 0 ? (_reportPossibleCrUseOfSnakeGame({
+                error: Error()
+              }), SnakeGame) : SnakeGame,
+              '2048': _crd && Game2048 === void 0 ? (_reportPossibleCrUseOfGame({
+                error: Error()
+              }), Game2048) : Game2048,
+              tetris: _crd && TetrisGame === void 0 ? (_reportPossibleCrUseOfTetrisGame({
+                error: Error()
+              }), TetrisGame) : TetrisGame
+            };
+            this.currentGame = gn.addComponent(comps[id]);
 
-            var container = new Node('GameContainer');
-            container.layer = 1073741824;
-            var ct = container.addComponent(UITransform);
-            ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-            ct.setAnchorPoint(0.5, 0.5);
-            this.gameRoot.addChild(container);
-            var gameNode = new Node('Game');
-            gameNode.layer = 1073741824;
-            container.addChild(gameNode);
-
-            switch (gameId) {
-              case 'match3':
-                this.currentGame = gameNode.addComponent(_crd && Match3Game === void 0 ? (_reportPossibleCrUseOfMatch3Game({
-                  error: Error()
-                }), Match3Game) : Match3Game);
-                break;
-
-              case 'snake':
-                this.currentGame = gameNode.addComponent(_crd && SnakeGame === void 0 ? (_reportPossibleCrUseOfSnakeGame({
-                  error: Error()
-                }), SnakeGame) : SnakeGame);
-                break;
-
-              case '2048':
-                this.currentGame = gameNode.addComponent(_crd && Game2048 === void 0 ? (_reportPossibleCrUseOfGame({
-                  error: Error()
-                }), Game2048) : Game2048);
-                break;
-
-              case 'tetris':
-                this.currentGame = gameNode.addComponent(_crd && TetrisGame === void 0 ? (_reportPossibleCrUseOfTetrisGame({
-                  error: Error()
-                }), TetrisGame) : TetrisGame);
-                break;
-            }
-
-            if (this.currentGame) {
-              if (gameId === 'match3') {
-                this.currentGame.gridRoot = container;
-                this.currentGame.uiRoot = container;
-              } else {
-                this.currentGame.gameArea = container;
-                this.currentGame.uiRoot = container;
-              }
+            if (id === 'match3') {
+              this.currentGame.gridRoot = gc;
+              this.currentGame.uiRoot = gc;
+            } else {
+              this.currentGame.gameArea = gc;
+              this.currentGame.uiRoot = gc;
             }
 
             this.isTransitioning = false;
-            console.log('✅ 游戏组件已添加');
+            console.log('✅ game added');
           } catch (e) {
-            console.error('startGame 出错:', (e == null ? void 0 : e.message) || e);
+            console.error('err:', (e == null ? void 0 : e.message) || e);
             this.isTransitioning = false;
-          }
-        }
-
-        getVisibleSize() {
-          var canvas = this.node;
-          var t = canvas == null ? void 0 : canvas.getComponent(UITransform);
-          if (t) return {
-            width: t.contentSize.width,
-            height: t.contentSize.height
-          };
-          return {
-            width: DESIGN_WIDTH,
-            height: DESIGN_HEIGHT
-          };
-        }
-
-        saveScore() {
-          if (this.currentGame && this.currentGameName) {
-            var _games$find2;
-
-            var score = this.currentGame.score || 0;
-            (_crd && ScoreManager === void 0 ? (_reportPossibleCrUseOfScoreManager({
-              error: Error()
-            }), ScoreManager) : ScoreManager).saveHighScore(((_games$find2 = (_crd && GameConfig === void 0 ? (_reportPossibleCrUseOfGameConfig({
-              error: Error()
-            }), GameConfig) : GameConfig).games.find(g => g.name === this.currentGameName)) == null ? void 0 : _games$find2.id) || '', score);
           }
         }
 
