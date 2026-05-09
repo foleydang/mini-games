@@ -280,11 +280,14 @@ System.register(["__unresolved_0", "cc", "__unresolved_1", "__unresolved_2", "__
             this.gameRoot.removeAllChildren(); // 游戏容器
 
             var container = new Node('GameContainer');
+            container.layer = 1073741824; // UI_2D 层
+
             var ct = container.addComponent(UITransform);
             ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
             ct.setAnchorPoint(0.5, 0.5);
             this.gameRoot.addChild(container);
             var gameNode = new Node('Game');
+            gameNode.layer = 1 << 21;
             container.addChild(gameNode);
 
             switch (gameId) {

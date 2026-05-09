@@ -26,8 +26,8 @@
         "progress": 1,
         "state": "success",
         "stage": "build",
-        "message": "2026-5-10 01:54:55 build success in 7 s!",
-        "detailMessage": "// ---- build task cocos-service：onAfterBuild ----\r",
+        "message": "2026-5-10 01:59:02 build success in 4 s!",
+        "detailMessage": "// ---- build task 整理部分构建选项内数据到 settings.json ----\r",
         "options": {
           "name": "yanten-games",
           "server": "",
@@ -88,7 +88,7 @@
           "__version__": "1.3.9",
           "logDest": "project://temp/builder/log/wechatgame5-9-2026 17-46.log"
         },
-        "time": "5-10-2026 01:54:47",
+        "time": "5-10-2026 01:58:57",
         "dirty": false
       }
     }
