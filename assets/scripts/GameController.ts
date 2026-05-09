@@ -202,12 +202,14 @@ export class GameController extends Component {
             
             // 游戏容器
             const container = new Node('GameContainer');
+            container.layer = 1073741824; // UI_2D 层
             const ct = container.addComponent(UITransform);
             ct.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
             ct.setAnchorPoint(0.5, 0.5);
             this.gameRoot.addChild(container);
             
             const gameNode = new Node('Game');
+            gameNode.layer = 1 << 21;
             container.addChild(gameNode);
             
             switch (gameId) {
