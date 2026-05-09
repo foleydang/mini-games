@@ -124,7 +124,7 @@ export class Match3Game extends Component {
         if (this.isAnimating) return;
         
         const pos = event.getUILocation();
-        const localPos = this.gridRoot.getComponent(UITransform)?.convertToNodeSpaceAR(new Vec3(pos.x, pos.y, 0));
+        const localPos = this.gridRoot.getComponent(UITransform).convertToNodeSpaceAR(new Vec3(pos.x, pos.y, 0));
         if (!localPos) return;
         
         const cell = this.getCellFromPosition(localPos);
@@ -139,7 +139,7 @@ export class Match3Game extends Component {
         if (this.isAnimating || !this.selectedGem || !this.touchStartCell) return;
         
         const pos = event.getUILocation();
-        const localPos = this.gridRoot.getComponent(UITransform)?.convertToNodeSpaceAR(new Vec3(pos.x, pos.y, 0));
+        const localPos = this.gridRoot.getComponent(UITransform).convertToNodeSpaceAR(new Vec3(pos.x, pos.y, 0));
         if (!localPos) return;
         
         const dx = localPos.x - this.touchStartPos.x;
@@ -170,7 +170,7 @@ export class Match3Game extends Component {
         // 如果没有滑动，检查是否点击了相邻格
         if (this.selectedGem && this.touchStartCell) {
             const pos = event.getUILocation();
-            const localPos = this.gridRoot.getComponent(UITransform)?.convertToNodeSpaceAR(new Vec3(pos.x, pos.y, 0));
+            const localPos = this.gridRoot.getComponent(UITransform).convertToNodeSpaceAR(new Vec3(pos.x, pos.y, 0));
             if (localPos) {
                 const cell = this.getCellFromPosition(localPos);
                 if (cell && (cell.row !== this.selectedGem.row || cell.col !== this.selectedGem.col)) {
@@ -468,13 +468,13 @@ export class Match3Game extends Component {
             // 更新分数Label
             const scoreLabel = this.uiRoot.getChildByName('scoreLabel');
             if (scoreLabel) {
-                scoreLabel.getComponent(Label)?.string = '得分: ' + this.score;
+                scoreLabel.getComponent(Label).string = '得分: ' + this.score;
             }
             
             // 更新步数Label
             const movesLabel = this.uiRoot.getChildByName('movesLabel');
             if (movesLabel) {
-                movesLabel.getComponent(Label)?.string = '步数: ' + this.moves;
+                movesLabel.getComponent(Label).string = '步数: ' + this.moves;
             }
             
             // 更新进度条
