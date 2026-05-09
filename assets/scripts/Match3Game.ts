@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, tween, Tween, Input, input, EventTouch, MathUtil } from 'cc';
+import { _decorator, Component, Node, Vec3, UITransform, Sprite, Color, Label, tween, Tween, Input, input, EventTouch } from 'cc';
 import { COLORS } from './GameConfig';
 import { StorageManager } from './StorageManager';
 const { ccclass, property } = _decorator;
@@ -60,7 +60,7 @@ export class Match3Game extends Component {
             this.gems[row] = [];
             this.gemNodes[row] = [];
             for (let col = 0; col < this.gridSize; col++) {
-                this.gems[row][col] = MathUtil.randomRangeInt(0, this.colors);
+                this.gems[row][col] = Math.floor(Math.random() * (this.colors - 0)) + 0;
             }
         }
         
@@ -414,7 +414,7 @@ export class Match3Game extends Component {
         for (let col = 0; col < this.gridSize; col++) {
             for (let row = 0; row < this.gridSize; row++) {
                 if (this.gems[row][col] === -1) {
-                    this.gems[row][col] = MathUtil.randomRangeInt(0, this.colors);
+                    this.gems[row][col] = Math.floor(Math.random() * (this.colors - 0)) + 0;
                     
                     const gemNode = this.createGemNode(row, col);
                     gemNode.setPosition(new Vec3(startX + col * this.cellSize, startY + row * this.cellSize + 100, 0));
@@ -457,7 +457,7 @@ export class Match3Game extends Component {
                 }
             }
             for (let row = emptyRow; row >= 0; row--) {
-                this.gems[row][col] = MathUtil.randomRangeInt(0, this.colors);
+                this.gems[row][col] = Math.floor(Math.random() * (this.colors - 0)) + 0;
             }
         }
     }

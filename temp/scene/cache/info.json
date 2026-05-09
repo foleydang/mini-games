@@ -1,0 +1,11 @@
+{
+    "systemInfo": {
+        "arch": "arm64",
+        "cpu": "Apple M4 Pro",
+        "version": "Darwin Kernel Version 24.6.0: Fri Feb 27 19:34:59 PST 2026; root:xnu-11417.140.69.709.8~1/RELEASE_ARM64_T6041"
+    },
+    "sceneListMap": {
+        "85d0a394-a240-4ec1-87c5-550571651680": "/Users/foleydang/github/mini-games/assets/scenes/MainScene.scene"
+    },
+    "deviceMd5": "67356393450ad2f638e658ca8aeedb36"
+}

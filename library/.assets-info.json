@@ -1,0 +1,111 @@
+{
+  "version": "1.0.1",
+  "map": {
+    "scenes": {
+      "time": 1778348332000.474,
+      "uuid": "8cbbb09a-8a4b-4451-8897-969713f8bd75"
+    },
+    "scripts": {
+      "time": 1778342277346.4578,
+      "uuid": "690fa882-d317-46f5-8a7e-f9247c77a43b"
+    },
+    "scripts/AudioManager.ts": {
+      "time": 1778328928935.9788,
+      "uuid": "18d4fcc5-c5fc-43ad-972e-45f65eea61fb"
+    },
+    "scripts/Game2048.ts": {
+      "time": 1778319106581.795,
+      "uuid": "fb5c998b-e41e-498b-9aee-14a5df3f6efc"
+    },
+    "scripts/GameConfig.ts": {
+      "time": 1778343792834.8337,
+      "uuid": "b4dd06ee-6bb8-4795-81a5-c5df7c4390ce"
+    },
+    "scripts/GameController.ts": {
+      "time": 1778347958846.4724,
+      "uuid": "5092dc4f-05ca-4a3e-8c89-38b8d995f167"
+    },
+    "scripts/Match3Game.ts": {
+      "time": 1778342277345.96,
+      "uuid": "c9c384d7-a520-4dae-a762-86290e6578f5"
+    },
+    "scripts/ParticleManager.ts": {
+      "time": 1778328928936.9614,
+      "uuid": "4c57657f-1654-4d6a-a6e4-ab077f38f1d0"
+    },
+    "scripts/PauseMenu.ts": {
+      "time": 1778328928937.057,
+      "uuid": "0b88da4f-101e-458d-9991-8cd2736d70d8"
+    },
+    "scripts/ScoreManager.ts": {
+      "time": 1778328928937.1636,
+      "uuid": "b765e638-d588-475d-b1df-c8de17149ff5"
+    },
+    "scripts/ShareManager.ts": {
+      "time": 1778328928937.2488,
+      "uuid": "7dfef4be-ca6d-4a42-831f-328525e18d21"
+    },
+    "scripts/SnakeGame.ts": {
+      "time": 1778319106582.239,
+      "uuid": "238b9d8c-8784-4116-a957-5ecb7ed884e1"
+    },
+    "scripts/StorageManager.ts": {
+      "time": 1778315659813.6606,
+      "uuid": "f84e27d7-5597-47d7-a692-08d287c10f2c"
+    },
+    "scripts/TetrisGame.ts": {
+      "time": 1778319106582.3215,
+      "uuid": "89141976-d3e3-4e49-b483-3f5279f799b7"
+    },
+    "scenes.meta": {
+      "time": 1778319156798.697
+    },
+    "scripts.meta": {
+      "time": 1778319156798.8538
+    },
+    "scripts/AudioManager.ts.meta": {
+      "time": 1778328950058.4907
+    },
+    "scripts/Game2048.ts.meta": {
+      "time": 1778319156799.932
+    },
+    "scripts/GameConfig.ts.meta": {
+      "time": 1778328950058.9631
+    },
+    "scripts/GameController.ts.meta": {
+      "time": 1778319156800.235
+    },
+    "scripts/Match3Game.ts.meta": {
+      "time": 1778319156800.4336
+    },
+    "scripts/ParticleManager.ts.meta": {
+      "time": 1778328950059.267
+    },
+    "scripts/PauseMenu.ts.meta": {
+      "time": 1778328950059.4048
+    },
+    "scripts/ScoreManager.ts.meta": {
+      "time": 1778328950063.1257
+    },
+    "scripts/ShareManager.ts.meta": {
+      "time": 1778328950063.8254
+    },
+    "scripts/SnakeGame.ts.meta": {
+      "time": 1778319156800.632
+    },
+    "scripts/StorageManager.ts.meta": {
+      "time": 1778319156800.8801
+    },
+    "scripts/TetrisGame.ts.meta": {
+      "time": 1778319156801.199
+    },
+    "scenes/MainScene.scene": {
+      "time": 1778348563803.0044,
+      "uuid": "85d0a394-a240-4ec1-87c5-550571651680"
+    },
+    "scenes/MainScene.scene.meta": {
+      "time": 1778319158328.0522
+    }
+  },
+  "missing": {}
+}

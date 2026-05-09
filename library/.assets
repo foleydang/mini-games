@@ -1,0 +1,22 @@
+{
+    "version": "1.0.1",
+    "data": {
+        "paths": [
+            "scenes",
+            "scripts",
+            "scripts/AudioManager.ts",
+            "scripts/Game2048.ts",
+            "scripts/GameConfig.ts",
+            "scripts/GameController.ts",
+            "scripts/Match3Game.ts",
+            "scripts/ParticleManager.ts",
+            "scripts/PauseMenu.ts",
+            "scripts/ScoreManager.ts",
+            "scripts/ShareManager.ts",
+            "scripts/SnakeGame.ts",
+            "scripts/StorageManager.ts",
+            "scripts/TetrisGame.ts",
+            "scenes/MainScene.scene"
+        ]
+    }
+}

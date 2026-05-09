@@ -1,0 +1,101 @@
+{
+  "8cbbb09a-8a4b-4451-8897-969713f8bd75": {
+    "url": "db://assets/scenes",
+    "value": {},
+    "versionCode": 1
+  },
+  "690fa882-d317-46f5-8a7e-f9247c77a43b": {
+    "url": "db://assets/scripts",
+    "value": {},
+    "versionCode": 1
+  },
+  "18d4fcc5-c5fc-43ad-972e-45f65eea61fb": {
+    "url": "db://assets/scripts/AudioManager.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "fb5c998b-e41e-498b-9aee-14a5df3f6efc": {
+    "url": "db://assets/scripts/Game2048.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "b4dd06ee-6bb8-4795-81a5-c5df7c4390ce": {
+    "url": "db://assets/scripts/GameConfig.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "5092dc4f-05ca-4a3e-8c89-38b8d995f167": {
+    "url": "db://assets/scripts/GameController.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "17c13c13-5d2c-4355-a6dd-1a7e3b724959": {
+    "url": "db://assets/scripts/GameController_old.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "c9c384d7-a520-4dae-a762-86290e6578f5": {
+    "url": "db://assets/scripts/Match3Game.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "4c57657f-1654-4d6a-a6e4-ab077f38f1d0": {
+    "url": "db://assets/scripts/ParticleManager.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "0b88da4f-101e-458d-9991-8cd2736d70d8": {
+    "url": "db://assets/scripts/PauseMenu.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "b765e638-d588-475d-b1df-c8de17149ff5": {
+    "url": "db://assets/scripts/ScoreManager.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "7dfef4be-ca6d-4a42-831f-328525e18d21": {
+    "url": "db://assets/scripts/ShareManager.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "238b9d8c-8784-4116-a957-5ecb7ed884e1": {
+    "url": "db://assets/scripts/SnakeGame.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "f84e27d7-5597-47d7-a692-08d287c10f2c": {
+    "url": "db://assets/scripts/StorageManager.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "89141976-d3e3-4e49-b483-3f5279f799b7": {
+    "url": "db://assets/scripts/TetrisGame.ts",
+    "value": {},
+    "versionCode": 1
+  },
+  "85d0a394-a240-4ec1-87c5-550571651680": {
+    "url": "db://assets/scenes/MainScene.scene",
+    "value": {
+      "depends": [
+        "20835ba4-6145-4fbc-a58a-051ce700aa3e@f9941",
+        "544e49d6-3f05-4fa8-9a9e-091f98fc2ce8@f9941",
+        "951249e0-9f16-456d-8b85-a6ca954da16b@f9941"
+      ],
+      "dependScripts": [
+        "5092dc4f-05ca-4a3e-8c89-38b8d995f167"
+      ]
+    },
+    "versionCode": 2
+  },
+  "648e0107-94e4-45e7-ace6-ee71ab6b47f0": {
+    "url": "db://assets/scenes/MainScene.scene.bak",
+    "value": {},
+    "versionCode": 1
+  },
+  "f940b74d-c995-4be6-a60a-f8038d2307f2": {
+    "url": "db://assets/scripts/GameController.ts.bak",
+    "value": {},
+    "versionCode": 1
+  }
+}
