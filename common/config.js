@@ -18,12 +18,11 @@ export const Games = [
 export const Levels = {
   // 消消乐：目标分数驱动，网格大小递增
   match3: [
-    { grid: 6, colors: 4, moves: 20, target: 800, name: '入门' },
-    { grid: 6, colors: 4, moves: 18, target: 1200, name: '简单' },
-    { grid: 6, colors: 5, moves: 20, target: 1500, name: '普通' },
-    { grid: 7, colors: 5, moves: 22, target: 2000, name: '困难' },
-    { grid: 7, colors: 6, moves: 25, target: 2500, name: '专家' },
-    { grid: 8, colors: 6, moves: 28, target: 3500, name: '大师' }
+    { cols: 5, rows: 4, colors: 4, moves: 18, target: 600, name: '入门' },
+    { cols: 6, rows: 4, colors: 4, moves: 20, target: 900, name: '简单' },
+    { cols: 6, rows: 5, colors: 5, moves: 22, target: 1200, name: '普通' },
+    { cols: 7, rows: 5, colors: 5, moves: 24, target: 1600, name: '困难' },
+    { cols: 7, rows: 6, colors: 6, moves: 28, target: 2200, name: '专家' }
   ],
 
   // 打砖块：砖块数量递增

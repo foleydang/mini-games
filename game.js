@@ -76,10 +76,10 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
-          x: cardX + cardWidth - 70,
+          x: cardX + cardWidth - 110,
           y: cardY + 8,
-          width: 60,
-          height: 32
+          width: 100,
+          height: 40
         }
       });
     });

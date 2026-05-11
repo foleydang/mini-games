@@ -20,7 +20,7 @@ export default class Match3Game {
     this.onEnd = onEnd;
 
     this.level = Storage.load('match3_level') || 0;
-    this.gridSize = 6;
+    
     this.colors = 4;
     this.moves = 20;
     this.target = 800;
@@ -47,7 +47,8 @@ export default class Match3Game {
 
   initGame() {
     const levelConfig = Levels.match3[this.level] || Levels.match3[0];
-    this.gridSize = levelConfig.grid;
+    this.cols = levelConfig.cols;
+    this.rows = levelConfig.rows;
     this.colors = levelConfig.colors;
     this.moves = levelConfig.moves;
     this.target = levelConfig.target;
@@ -63,14 +64,14 @@ export default class Match3Game {
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
 
-    this.cellSize = Math.max(40, Math.min(availableWidth / this.gridSize, availableHeight / this.gridSize, 120));
-    this.gridStartX = (width - this.gridSize * this.cellSize) / 2;
+    this.cellSize = Math.max(55, Math.min(availableWidth / this.cols, availableHeight / this.rows, 85));
+    this.gridStartX = (width - this.cols * this.cellSize) / 2;
     this.gridStartY = safeTop + headerHeight;
 
     this.grid = [];
-    for (let row = 0; row < this.gridSize; row++) {
+    for (let row = 0; row < this.rows; row++) {
       this.grid[row] = [];
-      for (let col = 0; col < this.gridSize; col++) {
+      for (let col = 0; col < this.cols; col++) {
         this.grid[row][col] = Math.floor(Math.random() * this.colors);
       }
     }
@@ -152,7 +153,7 @@ export default class Match3Game {
       } else {
         targetRow += dy > 0 ? 1 : -1;
       }
-      if (targetRow >= 0 && targetRow < this.gridSize && targetCol >= 0 && targetCol < this.gridSize) {
+      if (targetRow >= 0 && targetRow < this.rows && targetCol >= 0 && targetCol < this.cols) {
         playSound(SoundType.SWAP);
         this.trySwap(this.selectedGem.row, this.selectedGem.col, targetRow, targetCol);
       }
@@ -167,7 +168,7 @@ export default class Match3Game {
   getCellAtPos(pos) {
     const x = pos.x - this.gridStartX;
     const y = pos.y - this.gridStartY;
-    if (x < 0 || x >= this.gridSize * this.cellSize || y < 0 || y >= this.gridSize * this.cellSize) return null;
+    if (x < 0 || x >= this.cols * this.cellSize || y < 0 || y >= this.rows * this.cellSize) return null;
     return { row: Math.floor(y / this.cellSize), col: Math.floor(x / this.cellSize) };
   }
 
@@ -190,15 +191,15 @@ export default class Match3Game {
 
   findMatches() {
     const matches = [];
-    for (let row = 0; row < this.gridSize; row++) {
-      for (let col = 0; col < this.gridSize - 2; col++) {
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols - 2; col++) {
         if (this.grid[row][col] === this.grid[row][col + 1] && this.grid[row][col] === this.grid[row][col + 2]) {
           matches.push({ row, col, dir: 'h' });
         }
       }
     }
-    for (let row = 0; row < this.gridSize - 2; row++) {
-      for (let col = 0; col < this.gridSize; col++) {
+    for (let row = 0; row < this.rows - 2; row++) {
+      for (let col = 0; col < this.cols; col++) {
         if (this.grid[row][col] === this.grid[row + 1][col] && this.grid[row][col] === this.grid[row + 2][col]) {
           matches.push({ row, col, dir: 'v' });
         }
@@ -248,9 +249,9 @@ export default class Match3Game {
   }
 
   dropGrid() {
-    for (let col = 0; col < this.gridSize; col++) {
-      let emptyRow = this.gridSize - 1;
-      for (let row = this.gridSize - 1; row >= 0; row--) {
+    for (let col = 0; col < this.cols; col++) {
+      let emptyRow = this.rows - 1;
+      for (let row = this.rows - 1; row >= 0; row--) {
         if (this.grid[row][col] >= 0) {
           if (row !== emptyRow) {
             this.grid[emptyRow][col] = this.grid[row][col];
@@ -263,8 +264,8 @@ export default class Match3Game {
   }
 
   fillGrid() {
-    for (let col = 0; col < this.gridSize; col++) {
-      for (let row = 0; row < this.gridSize; row++) {
+    for (let col = 0; col < this.cols; col++) {
+      for (let row = 0; row < this.rows; row++) {
         if (this.grid[row][col] === -1) {
           this.grid[row][col] = Math.floor(Math.random() * this.colors);
         }
@@ -357,13 +358,13 @@ export default class Match3Game {
                audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
 
     // 网格背景
-    const gridW = this.gridSize * this.cellSize;
-    const gridH = this.gridSize * this.cellSize;
+    const gridW = this.cols * this.cellSize;
+    const gridH = this.rows * this.cellSize;
     drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 24, '#fff', this.theme.primary, 4);
 
     // 宝石
-    for (let row = 0; row < this.gridSize; row++) {
-      for (let col = 0; col < this.gridSize; col++) {
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
         this.drawGem(row, col);
       }
     }

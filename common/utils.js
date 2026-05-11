@@ -100,7 +100,7 @@ export const Colors = {
   },
 
   // 消消乐宝石色 - 更鲜明
-  gems: ['#ffb3ba', '#bae1ff', '#baffc9', '#ffffba', '#ffdfba', '#e2baff'],
+  gems: ['#ef5350', '#42a5f5', '#66bb6a', '#ffee58', '#ff7043', '#ab47bc'],
 
   // 贪吃蛇
   snake: '#10b981',
