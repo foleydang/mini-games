@@ -156,8 +156,10 @@ class MainGame {
   }
 
   handleHomeTouch(pos) {
+    console.log('点击位置:', pos.x, pos.y);
     // 检查每个卡片
     for (const card of this.cards) {
+      console.log('卡片:', card.game.name, '范围:', card.x, card.y, card.width, card.height);
       // 先确定点击是否在卡片范围内
       if (pos.x >= card.x && pos.x <= card.x + card.width && 
           pos.y >= card.y && pos.y <= card.y + card.height) {
@@ -167,23 +169,26 @@ class MainGame {
         // 再检查是否在排行榜按钮区域
         if (pos.x >= btn.x && pos.x <= btn.x + btn.width && 
             pos.y >= btn.y && pos.y <= btn.y + btn.height) {
-          console.log('点击排行榜:', card.game.name, 'btn:', btn);
+          console.log('点击排行榜:', card.game.name);
           this.showRank(card.game.id, card.game.name, card.theme);
           return;
         }
         
         // 否则启动游戏
-        console.log('点击游戏:', card.game.name, 'card:', card.x, card.y);
+        console.log('启动游戏:', card.game.name);
         this.startGame(card.game.id);
         return;
       }
     }
+    console.log('点击未命中任何卡片');
   }
 
   handleRankTouch(pos) {
     const { width, height, safeBottom } = this.designSize;
-    const backButton = { x: 30, y: height - safeBottom - 80, width: 120, height: 50 };
-    if (pos.x >= backButton.x && pos.x <= backButton.x + backButton.width && pos.y >= backButton.y && pos.y <= backButton.y + backButton.height) {
+    // 返回按钮在左下角
+    const backButton = { x: 30, y: height - safeBottom - 70, width: 120, height: 50 };
+    if (pos.x >= backButton.x && pos.x <= backButton.x + backButton.width && 
+        pos.y >= backButton.y && pos.y <= backButton.y + backButton.height) {
       this.showingRank = false;
       this.currentRankGame = null;
       this.startAnimation();
@@ -258,7 +263,7 @@ class MainGame {
       });
     }
 
-    drawButton(this.ctx, 30, height - safeBottom - 80, 120, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, 30, height - safeBottom - 70, 120, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
   }
 
   drawGameCard(card, index) {
