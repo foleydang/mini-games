@@ -64,7 +64,7 @@ export default class Match3Game {
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
 
-    this.cellSize = Math.max(55, Math.min(availableWidth / this.cols, availableHeight / this.rows, 85));
+    this.cellSize = Math.max(70, Math.min(availableWidth / this.cols, availableHeight / this.rows, 100));
     this.gridStartX = (width - this.cols * this.cellSize) / 2;
     this.gridStartY = safeTop + headerHeight;
 
