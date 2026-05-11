@@ -186,7 +186,7 @@ class MainGame {
   handleRankTouch(pos) {
     const { safeTop } = this.designSize;
     // 返回按钮在左上角（更大更容易点击）
-    const backButton = { x: 30, y: 150, width: 140, height: 50 };
+    const backButton = { x: 30, y: 100, width: 140, height: 50 };
     console.log('排行榜点击:', pos.x, pos.y, '返回按钮:', backButton);
     if (pos.x >= backButton.x && pos.x <= backButton.x + backButton.width && 
         pos.y >= backButton.y && pos.y <= backButton.y + backButton.height) {
@@ -217,7 +217,7 @@ class MainGame {
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#c4b5fd';
     ctx.beginPath();
-    ctx.arc(width * 0.2, height * 0.3, 150, 0, Math.PI * 2);
+    ctx.arc(width * 0.2, height * 0.3, 100, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#a78bfa';
     ctx.beginPath();
@@ -267,7 +267,7 @@ class MainGame {
 
     // 返回按钮在左上角（更大更容易点击）
     // 返回按钮在左上角（140x50）
-    drawButton(this.ctx, 30, 150, 140, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, 30, 100, 140, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
   }
 
   drawGameCard(card, index) {
