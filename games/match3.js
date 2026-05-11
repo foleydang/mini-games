@@ -59,7 +59,7 @@ export default class Match3Game {
     this.comboCount = 0;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 320;
+    const headerHeight = 380;
     const footerHeight = 85;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
@@ -357,15 +357,15 @@ export default class Match3Game {
     // 底部按钮 - 左下角和右下角
     drawButton(this.ctx, this.backButton.x, this.backButton.y, 
                this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 56, radius: 28 });
+               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
                this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 56, radius: 28 });
+               '分享', Colors.success, { fontSize: 32, radius: 16 });
     
     drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
                this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 56, radius: 28 });
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 网格背景
     const gridW = this.cols * this.cellSize;

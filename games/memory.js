@@ -58,7 +58,7 @@ export default class MemoryGame {
     const symbols = MemorySymbols.slice(0, this.totalPairs);
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 220;
+    this.gameAreaTop = safeTop + 270;
     this.gameAreaBottom = height - safeBottom - 60;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
@@ -166,31 +166,31 @@ export default class MemoryGame {
     // 底部按钮在后面统一绘制
 
     drawText(this.ctx, '翻牌配对', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
-    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 140, safeTop + 55, { fontSize: 56, color: Colors.textLight });
+    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 140, safeTop + 55, { fontSize: 32, color: Colors.textLight });
     drawText(this.ctx, `${this.matchedPairs}/${this.totalPairs} 步:${this.moves}`, width / 2 + 140, safeTop + 55, { fontSize: 34, color: Colors.textDark, bold: true });
 
     // 底部按钮 - 左下角和右下角
     drawButton(this.ctx, this.backButton.x, this.backButton.y, 
                this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 56, radius: 28 });
+               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
                this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 56, radius: 28 });
+               '分享', Colors.success, { fontSize: 32, radius: 16 });
     
     drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
                this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 56, radius: 28 });
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
 
     this.cards.forEach(card => {
       if (card.matched) {
         drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, Colors.success);
-        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: 56 });
+        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: 32 });
       } else if (card.flipped) {
         drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, this.theme.primary);
-        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: 56 });
+        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: 32 });
       } else {
         drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, '#d1d5db');
         drawText(this.ctx, '?', card.x + card.width / 2, card.y + card.height / 2, { fontSize: 48, color: Colors.textLight });

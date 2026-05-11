@@ -9,8 +9,8 @@ export function getBackButton(designSize) {
   return {
     x: 30,
     y: safeTop + 100,
-    width: 160,  // 2/3 of 240
-    height: 67
+    width: 140,  // 2/3 of 240
+    height: 50
   };
 }
 
@@ -21,8 +21,8 @@ export function getShareButton(designSize) {
   return {
     x: backBtn.x + backBtn.width + 20,
     y: backBtn.y,
-    width: 160,  // 2/3 of 240
-    height: 67
+    width: 140,  // 2/3 of 240
+    height: 50
   };
 }
 
@@ -30,10 +30,10 @@ export function getShareButton(designSize) {
 export function getSoundButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
-    x: width - 220,
+    x: width - 180,
     y: safeTop + 100,
-    width: 187,  // 2/3 of 280
-    height: 67
+    width: 140,  // 2/3 of 280
+    height: 50
   };
 }
 
@@ -44,13 +44,13 @@ export function drawBottomButtons(ctx, designSize, backButtonLabel, soundEnabled
   const soundBtn = getSoundButton(designSize);
 
   drawButton(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height,
-             backButtonLabel || '← 返回', Colors.danger, { fontSize: 40, radius: 18 });
+             backButtonLabel || '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
 
   drawButton(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height,
-             '分享', Colors.success, { fontSize: 40, radius: 18 });
+             '分享', Colors.success, { fontSize: 32, radius: 16 });
 
   drawButton(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
-             soundEnabled ? '🔊' : '🔇', Colors.info, { fontSize: 40, radius: 18 });
+             soundEnabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
   return { backBtn, shareBtn, soundBtn };
 }
