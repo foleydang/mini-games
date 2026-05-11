@@ -137,7 +137,7 @@ class MainGame {
     });
 
     wx.onShareAppMessage(() => ({
-      title: '来Yanten快乐屋一起玩游戏吧！',
+      title: '来铃铛快乐屋一起玩游戏吧！',
       path: '/game.js',
       imageUrl: ''
     }));
@@ -296,7 +296,7 @@ class MainGame {
     drawParticles(this.ctx, this.particles);
 
     // 标题区 - 向下偏移
-    drawText(this.ctx, 'Yanten快乐屋', width / 2, safeTop + 55 + 150, {
+    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 55 + 150, {
       fontSize: 50,
       color: Colors.textDark,
       bold: true

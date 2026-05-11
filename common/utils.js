@@ -490,7 +490,7 @@ export function getTouchPos(touch, designSize) {
 // 分享
 export function shareGame(gameName, score) {
   wx.shareAppMessage({
-    title: `我在${gameName}获得了${score}分！来Yanten快乐屋挑战我吧！`,
+    title: `我在${gameName}获得了${score}分！来铃铛快乐屋挑战我吧！`,
     path: '/game.js',
     imageUrl: ''
   });

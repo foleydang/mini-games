@@ -1,5 +1,5 @@
 {
-  "description": "Yanten快乐屋 - 小游戏合集",
+  "description": "铃铛快乐屋 - 小游戏合集",
   "setting": {
     "urlCheck": false,
     "es6": true,
@@ -30,7 +30,7 @@
     }
   },
   "appid": "wx1529e72999162c2f",
-  "projectname": "Yanten快乐屋",
+  "projectname": "铃铛快乐屋",
   "simulatorType": "wechat",
   "simulatorPluginLibVersion": {},
   "condition": {},
