@@ -104,6 +104,7 @@ export default class MemoryGame {
       card2.matched = true;
       this.matchedPairs++;
       this.flippedCards = [];
+      this.checkingMatch = false;  // 重置状态，允许继续点击
       playSound(SoundType.MATCH_PAIR);
 
       if (this.matchedPairs === this.totalPairs) {
