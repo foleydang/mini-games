@@ -1,39 +1,39 @@
 /**
- * 游戏UI组件 - 按钮在左上角（远离胶囊）
+ * 游戏UI组件 - 按钮在顶部（更大更容易点击）
  */
 import { Colors, drawButton, drawText, drawRoundRect } from './utils.js';
 
-// 返回按钮 - 左上角（标题下方）
+// 返回按钮 - 左上角（240x100）
 export function getBackButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
-    x: 30,        // 往右移一点
-    y: safeTop + 100,  // 在顶部
-    width: 240,   // 加大一倍（原140）
-    height: 100   // 加大一倍（原60）
+    x: 30,
+    y: safeTop + 100,
+    width: 240,
+    height: 100
   };
 }
 
-// 分享按钮 - 左上角第二个
+// 分享按钮 - 返回按钮右边（240x100）
 export function getShareButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   const backBtn = getBackButton(designSize);
   return {
-    x: backBtn.x + backBtn.width + 15,
+    x: backBtn.x + backBtn.width + 20,
     y: backBtn.y,
-    width: 140,
-    height: 60
+    width: 240,
+    height: 100
   };
 }
 
-// 音效按钮 - 右上角
+// 音效按钮 - 右上角（280x100）
 export function getSoundButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
-    x: width - 120,
+    x: width - 310,
     y: safeTop + 100,
-    width: 140,
-    height: 60
+    width: 280,
+    height: 100
   };
 }
 
@@ -44,13 +44,13 @@ export function drawBottomButtons(ctx, designSize, backButtonLabel, soundEnabled
   const soundBtn = getSoundButton(designSize);
 
   drawButton(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height,
-             backButtonLabel || '返回', Colors.danger, { fontSize: 56, radius: 28 });
+             backButtonLabel || '← 返回', Colors.danger, { fontSize: 56, radius: 28 });
 
   drawButton(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height,
              '分享', Colors.success, { fontSize: 56, radius: 28 });
 
   drawButton(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
-             soundEnabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 14 });
+             soundEnabled ? '🔊' : '🔇', Colors.info, { fontSize: 56, radius: 28 });
 
   return { backBtn, shareBtn, soundBtn };
 }
