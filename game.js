@@ -266,7 +266,8 @@ class MainGame {
     }
 
     // 返回按钮在左上角（更大更容易点击）
-    drawButton(this.ctx, 30, safeTop + 100, 240, 100, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
+    // 返回按钮在左上角（140x50）
+    drawButton(this.ctx, 30, safeTop + 100, 140, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
   }
 
   drawGameCard(card, index) {
