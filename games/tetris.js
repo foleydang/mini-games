@@ -9,8 +9,8 @@ import {
   drawText, Storage, shareGame
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
-import.*audio.js
-import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
+import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
 
 export default class TetrisGame {
   constructor(canvas, ctx, designSize, onEnd) {

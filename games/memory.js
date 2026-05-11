@@ -6,8 +6,8 @@ import {
   drawText, Storage, shareGame
 } from '../common/utils.js';
 import { Levels, MemorySymbols } from '../common/config.js';
-import.*audio.js
-import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
+import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
 
 function shuffleArray(arr) {
   const result = [...arr];

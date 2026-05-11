@@ -6,8 +6,8 @@ import {
   drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
 import { Levels, BrickColors } from '../common/config.js';
-import.*audio.js
-import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
+import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
 
 export default class BreakoutGame {
   constructor(canvas, ctx, designSize, onEnd) {

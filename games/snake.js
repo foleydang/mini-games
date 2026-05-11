@@ -9,8 +9,8 @@ import {
   drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
-import.*audio.js
-import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
+import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
 
 export default class SnakeGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -235,6 +235,7 @@ export default class SnakeGame {
     this.shareButton.y = height - safeBottom - 65;
     this.soundButton.y = height - safeBottom - 65;
 
+    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, "← 返回", Colors.danger, { fontSize: 28, radius: 14 });
 
     // 标题
