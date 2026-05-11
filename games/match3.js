@@ -58,7 +58,7 @@ export default class Match3Game {
     this.comboCount = 0;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 200;
+    const headerHeight = 280;
     const footerHeight = 85;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;

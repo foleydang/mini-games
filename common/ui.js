@@ -1,39 +1,39 @@
 /**
- * 游戏UI组件 - 统一的按钮和布局
+ * 游戏UI组件 - 按钮在左上角（远离胶囊）
  */
 import { Colors, drawButton, drawText, drawRoundRect } from './utils.js';
 
-// 安全按钮位置计算 - 返回按钮在左下角（远离胶囊按钮）
+// 返回按钮 - 左上角（标题下方）
 export function getBackButton(designSize) {
-  const { width, height, safeBottom } = designSize;
+  const { width, height, safeTop, safeBottom } = designSize;
   return {
-    x: 25,
-    y: height - safeBottom - 65,
-    width: 110,
-    height: 48
+    x: 20,
+    y: safeTop + 100,
+    width: 100,
+    height: 42
   };
 }
 
-// 分享按钮 - 左下角第二个
+// 分享按钮 - 左上角第二个
 export function getShareButton(designSize) {
-  const { width, height, safeBottom } = designSize;
+  const { width, height, safeTop, safeBottom } = designSize;
   const backBtn = getBackButton(designSize);
   return {
-    x: backBtn.x + backBtn.width + 15,
+    x: backBtn.x + backBtn.width + 10,
     y: backBtn.y,
-    width: 110,
-    height: 48
+    width: 100,
+    height: 42
   };
 }
 
-// 音效按钮 - 右下角
+// 音效按钮 - 右上角
 export function getSoundButton(designSize) {
-  const { width, height, safeBottom } = designSize;
+  const { width, height, safeTop, safeBottom } = designSize;
   return {
-    x: width - 135,
-    y: height - safeBottom - 65,
-    width: 110,
-    height: 48
+    x: width - 120,
+    y: safeTop + 100,
+    width: 100,
+    height: 42
   };
 }
 
@@ -43,15 +43,12 @@ export function drawBottomButtons(ctx, designSize, backButtonLabel, soundEnabled
   const shareBtn = getShareButton(designSize);
   const soundBtn = getSoundButton(designSize);
 
-  // 返回按钮 - 左侧
   drawButton(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height,
              backButtonLabel || '返回', Colors.danger, { fontSize: 28, radius: 14 });
 
-  // 分享按钮 - 中间
   drawButton(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height,
              '分享', Colors.success, { fontSize: 28, radius: 14 });
 
-  // 音效按钮 - 右侧
   drawButton(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
              soundEnabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
 
@@ -67,35 +64,6 @@ export function checkBottomButtons(pos, buttons) {
     }
   }
   return null;
-}
-
-// 绘制游戏标题栏
-export function drawGameHeader(ctx, designSize, title, score, extra = {}) {
-  const { width, safeTop } = designSize;
-
-  // 游戏标题
-  drawText(ctx, title, width / 2, safeTop + 50, {
-    fontSize: 48,
-    color: extra.theme?.primary || Colors.primary,
-    bold: true
-  });
-
-  // 分数显示
-  if (score !== undefined) {
-    drawText(ctx, `${score}`, width / 2 + 100, safeTop + 50, {
-      fontSize: 38,
-      color: Colors.textDark,
-      bold: true
-    });
-  }
-
-  // 关卡/额外信息
-  if (extra.level) {
-    drawText(ctx, extra.level, width / 2 - 100, safeTop + 50, {
-      fontSize: 24,
-      color: Colors.textLight
-    });
-  }
 }
 
 // 绘制提示文字
