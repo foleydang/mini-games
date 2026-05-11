@@ -1,0 +1,25 @@
+# Cocos Creator (已迁移到原生小游戏)
+library/
+temp/
+local/
+settings/
+assets/
+profiles/
+*.meta
+
+# IDE
+.idea/
+.vscode/
+.claude/
+.creator/
+
+# Private
+project.private.config.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (如有)
+node_modules/
+package-lock.json
