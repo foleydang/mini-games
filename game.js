@@ -80,10 +80,10 @@ class MainGame {
         theme,
         // 排行榜按钮加大宽度
         rankBtn: {
-          x: cardX + cardWidth - 85,
+          x: cardX + cardWidth - 95,
           y: cardY + 8,
-          width: 75,
-          height: 35
+          width: 85,
+          height: 40
         }
       });
     });
@@ -162,7 +162,7 @@ class MainGame {
 
   endGame(score) {
     this.currentGame = null;
-    RankData.save(this.currentRankGame || 'unknown', score);
+    RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
     this.startAnimation();
   }
 

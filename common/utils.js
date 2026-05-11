@@ -504,9 +504,12 @@ export const RankData = {
   },
   addRank(gameId, score, name = '玩家') {
     const data = this.getRank(gameId);
-    data.push({ score, name, time: Date.now() });
+    data.push({ score, name, date: new Date().toLocaleDateString("zh-CN") });
     const top10 = data.sort((a, b) => b.score - a.score).slice(0, 10);
     Storage.save('rank_' + gameId, top10);
+  },
+  save(gameId, score) {
+    this.addRank(gameId, score, '玩家');
   },
   clearRank(gameId) {
     Storage.remove('rank_' + gameId);
