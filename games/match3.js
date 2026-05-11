@@ -102,7 +102,12 @@ export default class Match3Game {
   onTouchStart(pos) {
     if (this.isAnimating) return;
 
-    // 公共按钮（左下角和右下角）
+    // 调试：显示按钮位置和点击位置
+    console.log('游戏内点击:', 'pos=', pos.x, pos.y);
+    console.log('返回按钮:', this.backButton);
+    console.log('分享按钮:', this.shareButton);
+
+    // 公共按钮（左上角）
     if (this.checkButton(pos, this.backButton)) {
       playSound(SoundType.CLICK);
       this.destroy();
