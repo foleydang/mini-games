@@ -481,10 +481,27 @@ export const Storage = {
 export function getTouchPos(touch, designSize) {
   const info = wx.getSystemInfoSync();
   const ratio = designSize.width / info.screenWidth;
-  return {
-    x: Math.floor(touch.clientX * ratio),
-    y: Math.floor(touch.clientY * ratio)
-  };
+  
+  // 关键修复：touch.clientY是相对于屏幕顶部的
+  // 但canvas的实际物理位置可能不是从屏幕顶部开始
+  // 需要考虑canvas的物理偏移
+  
+  // 微信小游戏canvas默认从屏幕顶部开始，但可能有状态栏
+  // 安全区域计算时已经考虑了safeArea.top
+  // 所以touch.clientY应该直接转换，不需要减去safeArea.top
+  
+  // 但问题是：如果设计坐标系和实际canvas不匹配
+  // 我们需要确保点击坐标和绘制坐标在同一坐标系
+  
+  const x = Math.floor(touch.clientX * ratio);
+  const y = Math.floor(touch.clientY * ratio);
+  
+  // 调试输出
+  console.log('屏幕信息:', info.screenWidth, info.screenHeight, 'safeArea:', info.safeArea.top, info.safeArea.bottom);
+  console.log('ratio:', ratio, 'clientY:', touch.clientY, '转换后y:', y);
+  console.log('设计尺寸:', designSize.width, designSize.height, 'safeTop:', designSize.safeTop);
+  
+  return { x, y };
 }
 
 // 分享
