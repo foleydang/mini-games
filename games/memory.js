@@ -1,11 +1,22 @@
 /**
- * 翻牌配对 - 鲜明活力风格（大尺寸优化版）
+ * 翻牌配对 - 音效 + 多难度关卡
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText,
-  Storage, shareGame
+  drawText, Storage, shareGame
 } from '../common/utils.js';
+import { Levels, MemorySymbols } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
+
+// 洗牌函数
+function shuffleArray(arr) {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 export default class MemoryGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -14,47 +25,60 @@ export default class MemoryGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
+    this.level = Storage.load('memory_level') || 0;
     this.cards = [];
     this.flippedCards = [];
     this.matchedPairs = 0;
+    this.totalPairs = 8;
     this.moves = 0;
     this.bestMoves = Storage.load('memory_best') || 999;
     this.gameOver = false;
     this.checkingMatch = false;
+    this.levelName = '';
+    this.cols = 4;
+    this.rows = 4;
 
     this.theme = Colors.themes.memory;
 
-    // 按钮放在标题下方，间距美观
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
-
-    this.symbols = ['🌟', '💎', '🔥', '⚡', '💜', '🎯', '🍀', '🌈'];
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
   }
 
   initGame() {
+    const levelConfig = Levels.memory[this.level] || Levels.memory[1];
+    this.cols = levelConfig.cols;
+    this.rows = levelConfig.rows;
+    this.levelName = levelConfig.name;
+    this.totalPairs = (this.cols * this.rows) / 2;
+
+    // 根据难度选择符号集
+    let symbols;
+    if (this.totalPairs <= 6) symbols = MemorySymbols.easy;
+    else if (this.totalPairs <= 8) symbols = MemorySymbols.normal;
+    else if (this.totalPairs <= 10) symbols = MemorySymbols.hard;
+    else symbols = MemorySymbols.master.slice(0, this.totalPairs);
+
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     this.gameAreaTop = safeTop + 160;
     this.gameAreaBottom = height - safeBottom - 60;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
-    const cols = 4;
-    const rows = 4;
     const padding = 28;
     const gap = 22;
-    const cardWidth = (width - padding * 2 - gap * (cols - 1)) / cols;
-    const cardHeight = (this.gameAreaHeight - 40 - gap * (rows - 1)) / rows;
+    const cardWidth = (width - padding * 2 - gap * (this.cols - 1)) / this.cols;
+    const cardHeight = (this.gameAreaHeight - 40 - gap * (this.rows - 1)) / this.rows;
 
-    const pairs = [...this.symbols, ...this.symbols];
-    this.shuffleArray(pairs);
+    const pairs = shuffleArray([...symbols.slice(0, this.totalPairs), ...symbols.slice(0, this.totalPairs)])
 
     this.cards = [];
-    for (let i = 0; i < rows * cols; i++) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
+    for (let i = 0; i < this.rows * this.cols; i++) {
+      const col = i % this.cols;
+      const row = Math.floor(i / this.cols);
       this.cards.push({
         x: padding + col * (cardWidth + gap),
         y: this.gameAreaTop + 22 + row * (cardHeight + gap),
@@ -75,17 +99,8 @@ export default class MemoryGame {
     this.render();
   }
 
-  shuffleArray(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-  }
-
   startLoop() {
-    this.timer = setInterval(() => {
-      this.render();
-    }, 50);
+    this.timer = setInterval(() => { this.render(); }, 50);
   }
 
   destroy() {
@@ -102,22 +117,34 @@ export default class MemoryGame {
       card2.matched = true;
       this.matchedPairs++;
       this.flippedCards = [];
+      playSound(SoundType.MATCH_PAIR);
 
-      if (this.matchedPairs === 8) {
+      if (this.matchedPairs === this.totalPairs) {
         this.gameOver = true;
         if (this.moves < this.bestMoves) {
           this.bestMoves = this.moves;
           Storage.save('memory_best', this.bestMoves);
         }
 
+        playSound(SoundType.LEVEL_UP);
+
+        const hasNext = this.level + 1 < Levels.memory.length;
+
         wx.showModal({
-          title: '🎉 恭喜!',
-          content: `用了 ${this.moves} 步完成\n最佳: ${this.bestMoves} 步`,
-          confirmText: '重试',
+          title: '🎉 恭喜完成！',
+          content: `关卡: ${this.levelName}\n用了 ${this.moves} 步\n最佳: ${this.bestMoves} 步`,
+          confirmText: hasNext ? '下一关' : '重玩',
           cancelText: '返回',
           success: (res) => {
-            if (res.confirm) this.initGame();
-            else {
+            if (res.confirm) {
+              if (hasNext) {
+                this.level++;
+                Storage.save('memory_level', this.level);
+              }
+              this.destroy();
+              this.initGame();
+              this.startLoop();
+            } else {
               this.destroy();
               this.onEnd(this.moves);
             }
@@ -125,6 +152,7 @@ export default class MemoryGame {
         });
       }
     } else {
+      playSound(SoundType.FAIL);
       setTimeout(() => {
         card1.flipped = false;
         card2.flipped = false;
@@ -134,17 +162,30 @@ export default class MemoryGame {
     }
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.checkingMatch) return;
 
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.moves);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('翻牌', this.moves);
+      return;
+    }
+
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
       return;
     }
 
@@ -157,6 +198,7 @@ export default class MemoryGame {
         card.flipped = true;
         this.flippedCards.push(card);
         this.moves++;
+        playSound(SoundType.CARD);
 
         if (this.flippedCards.length === 2) {
           this.checkingMatch = true;
@@ -168,41 +210,42 @@ export default class MemoryGame {
   }
 
   onTouchMove(pos) {}
-
   onTouchEnd(pos) {}
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    // 标题区域 - 大字体
-    drawText(this.ctx, '🃏 翻牌配对', width / 2, safeTop + 55, {
+    // 标题
+    drawText(this.ctx, '翻牌配对', width / 2, safeTop + 55, {
       fontSize: 52,
       color: this.theme.primary,
       bold: true
     });
 
-    drawText(this.ctx, `${this.matchedPairs}/8  步:${this.moves}`, width - 130, safeTop + 55, {
-      fontSize: 34,
-      color: Colors.textDark,
-      bold: true,
-      align: 'right'
+    // 关卡名 + 进度
+    drawText(this.ctx, `${this.levelName}  ${this.matchedPairs}/${this.totalPairs}`, width / 2 - 140, safeTop + 55, {
+      fontSize: 28,
+      color: Colors.textLight
     });
 
-    // 按钮 - 大字体，在标题下方
+    // 步数
+    drawText(this.ctx, `步:${this.moves}`, width / 2 + 140, safeTop + 55, {
+      fontSize: 34,
+      color: Colors.textDark,
+      bold: true
+    });
+
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 游戏区域
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
 
-    // 卡片 - 更大更醒目
+    // 卡片
     this.cards.forEach(card => {
       if (card.matched) {
         drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, Colors.success);
@@ -216,8 +259,8 @@ export default class MemoryGame {
       }
     });
 
-    // 提示 - 底部
-    drawText(this.ctx, '点击翻开卡片找配对', width / 2, height - safeBottom - 40, {
+    // 底部提示
+    drawText(this.ctx, '点击翻开找配对', width / 2, height - safeBottom - 40, {
       fontSize: 26,
       color: Colors.textMuted
     });

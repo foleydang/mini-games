@@ -1,11 +1,12 @@
 /**
- * 贪吃蛇 - 鲜明活力风格（优化按钮）
+ * 贪吃蛇 - 使用音效 + 多关卡
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle,
-  Storage, shareGame
+  drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
+import { Levels } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class SnakeGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -14,6 +15,7 @@ export default class SnakeGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
+    this.level = Storage.load('snake_level') || 0;
     this.gridWidth = 10;
     this.gridHeight = 14;
     this.cellSize = 32;
@@ -25,19 +27,26 @@ export default class SnakeGame {
     this.bestScore = Storage.load('snake_best') || 0;
     this.gameOver = false;
     this.speed = 220;
+    this.target = 0;
+    this.levelName = '';
 
     this.touchStartPos = null;
     this.theme = Colors.themes.snake;
 
-    // 按钮放在标题下方，间距美观
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
   }
 
   initGame() {
+    const levelConfig = Levels.snake[this.level] || Levels.snake[0];
+    this.speed = levelConfig.speed;
+    this.target = levelConfig.target;
+    this.levelName = levelConfig.name;
+
     const { width, height, safeTop, safeBottom } = this.designSize;
     const headerHeight = 80;
     const footerHeight = 60;
@@ -62,7 +71,6 @@ export default class SnakeGame {
     this.nextDirection = { x: 0, y: 1 };
     this.score = 0;
     this.gameOver = false;
-    this.speed = 220;
 
     this.generateFood();
     this.render();
@@ -91,20 +99,31 @@ export default class SnakeGame {
         head.y < 0 || head.y >= this.gridHeight ||
         this.snake.some(s => s.x === head.x && s.y === head.y)) {
       this.gameOver = true;
+      playSound(SoundType.GAME_OVER);
 
       if (this.score > this.bestScore) {
         this.bestScore = this.score;
         Storage.save('snake_best', this.bestScore);
       }
 
+      const hasNext = this.level + 1 < Levels.snake.length;
+      const reached = this.score >= this.target;
+
       wx.showModal({
-        title: '游戏结束',
-        content: `得分: ${this.score}\n最高: ${this.bestScore}`,
-        confirmText: '重试',
+        title: reached ? '🎉 达成目标！' : '游戏结束',
+        content: `关卡: ${this.levelName}\n得分: ${this.score}\n目标: ${this.target}\n最高: ${this.bestScore}`,
+        confirmText: hasNext && reached ? '下一关' : '重试',
         cancelText: '返回',
         success: (res) => {
-          if (res.confirm) this.initGame();
-          else {
+          if (res.confirm) {
+            if (hasNext && reached) {
+              this.level++;
+              Storage.save('snake_level', this.level);
+            }
+            this.destroy();
+            this.initGame();
+            this.startLoop();
+          } else {
             this.destroy();
             this.onEnd(this.score);
           }
@@ -117,10 +136,12 @@ export default class SnakeGame {
 
     if (head.x === this.food.x && head.y === this.food.y) {
       this.score += 10;
+      playSound(SoundType.SUCCESS);
       this.generateFood();
 
+      // 吃食物加速
       if (this.score % 50 === 0 && this.speed > 60) {
-        this.speed -= 8;
+        this.speed = Math.max(60, this.speed - 8);
         clearInterval(this.timer);
         this.startLoop();
       }
@@ -138,15 +159,28 @@ export default class SnakeGame {
     } while (this.snake.some(s => s.x === this.food.x && s.y === this.food.y));
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.score);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('贪吃蛇', this.score);
+      return;
+    }
+
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
       return;
     }
 
@@ -160,6 +194,7 @@ export default class SnakeGame {
     const dy = pos.y - this.touchStartPos.y;
 
     if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+      playSound(SoundType.MOVE);
       if (Math.abs(dx) > Math.abs(dy)) {
         if (dx > 0 && this.direction.x !== -1) this.nextDirection = { x: 1, y: 0 };
         else if (dx < 0 && this.direction.x !== 1) this.nextDirection = { x: -1, y: 0 };
@@ -175,11 +210,6 @@ export default class SnakeGame {
     this.touchStartPos = null;
   }
 
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
-
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
 
@@ -192,16 +222,20 @@ export default class SnakeGame {
       bold: true
     });
 
-    // 分数 - 标题旁边
-    drawText(this.ctx, `${this.score}`, width / 2 + 100, safeTop + 50, {
+    // 关卡名
+    drawText(this.ctx, this.levelName, width / 2 - 80, safeTop + 50, { fontSize: 22, color: Colors.textLight });
+
+    // 分数
+    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, {
       fontSize: 36,
       color: Colors.textDark,
       bold: true
     });
 
-    // 按钮 - 大字体，在标题下方
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 游戏区域
     const gridW = this.gridWidth * this.cellSize;
@@ -218,7 +252,6 @@ export default class SnakeGame {
 
       drawCircle(this.ctx, cx, cy, radius, color);
 
-      // 蛇头眼睛
       if (i === 0) {
         this.ctx.fillStyle = '#fff';
         this.ctx.beginPath();
@@ -238,8 +271,8 @@ export default class SnakeGame {
     const foodCy = this.gridStartY + this.food.y * this.cellSize + this.cellSize / 2;
     drawCircle(this.ctx, foodCx, foodCy, this.cellSize / 2 - 10, Colors.food);
 
-    // 底部提示
-    drawText(this.ctx, '滑动控制方向', width / 2, height - safeBottom - 38, {
+    // 底部提示 + 目标
+    drawText(this.ctx, `滑动控制方向  目标: ${this.target}`, width / 2, height - safeBottom - 38, {
       fontSize: 24,
       color: Colors.textMuted
     });

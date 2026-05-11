@@ -1,11 +1,12 @@
 /**
- * 飞鸟游戏 - 鲜明活力风格（优化按钮）
+ * 飞鸟游戏 - 音效 + 多难度关卡
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle,
-  Storage, shareGame
+  drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
+import { Levels } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class FlappyGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -14,6 +15,7 @@ export default class FlappyGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
+    this.level = Storage.load('flappy_level') || 0;
     this.bird = { x: 0, y: 0, vy: 0 };
     this.pipes = [];
     this.score = 0;
@@ -21,18 +23,27 @@ export default class FlappyGame {
     this.gameOver = false;
     this.started = false;
     this.speed = 3.5;
+    this.pipeGap = 200;
+    this.pipeSpacing = 280;
+    this.levelName = '';
 
     this.theme = Colors.themes.flappy;
 
-    // 按钮放在标题下方，间距美观
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
   }
 
   initGame() {
+    const levelConfig = Levels.flappy[this.level] || Levels.flappy[1];
+    this.speed = levelConfig.speed;
+    this.pipeGap = levelConfig.gap;
+    this.pipeSpacing = levelConfig.spacing;
+    this.levelName = levelConfig.name;
+
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     this.gameAreaTop = safeTop + 160;
@@ -50,10 +61,7 @@ export default class FlappyGame {
     this.score = 0;
     this.gameOver = false;
     this.started = false;
-    this.speed = 3.5;
-    this.pipeGap = 200;
     this.pipeWidth = 95;
-    this.pipeSpacing = 280;
 
     this.addPipe(width);
     this.render();
@@ -100,6 +108,7 @@ export default class FlappyGame {
       if (!pipe.passed && pipe.x + this.pipeWidth < this.bird.x) {
         pipe.passed = true;
         this.score++;
+        playSound(SoundType.SUCCESS);
       }
 
       if (this.bird.x + this.bird.size / 2 > pipe.x &&
@@ -107,6 +116,7 @@ export default class FlappyGame {
         if (this.bird.y - this.bird.size / 2 < pipe.top ||
             this.bird.y + this.bird.size / 2 > pipe.bottom) {
           this.gameOver = true;
+          playSound(SoundType.FAIL);
           this.handleGameOver();
         }
       }
@@ -128,14 +138,25 @@ export default class FlappyGame {
       Storage.save('flappy_best', this.bestScore);
     }
 
+    const hasNext = this.level + 1 < Levels.flappy.length;
+    const target = 10 + this.level * 5;
+    const reached = this.score >= target;
+
     wx.showModal({
-      title: '游戏结束',
-      content: `得分: ${this.score}\n最高: ${this.bestScore}`,
-      confirmText: '重试',
+      title: reached ? '🎉 达成目标！' : '游戏结束',
+      content: `关卡: ${this.levelName}\n得分: ${this.score}\n目标: ${target}\n最高: ${this.bestScore}`,
+      confirmText: hasNext && reached ? '下一关' : '重试',
       cancelText: '返回',
       success: (res) => {
-        if (res.confirm) this.initGame();
-        else {
+        if (res.confirm) {
+          if (hasNext && reached) {
+            this.level++;
+            Storage.save('flappy_level', this.level);
+          }
+          this.destroy();
+          this.initGame();
+          this.startLoop();
+        } else {
           this.destroy();
           this.onEnd(this.score);
         }
@@ -143,32 +164,40 @@ export default class FlappyGame {
     });
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.score);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('飞鸟', this.score);
+      return;
+    }
+
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
       return;
     }
 
     if (!this.gameOver) {
       this.started = true;
       this.bird.vy = -8;
+      playSound(SoundType.FLAP);
     }
   }
 
   onTouchMove(pos) {}
-
   onTouchEnd(pos) {}
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
@@ -182,6 +211,9 @@ export default class FlappyGame {
       bold: true
     });
 
+    // 关卡名
+    drawText(this.ctx, this.levelName, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });
+
     // 分数
     drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, {
       fontSize: 38,
@@ -189,9 +221,10 @@ export default class FlappyGame {
       bold: true
     });
 
-    // 按钮 - 大字体，在标题下方
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 游戏区域
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
@@ -217,7 +250,7 @@ export default class FlappyGame {
 
     // 提示
     if (!this.started && !this.gameOver) {
-      drawText(this.ctx, '点击起飞', width / 2, height - safeBottom - 42, {
+      drawText(this.ctx, '点击起飞  目标:' + (10 + this.level * 5), width / 2, height - safeBottom - 42, {
         fontSize: 30,
         color: Colors.textLight
       });

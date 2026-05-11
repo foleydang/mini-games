@@ -1,12 +1,12 @@
 /**
- * 开心消消乐 - 鲜明活力风格（优化按钮）
+ * 消消乐 - 使用游戏基类 + 音效系统
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawProgress,
-  Storage, shareGame
+  drawText, drawProgress, drawCircle, Storage, shareGame
 } from '../common/utils.js';
 import { Levels } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class Match3Game {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -27,12 +27,16 @@ export default class Match3Game {
     this.selectedGem = null;
     this.isAnimating = false;
     this.touchStartPos = null;
+    this.comboCount = 0;
 
     this.theme = Colors.themes.match3;
+    this.gameName = '消消乐';
+    this.gameId = 'match3';
 
-    // 按钮放在标题下方，间距美观
+    // 按钮配置
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
@@ -44,17 +48,18 @@ export default class Match3Game {
     this.colors = levelConfig.colors;
     this.moves = levelConfig.moves;
     this.target = levelConfig.target;
+    this.levelName = levelConfig.name;
     this.score = 0;
     this.selectedGem = null;
     this.isAnimating = false;
+    this.comboCount = 0;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 160; // 与 gridStartY 一致
+    const headerHeight = 160;
     const footerHeight = 85;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
 
-    // 确保 cellSize 有最小值
     this.cellSize = Math.max(40, Math.min(availableWidth / this.gridSize, availableHeight / this.gridSize, 120));
     this.gridStartX = (width - this.gridSize * this.cellSize) / 2;
     this.gridStartY = safeTop + headerHeight;
@@ -85,17 +90,31 @@ export default class Match3Game {
     if (this.timer) clearInterval(this.timer);
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.isAnimating) return;
 
+    // 公共按钮处理
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.score);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('消消乐', this.score);
+      return;
+    }
+
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
       return;
     }
 
@@ -108,6 +127,7 @@ export default class Match3Game {
         const dc = Math.abs(cell.col - this.selectedGem.col);
 
         if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+          playSound(SoundType.SWAP);
           this.trySwap(this.selectedGem.row, this.selectedGem.col, cell.row, cell.col);
         } else {
           this.selectedGem = cell;
@@ -138,6 +158,7 @@ export default class Match3Game {
 
       if (targetRow >= 0 && targetRow < this.gridSize &&
           targetCol >= 0 && targetCol < this.gridSize) {
+        playSound(SoundType.SWAP);
         this.trySwap(this.selectedGem.row, this.selectedGem.col, targetRow, targetCol);
       }
 
@@ -147,11 +168,6 @@ export default class Match3Game {
 
   onTouchEnd(pos) {
     this.touchStartPos = null;
-  }
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
   }
 
   getCellAtPos(pos) {
@@ -172,6 +188,7 @@ export default class Match3Game {
     if (this.findMatches().length > 0) {
       this.moves--;
       this.selectedGem = null;
+      this.comboCount = 0;
       this.processMatches();
     } else {
       this.grid[r2][c2] = this.grid[r1][c1];
@@ -214,6 +231,14 @@ export default class Match3Game {
     }
 
     this.isAnimating = true;
+    this.comboCount++;
+
+    // 连击音效
+    if (this.comboCount > 1) {
+      playSound(SoundType.SUCCESS);
+    } else {
+      playSound(SoundType.MATCH);
+    }
 
     const toRemove = new Set();
     matches.forEach(m => {
@@ -224,7 +249,10 @@ export default class Match3Game {
       }
     });
 
-    this.score += toRemove.size * 10;
+    // 连击加分
+    const baseScore = toRemove.size * 10;
+    const comboBonus = this.comboCount > 1 ? (this.comboCount - 1) * 50 : 0;
+    this.score += baseScore + comboBonus;
 
     toRemove.forEach(key => {
       const [row, col] = key.split(',').map(Number);
@@ -281,21 +309,31 @@ export default class Match3Game {
 
   checkGameEnd() {
     if (this.score >= this.target) {
+      playSound(SoundType.LEVEL_UP);
+
       if (this.score > this.bestScore) {
         this.bestScore = this.score;
         Storage.save('match3_best', this.bestScore);
       }
 
+      const nextLevel = this.level + 1;
+      const hasNext = nextLevel < Levels.match3.length;
+      const nextName = hasNext ? Levels.match3[nextLevel].name : '';
+
       wx.showModal({
         title: '🎉 恭喜过关！',
-        content: `得分: ${this.score}\n目标: ${this.target}`,
-        confirmText: '下一关',
+        content: `关卡: ${this.levelName}\n得分: ${this.score}\n连击: ${this.comboCount}次\n${hasNext ? `下一关: ${nextName}` : '已通关全部关卡！'}`,
+        confirmText: hasNext ? '下一关' : '重玩',
         cancelText: '返回',
         success: (res) => {
           if (res.confirm) {
-            this.level++;
-            if (this.level >= Levels.match3.length) this.level = 0;
-            Storage.save('match3_level', this.level);
+            if (hasNext) {
+              this.level = nextLevel;
+              Storage.save('match3_level', this.level);
+            } else {
+              this.level = 0;
+              Storage.save('match3_level', 0);
+            }
             this.initGame();
           } else {
             this.destroy();
@@ -304,9 +342,11 @@ export default class Match3Game {
         }
       });
     } else if (this.moves <= 0) {
+      playSound(SoundType.GAME_OVER);
+
       wx.showModal({
         title: '游戏结束',
-        content: `得分: ${this.score}\n目标: ${this.target}`,
+        content: `关卡: ${this.levelName}\n得分: ${this.score}\n目标: ${this.target}\n连击: ${this.comboCount}次`,
         confirmText: '重试',
         cancelText: '返回',
         success: (res) => {
@@ -325,7 +365,7 @@ export default class Match3Game {
 
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    // 标题
+    // 标题 + 关卡名
     drawText(this.ctx, '消消乐', width / 2, safeTop + 50, {
       fontSize: 48,
       color: this.theme.primary,
@@ -333,18 +373,27 @@ export default class Match3Game {
     });
 
     // 关卡信息
-    drawText(this.ctx, `关卡 ${this.level + 1}`, width / 2, safeTop + 85, {
-      fontSize: 22,
+    drawText(this.ctx, this.levelName || `关卡 ${this.level + 1}`, width / 2, safeTop + 85, {
+      fontSize: 20,
       color: Colors.textLight
     });
 
-    // 分数和步数 - 标题两侧
-    drawText(this.ctx, `${this.score}`, width / 2 - 140, safeTop + 55, { fontSize: 34, color: Colors.textDark, bold: true });
-    drawText(this.ctx, `${this.moves}`, width / 2 + 140, safeTop + 55, { fontSize: 34, color: this.moves <= 3 ? Colors.danger : Colors.textDark, bold: true });
+    // 分数和步数
+    drawText(this.ctx, `${this.score}`, width / 2 - 140, safeTop + 50, { fontSize: 34, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `${this.moves}`, width / 2 + 140, safeTop + 50, { fontSize: 34, color: this.moves <= 3 ? Colors.danger : Colors.textDark, bold: true });
 
-    // 按钮 - 大字体，在标题下方
+    // 连击显示
+    if (this.comboCount > 1) {
+      drawText(this.ctx, `${this.comboCount}连击!`, width / 2, safeTop + 105, {
+        fontSize: 22,
+        color: Colors.warning
+      });
+    }
+
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 网格背景
     const gridW = this.gridSize * this.cellSize;
@@ -375,14 +424,14 @@ export default class Match3Game {
 
     const x = this.gridStartX + col * this.cellSize + 8;
     const y = this.gridStartY + row * this.cellSize + 8;
-    const size = Math.max(20, this.cellSize - 16); // 确保 size 有最小值
+    const size = Math.max(20, this.cellSize - 16);
 
     const gemColor = Colors.gems[this.grid[row][col]];
     const isSelected = this.selectedGem && this.selectedGem.row === row && this.selectedGem.col === col;
 
     drawRoundRect(this.ctx, x, y, size, size, Math.min(12, size / 4), gemColor, isSelected ? Colors.white : null, isSelected ? 3 : 0);
 
-    // 高光效果 - 确保参数有效
+    // 高光
     const highlightSize = Math.max(10, size * 0.4);
     this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
     this.ctx.beginPath();

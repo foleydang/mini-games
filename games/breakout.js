@@ -1,11 +1,12 @@
 /**
- * 打砖块 - 鲜明活力风格（优化按钮）
+ * 打砖块 - 音效 + 多关卡
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle,
-  Storage, shareGame
+  drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
+import { Levels, BrickColors } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class BreakoutGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -14,24 +15,35 @@ export default class BreakoutGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
+    this.level = Storage.load('breakout_level') || 0;
     this.ball = { x: 0, y: 0, vx: 0, vy: 0 };
     this.paddle = { x: 0, width: 130, height: 18 };
     this.bricks = [];
     this.score = 0;
     this.bestScore = Storage.load('breakout_best') || 0;
     this.gameOver = false;
+    this.ballSpeed = 6;
+    this.brickRows = 5;
+    this.brickCols = 6;
+    this.levelName = '';
 
     this.theme = Colors.themes.breakout;
 
-    // 按钮放在标题下方，间距美观
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
   }
 
   initGame() {
+    const levelConfig = Levels.breakout[this.level] || Levels.breakout[0];
+    this.brickRows = levelConfig.rows;
+    this.brickCols = levelConfig.cols;
+    this.ballSpeed = levelConfig.ballSpeed;
+    this.levelName = levelConfig.name;
+
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     this.gameAreaTop = safeTop + 160;
@@ -41,8 +53,8 @@ export default class BreakoutGame {
     this.ball = {
       x: width / 2,
       y: this.gameAreaBottom - 80,
-      vx: 5,
-      vy: -6.5,
+      vx: this.ballSpeed * 0.8,
+      vy: -this.ballSpeed,
       size: 20
     };
 
@@ -53,17 +65,15 @@ export default class BreakoutGame {
       height: 18
     };
 
-    const brickRows = 5;
-    const brickCols = 6;
-    const brickWidth = (width - 65) / brickCols;
+    const brickWidth = (width - 65) / this.brickCols;
     const brickHeight = 45;
     const brickStartY = this.gameAreaTop + 35;
 
     this.bricks = [];
-    const brickColors = [Colors.danger, Colors.warning, Colors.success, Colors.primary, Colors.info];
+    const brickColors = BrickColors[Math.min(this.level, BrickColors.length - 1)];
 
-    for (let row = 0; row < brickRows; row++) {
-      for (let col = 0; col < brickCols; col++) {
+    for (let row = 0; row < this.brickRows; row++) {
+      for (let col = 0; col < this.brickCols; col++) {
         this.bricks.push({
           x: 32 + col * brickWidth,
           y: brickStartY + row * (brickHeight + 12),
@@ -99,9 +109,11 @@ export default class BreakoutGame {
 
     if (this.ball.x <= this.ball.size || this.ball.x >= width - this.ball.size) {
       this.ball.vx *= -1;
+      playSound(SoundType.BOUNCE);
     }
     if (this.ball.y <= this.gameAreaTop + this.ball.size) {
       this.ball.vy *= -1;
+      playSound(SoundType.BOUNCE);
     }
 
     if (this.ball.y + this.ball.size >= this.paddle.y &&
@@ -109,7 +121,8 @@ export default class BreakoutGame {
         this.ball.x <= this.paddle.x + this.paddle.width) {
       this.ball.vy *= -1;
       const hitPos = (this.ball.x - this.paddle.x) / this.paddle.width;
-      this.ball.vx = (hitPos - 0.5) * 10;
+      this.ball.vx = (hitPos - 0.5) * this.ballSpeed * 1.5;
+      playSound(SoundType.BOUNCE);
     }
 
     this.bricks.forEach(brick => {
@@ -120,6 +133,7 @@ export default class BreakoutGame {
         brick.alive = false;
         this.ball.vy *= -1;
         this.score += 10;
+        playSound(SoundType.BRICK);
       }
     });
 
@@ -135,19 +149,31 @@ export default class BreakoutGame {
   }
 
   handleGameOver(won) {
+    if (won) playSound(SoundType.LEVEL_UP);
+    else playSound(SoundType.GAME_OVER);
+
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
       Storage.save('breakout_best', this.bestScore);
     }
 
+    const hasNext = this.level + 1 < Levels.breakout.length;
+
     wx.showModal({
-      title: won ? '🎉 恭喜通关' : '游戏结束',
-      content: `得分: ${this.score}\n最高: ${this.bestScore}`,
-      confirmText: '重试',
+      title: won ? '🎉 恭喜通关！' : '游戏结束',
+      content: `关卡: ${this.levelName}\n得分: ${this.score}\n最高: ${this.bestScore}`,
+      confirmText: won && hasNext ? '下一关' : '重试',
       cancelText: '返回',
       success: (res) => {
-        if (res.confirm) this.initGame();
-        else {
+        if (res.confirm) {
+          if (won && hasNext) {
+            this.level++;
+            Storage.save('breakout_level', this.level);
+          }
+          this.destroy();
+          this.initGame();
+          this.startLoop();
+        } else {
           this.destroy();
           this.onEnd(this.score);
         }
@@ -155,15 +181,28 @@ export default class BreakoutGame {
     });
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.score);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('打砖块', this.score);
+      return;
+    }
+
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
       return;
     }
 
@@ -171,9 +210,7 @@ export default class BreakoutGame {
   }
 
   onTouchMove(pos) {
-    if (!this.gameOver) {
-      this.movePaddle(pos);
-    }
+    if (!this.gameOver) this.movePaddle(pos);
   }
 
   onTouchEnd(pos) {}
@@ -181,11 +218,6 @@ export default class BreakoutGame {
   movePaddle(pos) {
     const { width } = this.designSize;
     this.paddle.x = Math.max(0, Math.min(width - this.paddle.width, pos.x - this.paddle.width / 2));
-  }
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
   }
 
   render() {
@@ -200,6 +232,9 @@ export default class BreakoutGame {
       bold: true
     });
 
+    // 关卡名
+    drawText(this.ctx, this.levelName, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });
+
     // 分数
     drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, {
       fontSize: 38,
@@ -207,9 +242,10 @@ export default class BreakoutGame {
       bold: true
     });
 
-    // 按钮 - 大字体，在标题下方
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 游戏区域
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);

@@ -1,11 +1,12 @@
 /**
- * 弹球 - 鲜明活力风格（大尺寸优化版）
+ * 弹球 - 音效 + 多难度关卡
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle,
-  Storage, shareGame
+  drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
+import { Levels } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class BounceGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -14,31 +15,38 @@ export default class BounceGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
+    this.level = Storage.load('bounce_level') || 0;
     this.ball = { x: 0, y: 0, vx: 0, vy: 0 };
     this.platforms = [];
     this.score = 0;
     this.bestScore = Storage.load('bounce_best') || 0;
     this.gameOver = false;
-    this.scrollSpeed = 3; // 加快速度
+    this.scrollSpeed = 3;
+    this.platformWidth = 110;
+    this.levelName = '';
 
     this.theme = Colors.themes.bounce;
 
-    // 按钮放在标题下方，间距美观
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
   }
 
   initGame() {
+    const levelConfig = Levels.bounce[this.level] || Levels.bounce[1];
+    this.scrollSpeed = levelConfig.speed;
+    this.platformWidth = levelConfig.platformWidth;
+    this.levelName = levelConfig.name;
+
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     this.gameAreaTop = safeTop + 160;
     this.gameAreaBottom = height - safeBottom - 60;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
-    // 小球和平台在游戏区域中间
     const centerOffset = this.gameAreaHeight * 0.3;
 
     this.ball = {
@@ -46,17 +54,15 @@ export default class BounceGame {
       y: this.gameAreaTop + centerOffset + 80,
       vx: 0,
       vy: 0,
-      size: 30  // 增大球
+      size: 30
     };
 
     this.score = 0;
     this.gameOver = false;
-    this.scrollSpeed = 3;
 
     this.platforms = [];
     const platformColors = [Colors.danger, Colors.warning, Colors.success, Colors.primary, Colors.info];
 
-    // 平台从中间往下分布，间距更密
     const platformSpacing = 80;
     for (let i = 0; i < 7; i++) {
       this.addPlatform(this.gameAreaTop + centerOffset + 150 + i * platformSpacing, platformColors[i % platformColors.length], i === 0);
@@ -67,13 +73,13 @@ export default class BounceGame {
 
   addPlatform(y, color, isFirst = false) {
     const { width } = this.designSize;
-    const platformWidth = isFirst ? width * 0.7 : 110 + Math.random() * 80;
+    const platformWidth = isFirst ? width * 0.7 : this.platformWidth + Math.random() * 40;
 
     this.platforms.push({
       x: Math.random() * (width - platformWidth),
       y: y,
       width: platformWidth,
-      height: 22,  // 更厚的平台
+      height: 22,
       color: color
     });
   }
@@ -114,6 +120,7 @@ export default class BounceGame {
         this.ball.vy = -12;
         this.ball.vx += (Math.random() - 0.5) * 4;
         this.score += 10;
+        playSound(SoundType.BOUNCE);
       }
     });
 
@@ -132,21 +139,19 @@ export default class BounceGame {
       this.ball.y -= this.scrollSpeed;
     }
 
-    // 最上面碰到不死，反弹回去
     if (this.ball.y < this.gameAreaTop + this.ball.size) {
       this.ball.y = this.gameAreaTop + this.ball.size;
       this.ball.vy = Math.abs(this.ball.vy) * 0.8;
     }
 
-    // 最下面碰到才死
     if (this.ball.y > this.gameAreaBottom) {
       this.gameOver = true;
+      playSound(SoundType.GAME_OVER);
       this.handleGameOver();
     }
 
-    // 加速更快
     if (this.score % 100 === 0 && this.score > 0) {
-      this.scrollSpeed = Math.min(5.5, this.scrollSpeed + 0.35);
+      this.scrollSpeed = Math.min(5.5, this.scrollSpeed + 0.25);
     }
   }
 
@@ -156,14 +161,25 @@ export default class BounceGame {
       Storage.save('bounce_best', this.bestScore);
     }
 
+    const hasNext = this.level + 1 < Levels.bounce.length;
+    const target = 50 + this.level * 50;
+    const reached = this.score >= target;
+
     wx.showModal({
-      title: '游戏结束',
-      content: `得分: ${this.score}\n最高: ${this.bestScore}`,
-      confirmText: '重试',
+      title: reached ? '🎉 达成目标！' : '游戏结束',
+      content: `关卡: ${this.levelName}\n得分: ${this.score}\n目标: ${target}\n最高: ${this.bestScore}`,
+      confirmText: hasNext && reached ? '下一关' : '重试',
       cancelText: '返回',
       success: (res) => {
-        if (res.confirm) this.initGame();
-        else {
+        if (res.confirm) {
+          if (hasNext && reached) {
+            this.level++;
+            Storage.save('bounce_level', this.level);
+          }
+          this.destroy();
+          this.initGame();
+          this.startLoop();
+        } else {
           this.destroy();
           this.onEnd(this.score);
         }
@@ -171,19 +187,33 @@ export default class BounceGame {
     });
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.score);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('弹球', this.score);
       return;
     }
 
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
+      return;
+    }
+
     const { width } = this.designSize;
+    playSound(SoundType.MOVE);
     if (pos.x < width / 2) {
       this.ball.vx = -8;
     } else {
@@ -192,49 +222,47 @@ export default class BounceGame {
   }
 
   onTouchMove(pos) {}
-
   onTouchEnd(pos) {}
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    // 标题区域 - 大字体
-    drawText(this.ctx, '🌟 弹球', width / 2, safeTop + 55, {
+    // 标题
+    drawText(this.ctx, '弹球', width / 2, safeTop + 55, {
       fontSize: 52,
       color: this.theme.primary,
       bold: true
     });
 
-    drawText(this.ctx, `${this.score}`, width - 130, safeTop + 55, {
+    // 关卡名
+    drawText(this.ctx, this.levelName, width / 2 - 100, safeTop + 55, { fontSize: 22, color: Colors.textLight });
+
+    // 分数
+    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 55, {
       fontSize: 42,
       color: Colors.textDark,
-      bold: true,
-      align: 'right'
+      bold: true
     });
 
-    // 按钮 - 大字体，在标题下方
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 游戏区域
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
 
-    // 平台 - 更大更醒目
+    // 平台
     this.platforms.forEach(platform => {
       drawRoundRect(this.ctx, platform.x, platform.y, platform.width, platform.height, 10, platform.color);
     });
 
-    // 球 - 更大
+    // 球
     drawCircle(this.ctx, this.ball.x, this.ball.y, this.ball.size, this.theme.primary);
 
-    // 提示 - 底部
+    // 底部提示
     drawText(this.ctx, '点击左/右控制弹跳', width / 2, height - safeBottom - 40, {
       fontSize: 26,
       color: Colors.textMuted

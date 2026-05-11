@@ -1,11 +1,12 @@
 /**
- * 2048 - 鲜明活力风格（优化按钮）
+ * 2048 - 音效 + 多目标关卡
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText,
-  Storage, shareGame
+  drawText, Storage, shareGame
 } from '../common/utils.js';
+import { Levels } from '../common/config.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class Game2048 {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -14,6 +15,7 @@ export default class Game2048 {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
+    this.level = Storage.load('2048_level') || 0;
     this.gridSize = 4;
     this.cellSize = 130;
     this.grid = [];
@@ -21,19 +23,25 @@ export default class Game2048 {
     this.bestScore = Storage.load('2048_best') || 0;
     this.gameOver = false;
     this.gameWon = false;
+    this.target = 2048;
+    this.levelName = '大师';
     this.touchStartPos = null;
 
     this.theme = Colors.themes['2048'];
 
-    // 按钮放在标题下方，间距美观
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
   }
 
   initGame() {
+    const levelConfig = Levels['2048'][this.level] || Levels['2048'][2];
+    this.target = levelConfig.target;
+    this.levelName = levelConfig.name;
+
     const { width, height, safeTop, safeBottom } = this.designSize;
     const headerHeight = 80;
     const footerHeight = 75;
@@ -63,9 +71,7 @@ export default class Game2048 {
   }
 
   startLoop() {
-    this.timer = setInterval(() => {
-      this.render();
-    }, 50);
+    this.timer = setInterval(() => { this.render(); }, 50);
   }
 
   destroy() {
@@ -86,15 +92,28 @@ export default class Game2048 {
     }
   }
 
+  checkButton(pos, btn) {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+  }
+
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) {
+      playSound(SoundType.CLICK);
       this.destroy();
       this.onEnd(this.score);
       return;
     }
 
     if (this.checkButton(pos, this.shareButton)) {
+      playSound(SoundType.SUCCESS);
       shareGame('2048', this.score);
+      return;
+    }
+
+    if (this.checkButton(pos, this.soundButton)) {
+      audioManager.toggle();
+      this.render();
       return;
     }
 
@@ -110,6 +129,7 @@ export default class Game2048 {
     const dy = pos.y - this.touchStartPos.y;
 
     if (Math.abs(dx) > 60 || Math.abs(dy) > 60) {
+      playSound(SoundType.MOVE);
       let moved = false;
 
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -126,11 +146,6 @@ export default class Game2048 {
       this.touchStartPos = null;
       this.render();
     }
-  }
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
   }
 
   move(dx, dy) {
@@ -163,6 +178,7 @@ export default class Game2048 {
             newCol = nextCol;
             this.grid[newRow][newCol] *= 2;
             this.score += this.grid[newRow][newCol];
+            playSound(SoundType.SUCCESS);
             merged.add(`${newRow},${newCol}`);
             this.grid[row][col] = 0;
             moved = true;
@@ -184,23 +200,33 @@ export default class Game2048 {
   }
 
   checkGameState() {
+    // 检查是否达到目标
     for (let i = 0; i < this.gridSize; i++) {
       for (let j = 0; j < this.gridSize; j++) {
-        if (this.grid[i][j] === 2048 && !this.gameWon) {
+        if (this.grid[i][j] === this.target && !this.gameWon) {
           this.gameWon = true;
+          playSound(SoundType.LEVEL_UP);
 
           if (this.score > this.bestScore) {
             this.bestScore = this.score;
             Storage.save('2048_best', this.bestScore);
           }
 
+          const hasNext = this.level + 1 < Levels['2048'].length;
+
           wx.showModal({
-            title: '🎉 恭喜！',
-            content: '你达到了 2048！',
-            confirmText: '继续',
+            title: '🎉 恭喜达成！',
+            content: `目标: ${this.target}\n得分: ${this.score}\n${hasNext ? `下一目标: ${Levels['2048'][this.level+1].target}` : '已达成所有目标！'}`,
+            confirmText: hasNext ? '下一关' : '继续',
             cancelText: '返回',
             success: (res) => {
-              if (!res.confirm) {
+              if (res.confirm && hasNext) {
+                this.level++;
+                Storage.save('2048_level', this.level);
+                this.destroy();
+                this.initGame();
+                this.startLoop();
+              } else if (!res.confirm) {
                 this.destroy();
                 this.onEnd(this.score);
               }
@@ -211,6 +237,7 @@ export default class Game2048 {
       }
     }
 
+    // 检查是否游戏结束
     for (let i = 0; i < this.gridSize; i++) {
       for (let j = 0; j < this.gridSize; j++) {
         if (this.grid[i][j] === 0) return;
@@ -226,6 +253,7 @@ export default class Game2048 {
     }
 
     this.gameOver = true;
+    playSound(SoundType.GAME_OVER);
 
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
@@ -259,13 +287,16 @@ export default class Game2048 {
       bold: true
     });
 
-    // 分数 - 标题旁边
-    drawText(this.ctx, `${this.score}`, width / 2 - 120, safeTop + 50, { fontSize: 34, color: Colors.textDark, bold: true });
-    drawText(this.ctx, `最高: ${this.bestScore}`, width / 2 + 120, safeTop + 50, { fontSize: 28, color: Colors.textLight });
+    // 目标显示
+    drawText(this.ctx, `目标: ${this.target}`, width / 2 - 120, safeTop + 50, { fontSize: 28, color: Colors.textLight });
 
-    // 按钮 - 大字体，在标题下方
+    // 分数
+    drawText(this.ctx, `${this.score}`, width / 2 + 120, safeTop + 50, { fontSize: 34, color: Colors.textDark, bold: true });
+
+    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 网格背景
     const gridW = this.gridSize * this.cellSize;
@@ -281,12 +312,12 @@ export default class Game2048 {
     }
 
     // 底部提示
-    drawText(this.ctx, '滑动合并数字', width / 2, height - safeBottom - 42, {
+    drawText(this.ctx, `滑动合并数字  关卡: ${this.levelName}`, width / 2, height - safeBottom - 42, {
       fontSize: 24,
       color: Colors.textMuted
     });
 
-    // 游戏结束
+    // 游戏结束遮罩
     if (this.gameOver) {
       this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       this.ctx.fillRect(0, 0, width, height);
