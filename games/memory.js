@@ -166,21 +166,21 @@ export default class MemoryGame {
     // 底部按钮在后面统一绘制
 
     drawText(this.ctx, '翻牌配对', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
-    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 140, safeTop + 55, { fontSize: 28, color: Colors.textLight });
+    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 140, safeTop + 55, { fontSize: 56, color: Colors.textLight });
     drawText(this.ctx, `${this.matchedPairs}/${this.totalPairs} 步:${this.moves}`, width / 2 + 140, safeTop + 55, { fontSize: 34, color: Colors.textDark, bold: true });
 
     // 底部按钮 - 左下角和右下角
     drawButton(this.ctx, this.backButton.x, this.backButton.y, 
                this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 28, radius: 14 });
+               '← 返回', Colors.danger, { fontSize: 56, radius: 28 });
     
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
                this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 28, radius: 14 });
+               '分享', Colors.success, { fontSize: 56, radius: 28 });
     
     drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
                this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 56, radius: 28 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
 

@@ -281,15 +281,15 @@ export default class Game2048 {
     // 底部按钮 - 左下角和右下角
     drawButton(this.ctx, this.backButton.x, this.backButton.y, 
                this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 28, radius: 14 });
+               '← 返回', Colors.danger, { fontSize: 56, radius: 28 });
     
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
                this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 28, radius: 14 });
+               '分享', Colors.success, { fontSize: 56, radius: 28 });
     
     drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
                this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 56, radius: 28 });
 
     // 网格
     const gridW = this.gridSize * this.cellSize;

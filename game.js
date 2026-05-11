@@ -184,11 +184,13 @@ class MainGame {
   }
 
   handleRankTouch(pos) {
-    const { width, height, safeBottom } = this.designSize;
-    // 返回按钮在左下角
-    const backButton = { x: 30, y: height - safeBottom - 70, width: 120, height: 50 };
+    const { safeTop } = this.designSize;
+    // 返回按钮在左上角（更大更容易点击）
+    const backButton = { x: 30, y: safeTop + 100, width: 240, height: 100 };
+    console.log('排行榜点击:', pos.x, pos.y, '返回按钮:', backButton);
     if (pos.x >= backButton.x && pos.x <= backButton.x + backButton.width && 
         pos.y >= backButton.y && pos.y <= backButton.y + backButton.height) {
+      console.log('点击返回按钮，退出排行榜');
       this.showingRank = false;
       this.currentRankGame = null;
       this.startAnimation();
@@ -263,7 +265,8 @@ class MainGame {
       });
     }
 
-    drawButton(this.ctx, 30, height - safeBottom - 70, 120, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
+    // 返回按钮在左上角（更大更容易点击）
+    drawButton(this.ctx, 30, safeTop + 100, 240, 100, '← 返回', '#dc2626', { fontSize: 48, radius: 24 });
   }
 
   drawGameCard(card, index) {
