@@ -77,10 +77,10 @@ class MainGame {
         theme,
         rankBtn: {
           // 排行榜按钮在右下角（更大更容易点击）
-          x: cardX + cardWidth - 140,
-          y: cardY + cardHeight - 55,
-          width: 125,
-          height: 50
+          x: cardX + cardWidth - 130,
+          y: cardY + cardHeight - 48,
+          width: 120,
+          height: 45
         }
       });
     });
@@ -272,9 +272,9 @@ class MainGame {
     drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
     ctx.restore();
 
-    // 游戏图标在左侧
+    // 游戏图标在左侧上部
     const iconX = x + 45;
-    const iconY = y + height / 2;
+    const iconY = y + 50;  // 往上移
     const iconRadius = 30;
 
     ctx.shadowColor = 'rgba(0,0,0,0.1)';
@@ -290,8 +290,8 @@ class MainGame {
     drawText(ctx, game.name, x + width * 0.50, y + 40, { fontSize: 32, color: '#1f2937', bold: true });
     drawText(ctx, game.desc, x + width * 0.50, y + 70, { fontSize: 20, color: '#6b7280' });
 
-    // 排行榜按钮在右下角（更大更容易点击）
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 26, radius: 12 });
+    // 排行榜按钮在右下角
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行', theme.secondary, { fontSize: 24, radius: 10 });
   }
 }
 

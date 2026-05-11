@@ -167,7 +167,7 @@ export default class Match3Game {
 
   getCellAtPos(pos) {
     const x = pos.x - this.gridStartX;
-    const y = pos.y - this.gridStartY;
+    const y = pos.y - this.gridStartY - 10;  // 减去绘制时的+10偏移
     if (x < 0 || x >= this.cols * this.cellSize || y < 0 || y >= this.rows * this.cellSize) return null;
     return { row: Math.floor(y / this.cellSize), col: Math.floor(x / this.cellSize) };
   }
