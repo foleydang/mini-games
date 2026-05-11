@@ -118,7 +118,7 @@ class MainGame {
     });
 
     wx.onTouchEnd((e) => {
-      const pos = getTouchPos(e.touches[0], this.designSize);
+      const pos = getTouchPos(e.changedTouches[0], this.designSize);
       if (!this.showingRank && this.currentGame) {
         this.currentGame.onTouchEnd(pos);
       }
