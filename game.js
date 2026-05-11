@@ -44,13 +44,13 @@ class MainGame {
     const { width, height, safeTop, safeBottom } = this.designSize;
     const cols = 2;
     const rows = 4;
-    const cardGapH = 50;
+    const cardGapH = 40;
     const cardGapV = 52;
     const paddingX = 30;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    const cardHeight = 140;
+    const cardHeight = 160;
 
     const startX = paddingX;
     const startY = safeTop + 420;
@@ -76,10 +76,10 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
-          x: cardX + cardWidth - 110,
+          x: cardX + cardWidth - 145,
           y: cardY + 8,
-          width: 100,
-          height: 40
+          width: 130,
+          height: 48
         }
       });
     });
@@ -245,7 +245,7 @@ class MainGame {
         drawText(this.ctx, `${index + 1}`, 70, y + 28, { fontSize: 28, color: rankColor, bold: true });
         drawText(this.ctx, `${item.score}`, width - 100, y + 28, { fontSize: 28, color: rankColor, bold: true });
         if (item.date) {
-          drawText(this.ctx, item.date, width / 2, y + 28, { fontSize: 20, color: rankColor });
+          drawText(this.ctx, item.date, width / 2, y + 28, { fontSize: 28, color: rankColor });
         }
       });
     }
@@ -280,7 +280,7 @@ class MainGame {
     drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, { fontSize: 36, color: '#1f2937', bold: true });
     drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, { fontSize: 22, color: '#6b7280' });
 
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '榜', theme.secondary, { fontSize: 20, radius: 8 });
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 28, radius: 8 });
   }
 }
 

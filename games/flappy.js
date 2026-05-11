@@ -39,9 +39,9 @@ export default class FlappyGame {
     this.achievedMilestone = -1;
 
     this.theme = Colors.themes.flappy;
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 120, height: 50 }; // y在render中动态计算;
-    this.shareButton = { x: 150, y: designSize.safeTop + 100, width: 120, height: 50 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 120, height: 50 };
+    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
+    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
 
     this.initGame();
     this.startLoop();
@@ -175,9 +175,9 @@ export default class FlappyGame {
     const next = this.getNextMilestone();
     if (next) drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 50, { fontSize: 20, color: Colors.textLight });
 
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
     this.pipes.forEach(pipe => {

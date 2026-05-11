@@ -39,9 +39,9 @@ export default class MemoryGame {
     this.rows = 3;
 
     this.theme = Colors.themes.memory;
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 120, height: 50 }; // y在render中动态计算;
-    this.shareButton = { x: 150, y: designSize.safeTop + 100, width: 120, height: 50 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 120, height: 50 };
+    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
+    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
 
     this.initGame();
     this.startLoop();
@@ -167,9 +167,9 @@ export default class MemoryGame {
     drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 140, safeTop + 55, { fontSize: 28, color: Colors.textLight });
     drawText(this.ctx, `${this.matchedPairs}/${this.totalPairs} 步:${this.moves}`, width / 2 + 140, safeTop + 55, { fontSize: 34, color: Colors.textDark, bold: true });
 
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
 

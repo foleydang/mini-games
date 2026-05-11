@@ -42,9 +42,9 @@ export default class SnakeGame {
     this.touchStartPos = null;
 
     this.theme = Colors.themes.snake;
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 120, height: 50 }; // y在render中动态计算;
-    this.shareButton = { x: 150, y: designSize.safeTop + 100, width: 120, height: 50 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 120, height: 50 };
+    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
+    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
 
     this.initGame();
     this.startLoop();
@@ -189,6 +189,18 @@ export default class SnakeGame {
   }
 
   onTouchStart(pos) {
+    // 点击屏幕左右区域控制方向
+    const { width } = this.designSize
+    if (pos.x < width / 3 && this.direction.x !== 1) {
+      this.nextDirection = { x: -1, y: 0 }
+    } else if (pos.x > width * 2 / 3 && this.direction.x !== -1) {
+      this.nextDirection = { x: 1, y: 0 }
+    } else if (pos.y < this.gridStartY && this.direction.y !== 1) {
+      this.nextDirection = { x: 0, y: -1 }
+    } else if (this.direction.y !== -1) {
+      this.nextDirection = { x: 0, y: 1 }
+    }
+    
     if (this.checkButton(pos, this.backButton)) {
       playSound(SoundType.CLICK);
       this.destroy();
@@ -250,9 +262,9 @@ export default class SnakeGame {
     }
 
     // 按钮
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
 
     // 游戏区域
     const gridW = this.gridWidth * this.cellSize;

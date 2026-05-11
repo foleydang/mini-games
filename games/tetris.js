@@ -51,9 +51,9 @@ export default class TetrisGame {
 
     this.touchStartPos = null;
     this.theme = Colors.themes.tetris;
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 120, height: 50 }; // y在render中动态计算;
-    this.shareButton = { x: 150, y: designSize.safeTop + 100, width: 120, height: 50 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 120, height: 50 };
+    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
+    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
 
     this.initGame();
     this.startLoop();
@@ -240,7 +240,7 @@ export default class TetrisGame {
 
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
-    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('方块', this.score); return; }
+    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('俄罗斯方块', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     this.touchStartPos = pos;
   }
@@ -264,14 +264,14 @@ export default class TetrisGame {
     const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
     // 底部按钮在后面统一绘制
 
-    drawText(this.ctx, '方块', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
+    drawText(this.ctx, '俄罗斯方块', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
 
     const milestone = this.getCurrentMilestone();
     if (milestone >= 0) drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 100, safeTop + 55, { fontSize: 22, color: Colors.warning });
 
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
 
     const gridW = this.cols * this.cellSize, gridH = this.rows * this.cellSize;
     drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 22, '#fff', this.theme.primary, 4);

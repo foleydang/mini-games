@@ -7,7 +7,7 @@ export const Games = [
   { id: 'match3', name: '消消乐', shortName: '消', desc: '三消宝石得高分', shape: 'star', type: 'levels' },
   { id: 'snake', name: '贪吃蛇', shortName: '蛇', desc: '灵活躲避快成长', shape: 'wave', type: 'endless' },
   { id: '2048', name: '2048', shortName: '2K', desc: '合并数字大挑战', shape: 'number', type: 'endless' },
-  { id: 'tetris', name: '方块', shortName: '方', desc: '经典消除不陌生', shape: 'block', type: 'endless' },
+  { id: 'tetris', name: '俄罗斯方块', shortName: '方', desc: '经典消除不陌生', shape: 'block', type: 'endless' },
   { id: 'flappy', name: '飞鸟', shortName: '飞', desc: '穿越障碍看反应', shape: 'bird', type: 'endless' },
   { id: 'breakout', name: '打砖块', shortName: '打', desc: '击碎砖块真解压', shape: 'brick', type: 'levels' },
   { id: 'memory', name: '翻牌', shortName: '翻', desc: '记忆配对练脑子', shape: 'card', type: 'levels' },
