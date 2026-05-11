@@ -379,23 +379,30 @@ export default class Match3Game {
 
   drawGem(row, col) {
     if (this.grid[row][col] < 0) return;
-    const x = this.gridStartX + col * this.cellSize + 8;
-    const y = this.gridStartY + row * this.cellSize + 8;
-    const size = Math.max(20, this.cellSize - 16);
+    const x = this.gridStartX + col * this.cellSize + 10;
+    const y = this.gridStartY + row * this.cellSize + 10;
+    const size = Math.max(20, this.cellSize - 20);
     const gemColor = Colors.gems[this.grid[row][col]];
     const isSelected = this.selectedGem && this.selectedGem.row === row && this.selectedGem.col === col;
-    drawRoundRect(this.ctx, x, y, size, size, Math.min(12, size / 4), gemColor, isSelected ? Colors.white : null, isSelected ? 3 : 0);
-
-    // 高光
-    const highlightSize = Math.max(10, size * 0.4);
-    this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    
+    // 圆润阴影
+    this.ctx.shadowColor = 'rgba(0,0,0,0.08)';
+    this.ctx.shadowBlur = 4;
+    this.ctx.shadowOffsetY = 2;
+    
+    // 更圆润的格子
+    drawRoundRect(this.ctx, x, y, size, size, size * 0.22, gemColor, isSelected ? '#fff' : null, isSelected ? 3 : 0);
+    
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetY = 0;
+    
+    // 柔和高光
+    this.ctx.fillStyle = 'rgba(255,255,255,0.25)';
     this.ctx.beginPath();
-    const r = 6;
-    this.ctx.moveTo(x + 4 + r, y + 4);
-    this.ctx.arcTo(x + 4 + highlightSize, y + 4, x + 4 + highlightSize, y + 4 + r, r);
-    this.ctx.arcTo(x + 4 + highlightSize, y + 4 + highlightSize, x + 4 + highlightSize - r, y + 4 + highlightSize, r);
-    this.ctx.arcTo(x + 4, y + 4 + highlightSize, x + 4, y + 4 + highlightSize - r, r);
-    this.ctx.arcTo(x + 4, y + 4, x + 4 + r, y + 4, r);
+    const hlSize = size * 0.35;
+    const hlX = x + size * 0.15;
+    const hlY = y + size * 0.15;
+    this.ctx.arc(hlX + hlSize/2, hlY + hlSize/2, hlSize/2, 0, Math.PI * 2);
     this.ctx.fill();
   }
 }

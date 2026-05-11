@@ -48,7 +48,7 @@ class MainGame {
     const rows = 4;
 
     const cardGapH = 50;  // 水平间距
-    const cardGapV = 35;  // 垂直间距
+    const cardGapV = 105;  // 垂直间距
     const paddingX = 30;
 
     const availableWidth = width - paddingX * 2 - cardGapH;

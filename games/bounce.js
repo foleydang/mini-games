@@ -35,9 +35,9 @@ export default class BounceGame {
     this.achievedMilestone = -1;
 
     this.theme = Colors.themes.bounce;
-    this.backButton = { x: 20, y: 0, width: 120, height: 50 }; // y在render中动态计算;
-    this.shareButton = { x: 150, y: 1000, width: 120, height: 55 };
-    this.soundButton = { x: designSize.width - 135, y: 1000, width: 120, height: 55 };
+    this.backButton = { x: 20, y: 120, width: 100, height: 42 }; // y在render中动态计算;
+    this.shareButton = { x: 130, y: 120, width: 100, height: 42 };
+    this.soundButton = { x: designSize.width - 120, y: 120, width: 100, height: 42 };
 
     this.initGame();
     this.startLoop();
@@ -166,13 +166,7 @@ export default class BounceGame {
   onTouchEnd(pos) {}
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;
-    this.backButton.y = height - safeBottom - 65;
-    this.shareButton.y = height - safeBottom - 65;
-    this.soundButton.y = height - safeBottom - 65;
-
-    
-    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
     // 底部按钮在后面统一绘制
 
     drawText(this.ctx, '弹球', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
