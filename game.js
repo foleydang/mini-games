@@ -236,19 +236,16 @@ class MainGame {
     // 添加柔和的圆形装饰
     ctx.globalAlpha = 0.1;
     ctx.fillStyle = '#c4b5fd';
-    ctx.beginPath();
+    // 绘制卡片背景
     ctx.arc(width * 0.2, height * 0.3, 150, 0, Math.PI * 2);
-    ctx.fill();
     
     ctx.fillStyle = '#a78bfa';
-    ctx.beginPath();
+    // 绘制卡片背景
     ctx.arc(width * 0.8, height * 0.6, 120, 0, Math.PI * 2);
-    ctx.fill();
     
     ctx.fillStyle = '#8b5cf6';
-    ctx.beginPath();
+    // 绘制卡片背景
     ctx.arc(width * 0.5, height * 0.8, 100, 0, Math.PI * 2);
-    ctx.fill();
     
     ctx.globalAlpha = 1;
   }
@@ -278,97 +275,15 @@ class MainGame {
     // 游戏卡片
     this.cards.forEach((card, index) => {
       this.drawGameCard(card, index);
-    });
-
-    // 底部提示
-    drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, {
-      fontSize: 22,
-      color: '#c4b5fd'
-    });
-  }
-
-  renderRank(gameName) {
-    const { width, height, safeTop, safeBottom } = this.designSize;
-
-    // 背景
-    this.drawBg(width, height);
-
-    // 标题
-    drawText(this.ctx, `${gameName}排行榜`, width / 2, safeTop + 50, {
-      fontSize: 48,
-      color: this.rankTheme.primary,
-      bold: true
-    });
-
-    const startY = safeTop + 120;
-    const itemHeight = 55;
-
-    if (this.rankData.length === 0) {
-      drawText(this.ctx, '暂无记录', width / 2, startY + 100, {
-        fontSize: 32,
-        color: Colors.textLight
-      });
-      drawText(this.ctx, '快去玩游戏吧！', width / 2, startY + 150, {
-        fontSize: 26,
-        color: Colors.textMuted
-      });
-    } else {
-      this.rankData.forEach((item, index) => {
-        const y = startY + index * itemHeight;
-        
-        const bgColor = index < 3 ? this.rankTheme.primary : '#f3e8ff';
-        drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 10, 12, bgColor);
-
-        const rankColor = index < 3 ? '#fff' : '#5b21b6';
-        drawText(this.ctx, `${index + 1}`, 70, y + 28, {
-          fontSize: 28,
-          color: rankColor,
-          bold: true
-        });
-
-        drawText(this.ctx, `${item.score}`, width - 100, y + 28, {
-          fontSize: 28,
-          color: rankColor,
-          bold: true
-        });
-
-        if (item.date) {
-          drawText(this.ctx, item.date, width / 2, y + 28, {
-            fontSize: 20,
-            color: rankColor
-          });
-        }
-      });
-    }
-
-    const backX = 30;
-    const backY = height - safeBottom - 80;
-    drawButton(this.ctx, backX, backY, 120, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
-  }
-
-  drawGameCard(card, index) {
     const { game, x, y, width, height, theme, rankBtn } = card;
     const ctx = this.ctx;
 
-    // 卡片背景 - 更柔和的渐变
+    // 卡片背景
     ctx.save();
-    ctx.shadowColor = 'rgba(139, 92, 246, 0.2)';
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetY = 5;
-    
-    const cardGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-    cardGradient.addColorStop(0, '#ffffff');
-    cardGradient.addColorStop(1, theme.bg || '#f5f3ff');
-    ctx.fillStyle = cardGradient;
-    ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 16);
-    ctx.fill();
-    
-    // 边框
-    ctx.strokeStyle = theme.primary;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
+    ctx.shadowColor = 'rgba(139, 92, 246, 0.15)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+    drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
     ctx.restore();
 
     // 图标
@@ -376,9 +291,9 @@ class MainGame {
     const iconY = y + height / 2;
     const iconRadius = 30;
 
-    ctx.shadowColor = 'rgba(0,0,0,0.15)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
+    ctx.shadowColor = 'rgba(0,0,0,0.1)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
     drawCircle(ctx, iconX, iconY, iconRadius, theme.primary);
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
@@ -398,7 +313,51 @@ class MainGame {
       color: '#6b7280'
     });
 
-    // 排行榜按钮 - 小按钮
+    // 排行榜按钮
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 
+               '榜', theme.secondary, { fontSize: 20, radius: 8 });
+  }
+}
+  drawGameCard(card, index) {
+    const { game, x, y, width, height, theme, rankBtn } = card;
+    const ctx = this.ctx;
+
+    // 卡片背景
+    ctx.save();
+    ctx.shadowColor = 'rgba(139, 92, 246, 0.15)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+    drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
+    ctx.restore();
+
+    // 图标
+    const iconX = x + 45;
+    const iconY = y + height / 2;
+    const iconRadius = 30;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.1)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    drawCircle(ctx, iconX, iconY, iconRadius, theme.primary);
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
+
+    // 游戏名称
+    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, {
+      fontSize: 32,
+      color: '#1f2937',
+      bold: true
+    });
+
+    // 游戏描述
+    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, {
+      fontSize: 18,
+      color: '#6b7280'
+    });
+
+    // 排行榜按钮
     drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 
                '榜', theme.secondary, { fontSize: 20, radius: 8 });
   }
