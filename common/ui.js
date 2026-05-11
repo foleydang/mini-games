@@ -7,10 +7,10 @@ import { Colors, drawButton, drawText, drawRoundRect } from './utils.js';
 export function getBackButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
-    x: 20,
-    y: safeTop + 100,
-    width: 140,
-    height: 60
+    x: 30,        // 往右移一点
+    y: safeTop + 100,  // 在顶部
+    width: 240,   // 加大一倍（原140）
+    height: 100   // 加大一倍（原60）
   };
 }
 
@@ -44,10 +44,10 @@ export function drawBottomButtons(ctx, designSize, backButtonLabel, soundEnabled
   const soundBtn = getSoundButton(designSize);
 
   drawButton(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height,
-             backButtonLabel || '返回', Colors.danger, { fontSize: 36, radius: 14 });
+             backButtonLabel || '返回', Colors.danger, { fontSize: 56, radius: 28 });
 
   drawButton(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height,
-             '分享', Colors.success, { fontSize: 36, radius: 14 });
+             '分享', Colors.success, { fontSize: 56, radius: 28 });
 
   drawButton(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
              soundEnabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 14 });
