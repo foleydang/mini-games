@@ -435,7 +435,21 @@ export default class Match3Game {
     const highlightSize = Math.max(10, size * 0.4);
     this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
     this.ctx.beginPath();
-    this.ctx.roundRect(x + 4, y + 4, highlightSize, highlightSize, 6);
+    // 高光兼容处理
+    this.ctx.fillStyle = "rgba(255,255,255,0.3)";
+    this.ctx.beginPath();
+    const r = 6;
+    this.ctx.moveTo(x + 4 + r, y + 4);
+    this.ctx.lineTo(x + 4 + highlightSize - r, y + 4);
+    this.ctx.arcTo(x + 4 + highlightSize, y + 4, x + 4 + highlightSize, y + 4 + r, r);
+    this.ctx.lineTo(x + 4 + highlightSize, y + 4 + highlightSize - r);
+    this.ctx.arcTo(x + 4 + highlightSize, y + 4 + highlightSize, x + 4 + highlightSize - r, y + 4 + highlightSize, r);
+    this.ctx.lineTo(x + 4 + r, y + 4 + highlightSize);
+    this.ctx.arcTo(x + 4, y + 4 + highlightSize, x + 4, y + 4 + highlightSize - r, r);
+    this.ctx.lineTo(x + 4, y + 4 + r);
+    this.ctx.arcTo(x + 4, y + 4, x + 4 + r, y + 4, r);
+    this.ctx.closePath();
+    this.ctx.fill();
     this.ctx.fill();
   }
 }
