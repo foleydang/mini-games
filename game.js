@@ -245,7 +245,7 @@ class MainGame {
 
     drawText(this.ctx, `${gameName}排行榜`, width / 2, safeTop + 50, { fontSize: 48, color: this.rankTheme.primary, bold: true });
 
-    const startY = safeTop + 200;
+    const startY = safeTop + 260;
     const itemHeight = 55;
 
     if (this.rankData.length === 0) {
