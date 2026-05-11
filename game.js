@@ -158,15 +158,20 @@ class MainGame {
   handleHomeTouch(pos) {
     // 检查每个卡片
     for (const card of this.cards) {
-      // 先检查是否在卡片范围内
-      if (pos.x >= card.x && pos.x <= card.x + card.width && pos.y >= card.y && pos.y <= card.y + card.height) {
-        const btn = card.rankBtn;
-        // 如果点击排行榜按钮区域，显示排行榜
-        if (pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height) {
-          this.showRank(card.game.id, card.game.name, card.theme);
-          return;
-        }
-        // 否则启动游戏
+      const btn = card.rankBtn;
+      
+      // 先检查排行榜按钮（更精确的区域）
+      if (pos.x >= btn.x && pos.x <= btn.x + btn.width && 
+          pos.y >= btn.y && pos.y <= btn.y + btn.height) {
+        console.log('点击排行榜:', card.game.name, 'btn:', btn.x, btn.y, 'pos:', pos.x, pos.y);
+        this.showRank(card.game.id, card.game.name, card.theme);
+        return;
+      }
+      
+      // 检查卡片主体（排除排行榜按钮区域）
+      if (pos.x >= card.x && pos.x <= card.x + card.width && 
+          pos.y >= card.y && pos.y <= card.y + card.height) {
+        console.log('点击卡片:', card.game.name, 'card:', card.x, card.y, 'pos:', pos.x, pos.y);
         this.startGame(card.game.id);
         return;
       }

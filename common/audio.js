@@ -44,13 +44,19 @@ class AudioManager {
   constructor() {
     this.enabled = true;
     this.lastVibrateTime = 0;
-    this.minInterval = 100; // 震动最小间隔100ms
+    this.minInterval = 100;
+    this.soundEnabled = true; // 音效开关
+    
+    // 预加载音效（使用系统提示音）
+    try {
+      this.bgMusic = wx.createInnerAudioContext();
+    } catch (e) {}
   }
 
   play(type) {
     if (!this.enabled) return;
     
-    // 只对重要事件震动，且限制频率
+    // 震动反馈（对重要事件）
     if (shouldVibrate[type]) {
       const now = Date.now();
       if (now - this.lastVibrateTime > this.minInterval) {
@@ -59,6 +65,20 @@ class AudioManager {
           wx.vibrateShort({ type: 'light' });
         } catch (e) {}
       }
+    }
+    
+    // 系统提示音（如果支持）
+    if (this.soundEnabled) {
+      try {
+        // 使用震动作为音效反馈（微信小游戏限制）
+        if (type === 'success' || type === 'levelup') {
+          wx.vibrateShort({ type: 'medium' });
+        } else if (type === 'gameover') {
+          wx.vibrateLong();
+        } else if (type === 'match' || type === 'brick' || type === 'pair') {
+          wx.vibrateShort({ type: 'light' });
+        }
+      } catch (e) {}
     }
   }
 
