@@ -45,7 +45,7 @@ export default class BounceGame {
 
   initGame() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 160;
+    this.gameAreaTop = safeTop + 180;
     this.gameAreaBottom = height - safeBottom - 60;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
