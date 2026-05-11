@@ -29,9 +29,9 @@ export default class BreakoutGame {
     this.levelName = '入门';
     this.theme = Colors.themes.breakout;
 
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
-    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.backButton = getBackButton(designSize);
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
 
     this.initGame();
     this.startLoop();
@@ -159,9 +159,18 @@ export default class BreakoutGame {
     drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });
     drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, { fontSize: 38, color: Colors.textDark, bold: true });
 
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
+    // 底部按钮 - 左下角和右下角
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
+               this.backButton.width, this.backButton.height,
+               '← 返回', Colors.danger, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
+               this.shareButton.width, this.shareButton.height,
+               '分享', Colors.success, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
+               this.soundButton.width, this.soundButton.height,
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
     this.bricks.forEach(brick => { if (brick.alive) drawRoundRect(this.ctx, brick.x, brick.y, brick.width, brick.height, 12, brick.color); });

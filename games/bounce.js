@@ -35,9 +35,9 @@ export default class BounceGame {
     this.achievedMilestone = -1;
 
     this.theme = Colors.themes.bounce;
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
-    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.backButton = getBackButton(designSize); // y在render中动态计算;
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
 
     this.initGame();
     this.startLoop();
@@ -176,9 +176,18 @@ export default class BounceGame {
     const next = this.getNextMilestone();
     if (next) drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 55, { fontSize: 20, color: Colors.textLight });
 
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
+    // 底部按钮 - 左下角和右下角
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
+               this.backButton.width, this.backButton.height,
+               '← 返回', Colors.danger, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
+               this.shareButton.width, this.shareButton.height,
+               '分享', Colors.success, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
+               this.soundButton.width, this.soundButton.height,
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
     this.platforms.forEach(p => { drawRoundRect(this.ctx, p.x, p.y, p.width, p.height, 10, p.color); });

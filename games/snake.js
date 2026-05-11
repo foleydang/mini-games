@@ -42,9 +42,9 @@ export default class SnakeGame {
     this.touchStartPos = null;
 
     this.theme = Colors.themes.snake;
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 140, height: 60 }; // y在render中动态计算;
-    this.shareButton = { x: 175, y: designSize.safeTop + 100, width: 140, height: 60 };
-    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 140, height: 60 };
+    this.backButton = getBackButton(designSize); // y在render中动态计算;
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
 
     this.initGame();
     this.startLoop();
@@ -262,9 +262,18 @@ export default class SnakeGame {
     }
 
     // 按钮
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 36, radius: 18 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 36, radius: 18 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 36, radius: 18 });
+    // 底部按钮 - 左下角和右下角
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
+               this.backButton.width, this.backButton.height,
+               '← 返回', Colors.danger, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
+               this.shareButton.width, this.shareButton.height,
+               '分享', Colors.success, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
+               this.soundButton.width, this.soundButton.height,
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
 
     // 游戏区域
     const gridW = this.gridWidth * this.cellSize;
