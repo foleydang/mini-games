@@ -482,16 +482,14 @@ export function getTouchPos(touch, designSize) {
   const info = wx.getSystemInfoSync();
   const ratio = designSize.width / info.screenWidth;
   
-  // 关键修复：touch.clientY是从屏幕顶部开始（包含状态栏）
-  // 但设计坐标系从safeArea.top开始
-  // 所以要减去safeArea.top再转换
+  // 修复：touch.clientY从屏幕顶部开始
+  // canvas绘制也从屏幕顶部开始
+  // 所以直接转换，不减去safeArea.top
   
   const x = Math.floor(touch.clientX * ratio);
-  // 减去safeArea.top（状态栏高度），然后转换
-  const y = Math.floor((touch.clientY - info.safeArea.top) * ratio);
+  const y = Math.floor(touch.clientY * ratio);
   
-  console.log('坐标转换:', 'clientY=', touch.clientY, 'safeArea.top=', info.safeArea.top, 
-              '差值=', touch.clientY - info.safeArea.top, 'ratio=', ratio, '转换后y=', y);
+  console.log('坐标转换:', 'clientY=', touch.clientY, 'ratio=', ratio, '转换后y=', y);
   
   return { x, y };
 }

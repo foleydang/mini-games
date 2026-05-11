@@ -8,7 +8,7 @@ export function getBackButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
     x: 30,
-    y: safeTop + 100,
+    y: 150,
     width: 140,  // 2/3 of 240
     height: 50
   };
@@ -31,7 +31,7 @@ export function getSoundButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
     x: width - 180,
-    y: safeTop + 100,
+    y: 150,
     width: 140,  // 2/3 of 280
     height: 50
   };
