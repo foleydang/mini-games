@@ -29,9 +29,9 @@ export default class BreakoutGame {
     this.levelName = '入门';
     this.theme = Colors.themes.breakout;
 
-    this.backButton = { x: 20, y: 120, width: 100, height: 42 }; // y在render中动态计算;
-    this.shareButton = { x: 130, y: 120, width: 100, height: 42 };
-    this.soundButton = { x: designSize.width - 120, y: 120, width: 100, height: 42 };
+    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 100, height: 42 }; // y在render中动态计算;
+    this.shareButton = { x: 130, y: designSize.safeTop + 100, width: 100, height: 42 };
+    this.soundButton = { x: designSize.width - 120, y: designSize.safeTop + 100, width: 100, height: 42 };
 
     this.initGame();
     this.startLoop();
