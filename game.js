@@ -1,5 +1,5 @@
 /**
- * 主游戏入口 - 美化UI
+ * 主游戏入口
  */
 import {
   getDesignSize, Colors, drawGradientBg, drawGameCardBg, drawButton,
@@ -42,10 +42,8 @@ class MainGame {
 
   initCards() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-
     const cols = 2;
     const rows = 4;
-
     const cardGapH = 50;
     const cardGapV = 52;
     const paddingX = 30;
@@ -77,7 +75,6 @@ class MainGame {
         width: cardWidth,
         height: cardHeight,
         theme,
-        // 排行榜按钮 - 右上角，紧凑
         rankBtn: {
           x: cardX + cardWidth - 70,
           y: cardY + 8,
@@ -127,11 +124,9 @@ class MainGame {
   startAnimation() {
     const animate = () => {
       if (this.currentGame || this.showingRank) return;
-      
       this.animFrame++;
       updateParticles(this.particles);
       this.render();
-      
       requestAnimationFrame(animate);
     };
     animate();
@@ -148,16 +143,9 @@ class MainGame {
       memory: MemoryGame,
       bounce: BounceGame
     };
-
     const GameClass = gameClasses[gameId];
     if (!GameClass) return;
-
-    this.currentGame = new GameClass(
-      this.canvas,
-      this.ctx,
-      this.designSize,
-      (score) => this.endGame(score)
-    );
+    this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score));
   }
 
   endGame(score) {
@@ -167,27 +155,17 @@ class MainGame {
   }
 
   handleHomeTouch(pos) {
-    // 先检查排行榜按钮（小区域优先）
+    // 先检查排行榜按钮
     for (const card of this.cards) {
       const btn = card.rankBtn;
-      if (pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-          pos.y >= btn.y && pos.y <= btn.y + btn.height) {
+      if (pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height) {
         this.showRank(card.game.id, card.game.name, card.theme);
         return;
       }
     }
-
-    // 检查卡片主体（排除排行榜按钮区域）
+    // 检查卡片主体
     for (const card of this.cards) {
-      const btn = card.rankBtn;
-      // 卡片区域，但不在排行榜按钮内
-      if (pos.x >= card.x && pos.x <= card.x + card.width &&
-          pos.y >= card.y && pos.y <= card.y + card.height) {
-        // 如果点击在排行榜按钮区域，跳过
-        if (pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-            pos.y >= btn.y && pos.y <= btn.y + btn.height) {
-          continue;
-        }
+      if (pos.x >= card.x && pos.x <= card.x + card.width && pos.y >= card.y && pos.y <= card.y + card.height) {
         this.startGame(card.game.id);
         return;
       }
@@ -195,17 +173,9 @@ class MainGame {
   }
 
   handleRankTouch(pos) {
-    const { width, height, safeTop, safeBottom } = this.designSize;
-    
-    const backButton = { 
-      x: 30, 
-      y: height - safeBottom - 80, 
-      width: 120, 
-      height: 50 
-    };
-
-    if (pos.x >= backButton.x && pos.x <= backButton.x + backButton.width &&
-        pos.y >= backButton.y && pos.y <= backButton.y + backButton.height) {
+    const { width, height, safeBottom } = this.designSize;
+    const backButton = { x: 30, y: height - safeBottom - 80, width: 120, height: 50 };
+    if (pos.x >= backButton.x && pos.x <= backButton.x + backButton.width && pos.y >= backButton.y && pos.y <= backButton.y + backButton.height) {
       this.showingRank = false;
       this.currentRankGame = null;
       this.startAnimation();
@@ -220,109 +190,73 @@ class MainGame {
     this.renderRank(gameName);
   }
 
-  // 绘制渐变背景 - 更美观
   drawBg(width, height) {
     const ctx = this.ctx;
-    
-    // 主渐变
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, '#fdf4ff');
-    gradient.addColorStop(0.3, '#fae8ff');
-    gradient.addColorStop(0.6, '#f5d0fe');
+    gradient.addColorStop(0.5, '#fae8ff');
     gradient.addColorStop(1, '#e9d5ff');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
     
-    // 添加柔和的圆形装饰
-    ctx.globalAlpha = 0.1;
+    ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#c4b5fd';
-    // 绘制卡片背景
+    ctx.beginPath();
     ctx.arc(width * 0.2, height * 0.3, 150, 0, Math.PI * 2);
-    
+    ctx.fill();
     ctx.fillStyle = '#a78bfa';
-    // 绘制卡片背景
+    ctx.beginPath();
     ctx.arc(width * 0.8, height * 0.6, 120, 0, Math.PI * 2);
-    
-    ctx.fillStyle = '#8b5cf6';
-    // 绘制卡片背景
-    ctx.arc(width * 0.5, height * 0.8, 100, 0, Math.PI * 2);
-    
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-
-    // 美化背景
     this.drawBg(width, height);
-    
-    // 粒子
     drawParticles(this.ctx, this.particles);
 
-    // 标题
-    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 150, {
-      fontSize: 52,
-      color: '#7c3aed',
-      bold: true
-    });
+    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 150, { fontSize: 52, color: '#7c3aed', bold: true });
+    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 195, { fontSize: 28, color: '#a78bfa' });
 
-    // 副标题
-    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 195, {
-      fontSize: 28,
-      color: '#a78bfa'
-    });
+    this.cards.forEach((card, index) => this.drawGameCard(card, index));
 
-    // 游戏卡片
-    this.cards.forEach((card, index) => {
-      this.drawGameCard(card, index);
-    const { game, x, y, width, height, theme, rankBtn } = card;
-    const ctx = this.ctx;
-
-    // 卡片背景
-    ctx.save();
-    ctx.shadowColor = 'rgba(139, 92, 246, 0.15)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 4;
-    drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
-    ctx.restore();
-
-    // 图标
-    const iconX = x + 45;
-    const iconY = y + height / 2;
-    const iconRadius = 30;
-
-    ctx.shadowColor = 'rgba(0,0,0,0.1)';
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetY = 2;
-    drawCircle(ctx, iconX, iconY, iconRadius, theme.primary);
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
-
-    // 游戏名称
-    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, {
-      fontSize: 32,
-      color: '#1f2937',
-      bold: true
-    });
-
-    // 游戏描述
-    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, {
-      fontSize: 18,
-      color: '#6b7280'
-    });
-
-    // 排行榜按钮
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 
-               '榜', theme.secondary, { fontSize: 20, radius: 8 });
+    drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, { fontSize: 22, color: '#c4b5fd' });
   }
-}
+
+  renderRank(gameName) {
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    this.drawBg(width, height);
+
+    drawText(this.ctx, `${gameName}排行榜`, width / 2, safeTop + 50, { fontSize: 48, color: this.rankTheme.primary, bold: true });
+
+    const startY = safeTop + 120;
+    const itemHeight = 55;
+
+    if (this.rankData.length === 0) {
+      drawText(this.ctx, '暂无记录', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
+      drawText(this.ctx, '快去玩游戏吧！', width / 2, startY + 150, { fontSize: 26, color: Colors.textMuted });
+    } else {
+      this.rankData.forEach((item, index) => {
+        const y = startY + index * itemHeight;
+        const bgColor = index < 3 ? this.rankTheme.primary : '#f3e8ff';
+        drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 10, 12, bgColor);
+        const rankColor = index < 3 ? '#fff' : '#5b21b6';
+        drawText(this.ctx, `${index + 1}`, 70, y + 28, { fontSize: 28, color: rankColor, bold: true });
+        drawText(this.ctx, `${item.score}`, width - 100, y + 28, { fontSize: 28, color: rankColor, bold: true });
+        if (item.date) {
+          drawText(this.ctx, item.date, width / 2, y + 28, { fontSize: 20, color: rankColor });
+        }
+      });
+    }
+
+    drawButton(this.ctx, 30, height - safeBottom - 80, 120, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
+  }
+
   drawGameCard(card, index) {
     const { game, x, y, width, height, theme, rankBtn } = card;
     const ctx = this.ctx;
 
-    // 卡片背景
     ctx.save();
     ctx.shadowColor = 'rgba(139, 92, 246, 0.15)';
     ctx.shadowBlur = 10;
@@ -330,7 +264,6 @@ class MainGame {
     drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
     ctx.restore();
 
-    // 图标
     const iconX = x + 45;
     const iconY = y + height / 2;
     const iconRadius = 30;
@@ -344,22 +277,10 @@ class MainGame {
 
     drawGameIcon(ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
 
-    // 游戏名称
-    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, {
-      fontSize: 32,
-      color: '#1f2937',
-      bold: true
-    });
+    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, { fontSize: 32, color: '#1f2937', bold: true });
+    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, { fontSize: 18, color: '#6b7280' });
 
-    // 游戏描述
-    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, {
-      fontSize: 18,
-      color: '#6b7280'
-    });
-
-    // 排行榜按钮
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 
-               '榜', theme.secondary, { fontSize: 20, radius: 8 });
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '榜', theme.secondary, { fontSize: 20, radius: 8 });
   }
 }
 
