@@ -76,11 +76,11 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
-          // 排行榜按钮在右下角
-          x: cardX + cardWidth - 145,
-          y: cardY + cardHeight - 58,
-          width: 130,
-          height: 48
+          // 排行榜按钮在右下角（更大更容易点击）
+          x: cardX + cardWidth - 140,
+          y: cardY + cardHeight - 55,
+          width: 125,
+          height: 50
         }
       });
     });
@@ -290,8 +290,8 @@ class MainGame {
     drawText(ctx, game.name, x + width * 0.50, y + 40, { fontSize: 32, color: '#1f2937', bold: true });
     drawText(ctx, game.desc, x + width * 0.50, y + 70, { fontSize: 20, color: '#6b7280' });
 
-    // 排行榜按钮在右下角
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 24, radius: 10 });
+    // 排行榜按钮在右下角（更大更容易点击）
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 26, radius: 12 });
   }
 }
 
