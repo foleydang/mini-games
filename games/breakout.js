@@ -45,7 +45,7 @@ export default class BreakoutGame {
     this.levelName = levelConfig.name;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 180;
+    this.gameAreaTop = safeTop + 220;
     this.gameAreaBottom = height - safeBottom - 55;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 

@@ -59,7 +59,7 @@ export default class Match3Game {
     this.comboCount = 0;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 280;
+    const headerHeight = 320;
     const footerHeight = 85;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
@@ -166,10 +166,20 @@ export default class Match3Game {
   }
 
   getCellAtPos(pos) {
+    // 减去gridStartX和gridStartY，然后除以cellSize
     const x = pos.x - this.gridStartX;
-    const y = pos.y - this.gridStartY - 10;  // 减去绘制时的+10偏移
+    const y = pos.y - this.gridStartY;
+    
+    // 宝石绘制时有+10的padding，但点击检测应该从grid边界开始
+    // 所以不减去+10，而是直接用grid坐标
     if (x < 0 || x >= this.cols * this.cellSize || y < 0 || y >= this.rows * this.cellSize) return null;
-    return { row: Math.floor(y / this.cellSize), col: Math.floor(x / this.cellSize) };
+    
+    const row = Math.floor(y / this.cellSize);
+    const col = Math.floor(x / this.cellSize);
+    
+    console.log('消消乐点击:', 'pos.y=', pos.y, 'gridStartY=', this.gridStartY, 'y=', y, 'cellSize=', this.cellSize, 'row=', row);
+    
+    return { row, col };
   }
 
   trySwap(r1, c1, r2, c2) {
