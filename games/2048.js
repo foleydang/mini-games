@@ -265,7 +265,7 @@ export default class Game2048 {
 
     
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, "← 返回", Colors.danger, { fontSize: 28, radius: 14 });
+    // 底部按钮在后面统一绘制
 
     // 标题
     drawText(this.ctx, '2048', width / 2, safeTop + 50, { fontSize: 52, color: this.theme.primary, bold: true });

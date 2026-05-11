@@ -47,20 +47,17 @@ class MainGame {
     const cols = 2;
     const rows = 4;
 
-    const headerHeight = 100;
-    const footerHeight = 40;
     const cardGapH = 50;  // 水平间距
-    const cardGapV = 40;  // 垂直间距
+    const cardGapV = 35;  // 垂直间距
     const paddingX = 30;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    
-    // 卡片高度优化
-    const cardHeight = 145;
+    const cardHeight = 140;
 
     const startX = paddingX;
-    const startY = safeTop + headerHeight + 20;
+    // 往下挪250
+    const startY = safeTop + 270;
 
     Games.forEach((game, index) => {
       const col = index % cols;
@@ -82,12 +79,12 @@ class MainGame {
         width: cardWidth,
         height: cardHeight,
         theme,
-        // 排行榜按钮 - 单独的小按钮，不占用主要点击区域
+        // 排行榜按钮 - 右上角，字体大
         rankBtn: {
-          x: cardX + cardWidth - 70,
-          y: cardY + 10,
-          width: 60,
-          height: 30
+          x: cardX + cardWidth - 75,
+          y: cardY + 8,
+          width: 65,
+          height: 32
         }
       });
     });
@@ -167,37 +164,43 @@ class MainGame {
   endGame(score) {
     this.currentGame = null;
     RankData.save(this.currentRankGame || 'unknown', score);
-    this.render();
+    this.startAnimation();
   }
 
   handleHomeTouch(pos) {
-    // 先检查排行榜按钮（优先级低，区域小）
+    console.log('点击位置:', pos.x, pos.y);
+    
+    // 先检查排行榜按钮
     for (const card of this.cards) {
       const btn = card.rankBtn;
       if (pos.x >= btn.x && pos.x <= btn.x + btn.width &&
           pos.y >= btn.y && pos.y <= btn.y + btn.height) {
+        console.log('点击排行榜:', card.game.name);
         this.showRank(card.game.id, card.game.name, card.theme);
         return;
       }
     }
 
-    // 再检查卡片主体（点击进入游戏）
+    // 再检查卡片主体
     for (const card of this.cards) {
       if (pos.x >= card.x && pos.x <= card.x + card.width &&
           pos.y >= card.y && pos.y <= card.y + card.height) {
+        console.log('点击游戏:', card.game.name);
         this.startGame(card.game.id);
         return;
       }
     }
+    
+    console.log('点击无效');
   }
 
   handleRankTouch(pos) {
-    const { width, safeTop, safeBottom } = this.designSize;
+    const { width, height, safeTop, safeBottom } = this.designSize;
     
-    // 返回按钮 - 左下角，远离胶囊按钮
+    // 返回按钮 - 左下角
     const backButton = { 
       x: 30, 
-      y: safeBottom + height - 90, 
+      y: height - safeBottom - 80, 
       width: 120, 
       height: 50 
     };
@@ -245,7 +248,7 @@ class MainGame {
       this.drawGameCard(card, index);
     });
 
-    // 底部装饰
+    // 底部提示
     drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, {
       fontSize: 22,
       color: Colors.textMuted
@@ -323,10 +326,10 @@ class MainGame {
     // 卡片背景
     drawGameCardBg(this.ctx, x, y, width, height, theme);
 
-    // 图标区域 - 左侧
-    const iconX = x + 50;
+    // 图标区域 - 左侧居中
+    const iconX = x + 45;
     const iconY = y + height / 2;
-    const iconRadius = 32;
+    const iconRadius = 30;
 
     // 图标阴影
     this.ctx.shadowColor = 'rgba(0,0,0,0.1)';
@@ -339,22 +342,22 @@ class MainGame {
     // 绘制图标
     drawGameIcon(this.ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
 
-    // 游戏名称 - 右侧
-    drawText(this.ctx, game.name, x + width * 0.55, y + 35, {
-      fontSize: 34,
+    // 游戏名称 - 右侧居中
+    drawText(this.ctx, game.name, x + width * 0.58, y + height / 2 - 18, {
+      fontSize: 32,
       color: Colors.textDark,
       bold: true
     });
 
-    // 游戏描述
-    drawText(this.ctx, game.desc, x + width * 0.55, y + 70, {
-      fontSize: 20,
+    // 游戏描述 - 名称下方
+    drawText(this.ctx, game.desc, x + width * 0.58, y + height / 2 + 18, {
+      fontSize: 18,
       color: Colors.textLight
     });
 
-    // 排行榜按钮 - 右上角小按钮
+    // 排行榜按钮 - 右上角，字体24
     drawButton(this.ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 
-               '榜', theme.secondary, { fontSize: 20, radius: 10 });
+               '排行榜', theme.secondary, { fontSize: 24, radius: 10 });
   }
 }
 

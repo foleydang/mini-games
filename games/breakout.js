@@ -159,7 +159,7 @@ export default class BreakoutGame {
 
     
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, "← 返回", Colors.danger, { fontSize: 28, radius: 14 });
+    // 底部按钮在后面统一绘制
 
     drawText(this.ctx, '打砖块', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
     drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });
