@@ -1,12 +1,16 @@
 /**
- * 消消乐 - 关卡型游戏（目标分数驱动）
+ * 消消乐 - 关卡型游戏（优化UI）
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawProgress, drawCircle, Storage, shareGame
+  drawText, drawProgress, Storage, shareGame
 } from '../common/utils.js';
 import { Levels } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
+import { 
+  getBackButton, getShareButton, getSoundButton,
+  drawBottomButtons, checkBottomButtons, drawHint
+} from '../common/ui.js';
 
 export default class Match3Game {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -32,9 +36,10 @@ export default class Match3Game {
 
     this.theme = Colors.themes.match3;
 
-    this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
+    // 按钮在左下角和右下角（远离胶囊按钮）
+    this.backButton = getBackButton(designSize);
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
 
     this.initGame();
     this.startLoop();
@@ -53,7 +58,7 @@ export default class Match3Game {
     this.comboCount = 0;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 160;
+    const headerHeight = 140;
     const footerHeight = 85;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
@@ -70,7 +75,6 @@ export default class Match3Game {
       }
     }
 
-    // 确保初始无匹配
     while (this.findMatches().length > 0) {
       this.clearMatches();
       this.fillGrid();
@@ -97,6 +101,7 @@ export default class Match3Game {
   onTouchStart(pos) {
     if (this.isAnimating) return;
 
+    // 公共按钮（左下角和右下角）
     if (this.checkButton(pos, this.backButton)) {
       playSound(SoundType.CLICK);
       this.destroy();
@@ -279,7 +284,6 @@ export default class Match3Game {
   }
 
   checkGameEnd() {
-    // 过关
     if (this.score >= this.target) {
       playSound(SoundType.LEVEL_UP);
       if (this.score > this.bestScore) {
@@ -304,9 +308,7 @@ export default class Match3Game {
           }
         }
       });
-    } 
-    // 失败
-    else if (this.moves <= 0) {
+    } else if (this.moves <= 0) {
       playSound(SoundType.GAME_OVER);
       wx.showModal({
         title: '未达成目标',
@@ -341,10 +343,18 @@ export default class Match3Game {
       drawText(this.ctx, `${this.comboCount}连击!`, width / 2, safeTop + 105, { fontSize: 22, color: Colors.warning });
     }
 
-    // 按钮
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    // 底部按钮 - 左下角和右下角
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
+               this.backButton.width, this.backButton.height,
+               '← 返回', Colors.danger, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
+               this.shareButton.width, this.shareButton.height,
+               '分享', Colors.success, { fontSize: 28, radius: 14 });
+    
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
+               this.soundButton.width, this.soundButton.height,
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 28, radius: 14 });
 
     // 网格背景
     const gridW = this.gridSize * this.cellSize;
@@ -360,8 +370,11 @@ export default class Match3Game {
 
     // 进度条
     const progress = Math.min(this.score / this.target, 1);
-    drawProgress(this.ctx, 30, height - safeBottom - 70, width - 60, 42, progress, this.theme.primary, 20);
-    drawText(this.ctx, `${this.score}/${this.target}`, width / 2, height - safeBottom - 49, { fontSize: 26, color: progress > 0.6 ? Colors.white : Colors.textDark, bold: true });
+    drawProgress(this.ctx, 30, height - safeBottom - 130, width - 60, 42, progress, this.theme.primary, 20);
+    drawText(this.ctx, `${this.score}/${this.target}`, width / 2, height - safeBottom - 109, { fontSize: 26, color: progress > 0.6 ? Colors.white : Colors.textDark, bold: true });
+
+    // 底部提示
+    drawHint(this.ctx, this.designSize, '滑动交换宝石');
   }
 
   drawGem(row, col) {

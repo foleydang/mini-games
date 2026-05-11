@@ -6,7 +6,8 @@ import {
   drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
 import { Levels, BrickColors } from '../common/config.js';
-import { playSound, SoundType, audioManager } from '../common/audio.js';
+import.*audio.js
+import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
 
 export default class BreakoutGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -28,9 +29,9 @@ export default class BreakoutGame {
     this.levelName = '入门';
     this.theme = Colors.themes.breakout;
 
-    this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.backButton = { x: 20, y: 0, width: 120, height: 50 }; // y在render中动态计算;
+    this.shareButton = { x: 150, y: 1000, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width - 135, y: 1000, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
@@ -152,7 +153,13 @@ export default class BreakoutGame {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
+    this.backButton.y = height - safeBottom - 65;
+    this.shareButton.y = height - safeBottom - 65;
+    this.soundButton.y = height - safeBottom - 65;
+
+    
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, "← 返回", Colors.danger, { fontSize: 28, radius: 14 });
 
     drawText(this.ctx, '打砖块', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
     drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });

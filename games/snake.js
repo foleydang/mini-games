@@ -9,7 +9,8 @@ import {
   drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
-import { playSound, SoundType, audioManager } from '../common/audio.js';
+import.*audio.js
+import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
 
 export default class SnakeGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -41,9 +42,9 @@ export default class SnakeGame {
     this.touchStartPos = null;
 
     this.theme = Colors.themes.snake;
-    this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.backButton = { x: 20, y: 0, width: 120, height: 50 }; // y在render中动态计算;
+    this.shareButton = { x: 150, y: 1000, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width - 135, y: 1000, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
@@ -230,7 +231,11 @@ export default class SnakeGame {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    this.backButton.y = height - safeBottom - 65;
+    this.shareButton.y = height - safeBottom - 65;
+    this.soundButton.y = height - safeBottom - 65;
+
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, "← 返回", Colors.danger, { fontSize: 28, radius: 14 });
 
     // 标题
     drawText(this.ctx, '贪吃蛇', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });

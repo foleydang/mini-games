@@ -6,7 +6,8 @@ import {
   drawText, Storage, shareGame
 } from '../common/utils.js';
 import { Levels, MemorySymbols } from '../common/config.js';
-import { playSound, SoundType, audioManager } from '../common/audio.js';
+import.*audio.js
+import { getBackButton, getShareButton, getSoundButton } from "../common/ui.js";';
 
 function shuffleArray(arr) {
   const result = [...arr];
@@ -38,9 +39,9 @@ export default class MemoryGame {
     this.rows = 3;
 
     this.theme = Colors.themes.memory;
-    this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
-    this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
+    this.backButton = { x: 20, y: 0, width: 120, height: 50 }; // y在render中动态计算;
+    this.shareButton = { x: 150, y: 1000, width: 120, height: 55 };
+    this.soundButton = { x: designSize.width - 135, y: 1000, width: 120, height: 55 };
 
     this.initGame();
     this.startLoop();
@@ -160,7 +161,13 @@ export default class MemoryGame {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
+    this.backButton.y = height - safeBottom - 65;
+    this.shareButton.y = height - safeBottom - 65;
+    this.soundButton.y = height - safeBottom - 65;
+
+    
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, "← 返回", Colors.danger, { fontSize: 28, radius: 14 });
 
     drawText(this.ctx, '翻牌配对', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
     drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 140, safeTop + 55, { fontSize: 28, color: Colors.textLight });
