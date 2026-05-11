@@ -100,7 +100,7 @@ class MainGame {
 
   bindEvents() {
     wx.onTouchStart((e) => {
-      const pos = getTouchPos(e, this.canvas);
+      const pos = getTouchPos(e.touches[0], this.designSize);
       if (this.showingRank) {
         this.handleRankTouch(pos);
       } else if (this.currentGame) {
@@ -111,14 +111,14 @@ class MainGame {
     });
 
     wx.onTouchMove((e) => {
-      const pos = getTouchPos(e, this.canvas);
+      const pos = getTouchPos(e.touches[0], this.designSize);
       if (!this.showingRank && this.currentGame) {
         this.currentGame.onTouchMove(pos);
       }
     });
 
     wx.onTouchEnd((e) => {
-      const pos = getTouchPos(e, this.canvas);
+      const pos = getTouchPos(e.touches[0], this.designSize);
       if (!this.showingRank && this.currentGame) {
         this.currentGame.onTouchEnd(pos);
       }
