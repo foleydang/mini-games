@@ -80,9 +80,9 @@ class MainGame {
         theme,
         // 排行榜按钮加大宽度
         rankBtn: {
-          x: cardX + cardWidth - 95,
+          x: cardX + cardWidth - 110,
           y: cardY + 8,
-          width: 85,
+          width: 100,
           height: 40
         }
       });
@@ -316,13 +316,13 @@ class MainGame {
 
     drawGameIcon(this.ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
 
-    drawText(this.ctx, game.name, x + width * 0.58, y + height / 2 - 18, {
+    drawText(this.ctx, game.name, x + width * 0.50, y + height / 2 - 18, {
       fontSize: 32,
       color: Colors.textDark,
       bold: true
     });
 
-    drawText(this.ctx, game.desc, x + width * 0.58, y + height / 2 + 18, {
+    drawText(this.ctx, game.desc, x + width * 0.50, y + height / 2 + 18, {
       fontSize: 18,
       color: Colors.textLight
     });

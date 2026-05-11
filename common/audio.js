@@ -1,69 +1,65 @@
 /**
- * 音效管理器 - 微信小游戏音效系统
+ * 音效管理器 - 微信小游戏音效系统（优化震动）
  */
 
 // 音效类型
 export const SoundType = {
-  CLICK: 'click',      // 点击
-  SUCCESS: 'success',  // 成功/得分
-  FAIL: 'fail',        // 失败/碰撞
-  SWAP: 'swap',        // 消消乐交换
-  MATCH: 'match',      // 消消乐匹配成功
-  DROP: 'drop',        // 俄罗斯方块落地
-  CLEAR: 'clear',      // 消除行
-  MOVE: 'move',        // 移动
-  GAME_OVER: 'gameover', // 游戏结束
-  LEVEL_UP: 'levelup',   // 升级/过关
-  FLAP: 'flap',        // 飞鸟跳跃
-  BOUNCE: 'bounce',    // 弹球反弹
-  BRICK: 'brick',      // 打砖块
-  CARD: 'card',        // 翻牌
-  MATCH_PAIR: 'pair'   // 配对成功
+  CLICK: 'click',
+  SUCCESS: 'success',
+  FAIL: 'fail',
+  SWAP: 'swap',
+  MATCH: 'match',
+  DROP: 'drop',
+  CLEAR: 'clear',
+  MOVE: 'move',
+  GAME_OVER: 'gameover',
+  LEVEL_UP: 'levelup',
+  FLAP: 'flap',
+  BOUNCE: 'bounce',
+  BRICK: 'brick',
+  CARD: 'card',
+  MATCH_PAIR: 'pair'
+};
+
+// 是否需要震动（高频操作不震动）
+const shouldVibrate = {
+  click: false,      // 点击太频繁，不震动
+  success: true,
+  fail: true,
+  swap: false,       // 交换频繁，不震动
+  match: true,       // 匹配成功震动
+  drop: false,       // 落地频繁
+  clear: true,       // 消除震动
+  move: false,       // 移动频繁
+  gameover: true,
+  levelup: true,
+  flap: false,       // 飞跃频繁
+  bounce: false,     // 反弹频繁
+  brick: true,       // 打砖块震动
+  card: false,
+  pair: true
 };
 
 class AudioManager {
   constructor() {
     this.enabled = true;
-    this.volume = 0.6;
+    this.lastVibrateTime = 0;
+    this.minInterval = 100; // 震动最小间隔100ms
   }
 
-  // 播放音效（使用振动反馈）
   play(type) {
     if (!this.enabled) return;
     
-    try {
-      const freq = this.getFrequency(type);
-      if (freq > 1000) {
-        wx.vibrateShort({ type: 'light' });
-      } else if (freq > 600) {
-        wx.vibrateShort({ type: 'medium' });
-      } else {
-        wx.vibrateShort({ type: 'heavy' });
+    // 只对重要事件震动，且限制频率
+    if (shouldVibrate[type]) {
+      const now = Date.now();
+      if (now - this.lastVibrateTime > this.minInterval) {
+        this.lastVibrateTime = now;
+        try {
+          wx.vibrateShort({ type: 'light' });
+        } catch (e) {}
       }
-    } catch (e) {
-      // 某些设备不支持振动
     }
-  }
-
-  getFrequency(type) {
-    const frequencies = {
-      click: 800,
-      success: 1200,
-      fail: 300,
-      swap: 600,
-      match: 1000,
-      drop: 400,
-      clear: 1500,
-      move: 500,
-      gameover: 200,
-      levelup: 1800,
-      flap: 700,
-      bounce: 550,
-      brick: 900,
-      card: 650,
-      pair: 1400
-    };
-    return frequencies[type] || 500;
   }
 
   toggle() {

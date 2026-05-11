@@ -36,9 +36,9 @@ export default class Game2048 {
     this.touchStartPos = null;
 
     this.theme = Colors.themes['2048'];
-    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 100, height: 42 }; // y在render中动态计算;
-    this.shareButton = { x: 130, y: designSize.safeTop + 100, width: 100, height: 42 };
-    this.soundButton = { x: designSize.width - 120, y: designSize.safeTop + 100, width: 100, height: 42 };
+    this.backButton = { x: 20, y: designSize.safeTop + 100, width: 120, height: 50 }; // y在render中动态计算;
+    this.shareButton = { x: 150, y: designSize.safeTop + 100, width: 120, height: 50 };
+    this.soundButton = { x: designSize.width - 140, y: designSize.safeTop + 100, width: 120, height: 50 };
 
     this.initGame();
     this.startLoop();
