@@ -277,8 +277,8 @@ class MainGame {
 
     drawGameIcon(ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
 
-    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, { fontSize: 32, color: '#1f2937', bold: true });
-    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, { fontSize: 18, color: '#6b7280' });
+    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, { fontSize: 36, color: '#1f2937', bold: true });
+    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, { fontSize: 22, color: '#6b7280' });
 
     drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '榜', theme.secondary, { fontSize: 20, radius: 8 });
   }

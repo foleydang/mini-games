@@ -50,7 +50,7 @@ export const Milestones = {
   snake: {
     targets: [50, 100, 200, 500, 1000],
     names: ['铜牌', '银牌', '金牌', '白金', '钻石'],
-    speedStart: 250,
+    speedStart: 350,
     speedMin: 80,
     speedDecPerScore: 50  // 每50分加速一次
   },
@@ -65,7 +65,7 @@ export const Milestones = {
   tetris: {
     targets: [10, 30, 50, 100, 200],
     names: ['铜牌', '银牌', '金牌', '白金', '钻石'],
-    speedStart: 500,
+    speedStart: 600,
     speedMin: 100,
     speedDecPerLines: 10  // 每10行加速一次
   },

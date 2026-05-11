@@ -23,7 +23,7 @@ export default class BreakoutGame {
     this.score = 0;
     this.bestScore = Storage.load('breakout_best') || 0;
     this.gameOver = false;
-    this.ballSpeed = 6;
+    this.ballSpeed = 10;
     this.brickRows = 3;
     this.brickCols = 5;
     this.levelName = '入门';
@@ -41,7 +41,7 @@ export default class BreakoutGame {
     const levelConfig = Levels.breakout[this.level] || Levels.breakout[0];
     this.brickRows = levelConfig.rows;
     this.brickCols = levelConfig.cols;
-    this.ballSpeed = 5 + this.level * 0.5;
+    this.ballSpeed = 10 + this.level * 0.8;
     this.levelName = levelConfig.name;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
