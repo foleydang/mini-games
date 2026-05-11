@@ -76,8 +76,9 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
+          // 排行榜按钮在右下角
           x: cardX + cardWidth - 145,
-          y: cardY + 8,
+          y: cardY + cardHeight - 58,
           width: 130,
           height: 48
         }
@@ -155,17 +156,17 @@ class MainGame {
   }
 
   handleHomeTouch(pos) {
-    // 先检查排行榜按钮
+    // 检查每个卡片
     for (const card of this.cards) {
-      const btn = card.rankBtn;
-      if (pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height) {
-        this.showRank(card.game.id, card.game.name, card.theme);
-        return;
-      }
-    }
-    // 检查卡片主体
-    for (const card of this.cards) {
+      // 先检查是否在卡片范围内
       if (pos.x >= card.x && pos.x <= card.x + card.width && pos.y >= card.y && pos.y <= card.y + card.height) {
+        const btn = card.rankBtn;
+        // 如果点击排行榜按钮区域，显示排行榜
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height) {
+          this.showRank(card.game.id, card.game.name, card.theme);
+          return;
+        }
+        // 否则启动游戏
         this.startGame(card.game.id);
         return;
       }
@@ -264,6 +265,7 @@ class MainGame {
     drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
     ctx.restore();
 
+    // 游戏图标在左侧
     const iconX = x + 45;
     const iconY = y + height / 2;
     const iconRadius = 30;
@@ -277,10 +279,12 @@ class MainGame {
 
     drawGameIcon(ctx, iconX, iconY, iconRadius * 0.65, '#fff', game.shape);
 
-    drawText(ctx, game.name, x + width * 0.50, y + height / 2 - 18, { fontSize: 36, color: '#1f2937', bold: true });
-    drawText(ctx, game.desc, x + width * 0.50, y + height / 2 + 18, { fontSize: 22, color: '#6b7280' });
+    // 游戏名称和描述
+    drawText(ctx, game.name, x + width * 0.50, y + 40, { fontSize: 32, color: '#1f2937', bold: true });
+    drawText(ctx, game.desc, x + width * 0.50, y + 70, { fontSize: 20, color: '#6b7280' });
 
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 28, radius: 8 });
+    // 排行榜按钮在右下角
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 24, radius: 10 });
   }
 }
 

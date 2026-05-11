@@ -145,7 +145,7 @@ export default class Match3Game {
     if (this.isAnimating || !this.touchStartPos || !this.selectedGem) return;
     const dx = pos.x - this.touchStartPos.x;
     const dy = pos.y - this.touchStartPos.y;
-    if (Math.abs(dx) > this.cellSize * 0.3 || Math.abs(dy) > this.cellSize * 0.3) {
+    if (Math.abs(dx) > this.cellSize * 0.15 || Math.abs(dy) > this.cellSize * 0.15) {
       let targetRow = this.selectedGem.row;
       let targetCol = this.selectedGem.col;
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -380,24 +380,35 @@ export default class Match3Game {
 
   drawGem(row, col) {
     if (this.grid[row][col] < 0) return;
-    const x = this.gridStartX + col * this.cellSize + 10;
-    const y = this.gridStartY + row * this.cellSize + 10;
-    const size = Math.max(20, this.cellSize - 20);
-    const gemColor = Colors.gems[this.grid[row][col]];
     const isSelected = this.selectedGem && this.selectedGem.row === row && this.selectedGem.col === col;
     
-    // 圆润阴影
-    this.ctx.shadowColor = 'rgba(0,0,0,0.08)';
-    this.ctx.shadowBlur = 4;
-    this.ctx.shadowOffsetY = 2;
+    // 选中时放大并居中
+    const scale = isSelected ? 1.15 : 1;
+    const baseSize = Math.max(20, this.cellSize - 20);
+    const size = baseSize * scale;
+    const offset = isSelected ? (baseSize - size) / 2 : 0;
     
-    // 更圆润的格子
-    drawRoundRect(this.ctx, x, y, size, size, size * 0.22, gemColor, isSelected ? '#fff' : null, isSelected ? 3 : 0);
+    const x = this.gridStartX + col * this.cellSize + 10 + offset;
+    const y = this.gridStartY + row * this.cellSize + 10 + offset;
+    const gemColor = Colors.gems[this.grid[row][col]];
+    
+    // 选中时加粗阴影
+    this.ctx.shadowColor = isSelected ? 'rgba(139,92,246,0.4)' : 'rgba(0,0,0,0.08)';
+    this.ctx.shadowBlur = isSelected ? 8 : 4;
+    this.ctx.shadowOffsetY = isSelected ? 4 : 2;
+    
+    // 宝石主体
+    drawRoundRect(this.ctx, x, y, size, size, size * 0.22, gemColor);
+    
+    // 选中时加粗白色边框
+    if (isSelected) {
+      drawRoundRect(this.ctx, x, y, size, size, size * 0.22, null, '#fff', 4);
+    }
     
     this.ctx.shadowBlur = 0;
     this.ctx.shadowOffsetY = 0;
     
-    // 柔和高光
+    // 高光
     this.ctx.fillStyle = 'rgba(255,255,255,0.25)';
     this.ctx.beginPath();
     const hlSize = size * 0.35;
