@@ -1,11 +1,14 @@
 /**
- * 贪吃蛇 - 使用音效 + 多关卡
+ * 贪吃蛇 - 无限型游戏（里程碑成就系统）
+ * - 单局无限游戏，吃到撞墙/自己为止
+ * - 速度随分数自动递增
+ * - 里程碑成就：50分(铜)、100分(银)、200分(金)、500分(白金)、1000分(钻石)
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
   drawText, drawCircle, Storage, shareGame
 } from '../common/utils.js';
-import { Levels } from '../common/config.js';
+import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class SnakeGame {
@@ -15,7 +18,14 @@ export default class SnakeGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
-    this.level = Storage.load('snake_level') || 0;
+    // 无限游戏配置
+    const config = Milestones.snake;
+    this.targets = config.targets;       // [50, 100, 200, 500, 1000]
+    this.milestoneNames = config.names;  // ['铜牌', '银牌', '金牌', '白金', '钻石']
+    this.speedStart = config.speedStart;
+    this.speedMin = config.speedMin;
+    this.speedDecPerScore = config.speedDecPerScore;
+
     this.gridWidth = 10;
     this.gridHeight = 14;
     this.cellSize = 32;
@@ -26,13 +36,11 @@ export default class SnakeGame {
     this.score = 0;
     this.bestScore = Storage.load('snake_best') || 0;
     this.gameOver = false;
-    this.speed = 220;
-    this.target = 0;
-    this.levelName = '';
-
+    this.speed = this.speedStart;
+    this.achievedMilestone = -1;  // 已达成的里程碑索引
     this.touchStartPos = null;
-    this.theme = Colors.themes.snake;
 
+    this.theme = Colors.themes.snake;
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
@@ -42,25 +50,17 @@ export default class SnakeGame {
   }
 
   initGame() {
-    const levelConfig = Levels.snake[this.level] || Levels.snake[0];
-    this.speed = levelConfig.speed;
-    this.target = levelConfig.target;
-    this.levelName = levelConfig.name;
-
     const { width, height, safeTop, safeBottom } = this.designSize;
     const headerHeight = 80;
     const footerHeight = 60;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
-
     this.cellSize = Math.min(availableWidth / this.gridWidth, availableHeight / this.gridHeight, 65);
-
     this.gridStartX = (width - this.gridWidth * this.cellSize) / 2;
     this.gridStartY = safeTop + 160;
 
     const centerX = Math.floor(this.gridWidth / 2);
     const centerY = Math.floor(this.gridHeight / 2);
-
     this.snake = [
       { x: centerX, y: centerY },
       { x: centerX, y: centerY - 1 },
@@ -71,6 +71,8 @@ export default class SnakeGame {
     this.nextDirection = { x: 0, y: 1 };
     this.score = 0;
     this.gameOver = false;
+    this.speed = this.speedStart;
+    this.achievedMilestone = -1;
 
     this.generateFood();
     this.render();
@@ -87,14 +89,31 @@ export default class SnakeGame {
     if (this.timer) clearInterval(this.timer);
   }
 
+  // 获取当前里程碑
+  getCurrentMilestone() {
+    for (let i = this.targets.length - 1; i >= 0; i--) {
+      if (this.score >= this.targets[i]) return i;
+    }
+    return -1;
+  }
+
+  // 获取下一个里程碑目标
+  getNextMilestone() {
+    const current = this.getCurrentMilestone();
+    if (current < this.targets.length - 1) {
+      return { target: this.targets[current + 1], name: this.milestoneNames[current + 1] };
+    }
+    return null;  // 已达最高
+  }
+
   update() {
     this.direction = this.nextDirection;
-
     const head = {
       x: this.snake[0].x + this.direction.x,
       y: this.snake[0].y + this.direction.y
     };
 
+    // 碰撞检测
     if (head.x < 0 || head.x >= this.gridWidth ||
         head.y < 0 || head.y >= this.gridHeight ||
         this.snake.some(s => s.x === head.x && s.y === head.y)) {
@@ -106,20 +125,16 @@ export default class SnakeGame {
         Storage.save('snake_best', this.bestScore);
       }
 
-      const hasNext = this.level + 1 < Levels.snake.length;
-      const reached = this.score >= this.target;
+      const milestone = this.getCurrentMilestone();
+      const milestoneText = milestone >= 0 ? `\n成就: ${this.milestoneNames[milestone]}` : '';
 
       wx.showModal({
-        title: reached ? '🎉 达成目标！' : '游戏结束',
-        content: `关卡: ${this.levelName}\n得分: ${this.score}\n目标: ${this.target}\n最高: ${this.bestScore}`,
-        confirmText: hasNext && reached ? '下一关' : '重试',
+        title: milestone >= 0 ? `🎉 ${this.milestoneNames[milestone]}` : '游戏结束',
+        content: `得分: ${this.score}${milestoneText}\n最高: ${this.bestScore}`,
+        confirmText: '重试',
         cancelText: '返回',
         success: (res) => {
           if (res.confirm) {
-            if (hasNext && reached) {
-              this.level++;
-              Storage.save('snake_level', this.level);
-            }
             this.destroy();
             this.initGame();
             this.startLoop();
@@ -134,14 +149,23 @@ export default class SnakeGame {
 
     this.snake.unshift(head);
 
+    // 吃食物
     if (head.x === this.food.x && head.y === this.food.y) {
       this.score += 10;
       playSound(SoundType.SUCCESS);
       this.generateFood();
 
-      // 吃食物加速
-      if (this.score % 50 === 0 && this.speed > 60) {
-        this.speed = Math.max(60, this.speed - 8);
+      // 检查里程碑达成
+      const newMilestone = this.getCurrentMilestone();
+      if (newMilestone > this.achievedMilestone) {
+        this.achievedMilestone = newMilestone;
+        playSound(SoundType.LEVEL_UP);
+      }
+
+      // 自动加速
+      const targetSpeed = Math.max(this.speedMin, this.speedStart - Math.floor(this.score / this.speedDecPerScore) * 10);
+      if (targetSpeed < this.speed) {
+        this.speed = targetSpeed;
         clearInterval(this.timer);
         this.startLoop();
       }
@@ -160,8 +184,7 @@ export default class SnakeGame {
   }
 
   checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
+    return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height;
   }
 
   onTouchStart(pos) {
@@ -171,28 +194,23 @@ export default class SnakeGame {
       this.onEnd(this.score);
       return;
     }
-
     if (this.checkButton(pos, this.shareButton)) {
       playSound(SoundType.SUCCESS);
       shareGame('贪吃蛇', this.score);
       return;
     }
-
     if (this.checkButton(pos, this.soundButton)) {
       audioManager.toggle();
       this.render();
       return;
     }
-
     this.touchStartPos = pos;
   }
 
   onTouchMove(pos) {
     if (!this.touchStartPos || this.gameOver) return;
-
     const dx = pos.x - this.touchStartPos.x;
     const dy = pos.y - this.touchStartPos.y;
-
     if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
       playSound(SoundType.MOVE);
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -212,25 +230,23 @@ export default class SnakeGame {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
     // 标题
-    drawText(this.ctx, '贪吃蛇', width / 2, safeTop + 50, {
-      fontSize: 48,
-      color: this.theme.primary,
-      bold: true
-    });
+    drawText(this.ctx, '贪吃蛇', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
 
-    // 关卡名
-    drawText(this.ctx, this.levelName, width / 2 - 80, safeTop + 50, { fontSize: 22, color: Colors.textLight });
+    // 当前成就显示
+    const milestone = this.getCurrentMilestone();
+    if (milestone >= 0) {
+      drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.warning });
+    }
 
-    // 分数
-    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, {
-      fontSize: 36,
-      color: Colors.textDark,
-      bold: true
-    });
+    // 分数 + 下一个目标
+    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, { fontSize: 36, color: Colors.textDark, bold: true });
+    const next = this.getNextMilestone();
+    if (next) {
+      drawText(this.ctx, `→${next.target}`, width / 2 + 210, safeTop + 50, { fontSize: 20, color: Colors.textLight });
+    }
 
     // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
@@ -240,7 +256,6 @@ export default class SnakeGame {
     // 游戏区域
     const gridW = this.gridWidth * this.cellSize;
     const gridH = this.gridHeight * this.cellSize;
-
     drawRoundRect(this.ctx, this.gridStartX - 12, this.gridStartY - 12, gridW + 24, gridH + 24, 22, '#fff', this.theme.primary, 4);
 
     // 蛇身
@@ -249,9 +264,7 @@ export default class SnakeGame {
       const cy = this.gridStartY + segment.y * this.cellSize + this.cellSize / 2;
       const radius = this.cellSize / 2 - 6;
       const color = i === 0 ? this.theme.primary : this.theme.secondary;
-
       drawCircle(this.ctx, cx, cy, radius, color);
-
       if (i === 0) {
         this.ctx.fillStyle = '#fff';
         this.ctx.beginPath();
@@ -271,10 +284,16 @@ export default class SnakeGame {
     const foodCy = this.gridStartY + this.food.y * this.cellSize + this.cellSize / 2;
     drawCircle(this.ctx, foodCx, foodCy, this.cellSize / 2 - 10, Colors.food);
 
-    // 底部提示 + 目标
-    drawText(this.ctx, `滑动控制方向  目标: ${this.target}`, width / 2, height - safeBottom - 38, {
-      fontSize: 24,
-      color: Colors.textMuted
-    });
+    // 底部里程碑进度提示
+    let milestoneText = '滑动控制方向 ';
+    for (let i = 0; i < this.targets.length; i++) {
+      if (this.score >= this.targets[i]) {
+        milestoneText += '✓';
+      } else {
+        milestoneText += ` →${this.targets[i]}`;
+        break;
+      }
+    }
+    drawText(this.ctx, milestoneText, width / 2, height - safeBottom - 38, { fontSize: 22, color: Colors.textMuted });
   }
 }

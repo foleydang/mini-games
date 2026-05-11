@@ -1,5 +1,5 @@
 /**
- * 消消乐 - 使用游戏基类 + 音效系统
+ * 消消乐 - 关卡型游戏（目标分数驱动）
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
@@ -18,8 +18,8 @@ export default class Match3Game {
     this.level = Storage.load('match3_level') || 0;
     this.gridSize = 6;
     this.colors = 4;
-    this.moves = 15;
-    this.target = 1000;
+    this.moves = 20;
+    this.target = 800;
     this.score = 0;
     this.bestScore = Storage.load('match3_best') || 0;
     this.cellSize = 70;
@@ -28,12 +28,10 @@ export default class Match3Game {
     this.isAnimating = false;
     this.touchStartPos = null;
     this.comboCount = 0;
+    this.levelName = '入门';
 
     this.theme = Colors.themes.match3;
-    this.gameName = '消消乐';
-    this.gameId = 'match3';
 
-    // 按钮配置
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
@@ -72,6 +70,7 @@ export default class Match3Game {
       }
     }
 
+    // 确保初始无匹配
     while (this.findMatches().length > 0) {
       this.clearMatches();
       this.fillGrid();
@@ -98,7 +97,6 @@ export default class Match3Game {
   onTouchStart(pos) {
     if (this.isAnimating) return;
 
-    // 公共按钮处理
     if (this.checkButton(pos, this.backButton)) {
       playSound(SoundType.CLICK);
       this.destroy();
@@ -121,11 +119,9 @@ export default class Match3Game {
     const cell = this.getCellAtPos(pos);
     if (cell) {
       this.touchStartPos = pos;
-
       if (this.selectedGem) {
         const dr = Math.abs(cell.row - this.selectedGem.row);
         const dc = Math.abs(cell.col - this.selectedGem.col);
-
         if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
           playSound(SoundType.SWAP);
           this.trySwap(this.selectedGem.row, this.selectedGem.col, cell.row, cell.col);
@@ -135,33 +131,26 @@ export default class Match3Game {
       } else {
         this.selectedGem = cell;
       }
-
       this.render();
     }
   }
 
   onTouchMove(pos) {
     if (this.isAnimating || !this.touchStartPos || !this.selectedGem) return;
-
     const dx = pos.x - this.touchStartPos.x;
     const dy = pos.y - this.touchStartPos.y;
-
     if (Math.abs(dx) > this.cellSize * 0.3 || Math.abs(dy) > this.cellSize * 0.3) {
       let targetRow = this.selectedGem.row;
       let targetCol = this.selectedGem.col;
-
       if (Math.abs(dx) > Math.abs(dy)) {
         targetCol += dx > 0 ? 1 : -1;
       } else {
         targetRow += dy > 0 ? 1 : -1;
       }
-
-      if (targetRow >= 0 && targetRow < this.gridSize &&
-          targetCol >= 0 && targetCol < this.gridSize) {
+      if (targetRow >= 0 && targetRow < this.gridSize && targetCol >= 0 && targetCol < this.gridSize) {
         playSound(SoundType.SWAP);
         this.trySwap(this.selectedGem.row, this.selectedGem.col, targetRow, targetCol);
       }
-
       this.touchStartPos = null;
     }
   }
@@ -173,10 +162,7 @@ export default class Match3Game {
   getCellAtPos(pos) {
     const x = pos.x - this.gridStartX;
     const y = pos.y - this.gridStartY;
-
-    if (x < 0 || x >= this.gridSize * this.cellSize ||
-        y < 0 || y >= this.gridSize * this.cellSize) return null;
-
+    if (x < 0 || x >= this.gridSize * this.cellSize || y < 0 || y >= this.gridSize * this.cellSize) return null;
     return { row: Math.floor(y / this.cellSize), col: Math.floor(x / this.cellSize) };
   }
 
@@ -184,7 +170,6 @@ export default class Match3Game {
     const temp = this.grid[r1][c1];
     this.grid[r1][c1] = this.grid[r2][c2];
     this.grid[r2][c2] = temp;
-
     if (this.findMatches().length > 0) {
       this.moves--;
       this.selectedGem = null;
@@ -195,31 +180,25 @@ export default class Match3Game {
       this.grid[r1][c1] = temp;
       this.selectedGem = null;
     }
-
     this.render();
   }
 
   findMatches() {
     const matches = [];
-
     for (let row = 0; row < this.gridSize; row++) {
       for (let col = 0; col < this.gridSize - 2; col++) {
-        if (this.grid[row][col] === this.grid[row][col + 1] &&
-            this.grid[row][col] === this.grid[row][col + 2]) {
+        if (this.grid[row][col] === this.grid[row][col + 1] && this.grid[row][col] === this.grid[row][col + 2]) {
           matches.push({ row, col, dir: 'h' });
         }
       }
     }
-
     for (let row = 0; row < this.gridSize - 2; row++) {
       for (let col = 0; col < this.gridSize; col++) {
-        if (this.grid[row][col] === this.grid[row + 1][col] &&
-            this.grid[row][col] === this.grid[row + 2][col]) {
+        if (this.grid[row][col] === this.grid[row + 1][col] && this.grid[row][col] === this.grid[row + 2][col]) {
           matches.push({ row, col, dir: 'v' });
         }
       }
     }
-
     return matches;
   }
 
@@ -229,16 +208,10 @@ export default class Match3Game {
       this.checkGameEnd();
       return;
     }
-
     this.isAnimating = true;
     this.comboCount++;
-
-    // 连击音效
-    if (this.comboCount > 1) {
-      playSound(SoundType.SUCCESS);
-    } else {
-      playSound(SoundType.MATCH);
-    }
+    if (this.comboCount > 1) playSound(SoundType.SUCCESS);
+    else playSound(SoundType.MATCH);
 
     const toRemove = new Set();
     matches.forEach(m => {
@@ -249,7 +222,6 @@ export default class Match3Game {
       }
     });
 
-    // 连击加分
     const baseScore = toRemove.size * 10;
     const comboBonus = this.comboCount > 1 ? (this.comboCount - 1) * 50 : 0;
     this.score += baseScore + comboBonus;
@@ -263,7 +235,6 @@ export default class Match3Game {
       this.dropGrid();
       this.fillGrid();
       this.render();
-
       setTimeout(() => {
         this.isAnimating = false;
         this.processMatches();
@@ -308,32 +279,24 @@ export default class Match3Game {
   }
 
   checkGameEnd() {
+    // 过关
     if (this.score >= this.target) {
       playSound(SoundType.LEVEL_UP);
-
       if (this.score > this.bestScore) {
         this.bestScore = this.score;
         Storage.save('match3_best', this.bestScore);
       }
-
-      const nextLevel = this.level + 1;
-      const hasNext = nextLevel < Levels.match3.length;
-      const nextName = hasNext ? Levels.match3[nextLevel].name : '';
-
+      const hasNext = this.level + 1 < Levels.match3.length;
+      const nextName = hasNext ? Levels.match3[this.level + 1].name : '已通关全部';
       wx.showModal({
-        title: '🎉 恭喜过关！',
-        content: `关卡: ${this.levelName}\n得分: ${this.score}\n连击: ${this.comboCount}次\n${hasNext ? `下一关: ${nextName}` : '已通关全部关卡！'}`,
+        title: '🎉 过关！',
+        content: `关卡${this.levelName} ✓\n得分: ${this.score}\n连击: ${this.comboCount}次\n${hasNext ? '下一关: ' + nextName : '恭喜通关全部关卡！'}`,
         confirmText: hasNext ? '下一关' : '重玩',
         cancelText: '返回',
         success: (res) => {
           if (res.confirm) {
-            if (hasNext) {
-              this.level = nextLevel;
-              Storage.save('match3_level', this.level);
-            } else {
-              this.level = 0;
-              Storage.save('match3_level', 0);
-            }
+            this.level = hasNext ? this.level + 1 : 0;
+            Storage.save('match3_level', this.level);
             this.initGame();
           } else {
             this.destroy();
@@ -341,12 +304,13 @@ export default class Match3Game {
           }
         }
       });
-    } else if (this.moves <= 0) {
+    } 
+    // 失败
+    else if (this.moves <= 0) {
       playSound(SoundType.GAME_OVER);
-
       wx.showModal({
-        title: '游戏结束',
-        content: `关卡: ${this.levelName}\n得分: ${this.score}\n目标: ${this.target}\n连击: ${this.comboCount}次`,
+        title: '未达成目标',
+        content: `关卡: ${this.levelName}\n得分: ${this.score}/${this.target}\n连击: ${this.comboCount}次`,
         confirmText: '重试',
         cancelText: '返回',
         success: (res) => {
@@ -362,32 +326,19 @@ export default class Match3Game {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    // 标题 + 关卡名
-    drawText(this.ctx, '消消乐', width / 2, safeTop + 50, {
-      fontSize: 48,
-      color: this.theme.primary,
-      bold: true
-    });
-
-    // 关卡信息
-    drawText(this.ctx, this.levelName || `关卡 ${this.level + 1}`, width / 2, safeTop + 85, {
-      fontSize: 20,
-      color: Colors.textLight
-    });
+    // 标题 + 关卡
+    drawText(this.ctx, '消消乐', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
+    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2, safeTop + 85, { fontSize: 20, color: Colors.textLight });
 
     // 分数和步数
     drawText(this.ctx, `${this.score}`, width / 2 - 140, safeTop + 50, { fontSize: 34, color: Colors.textDark, bold: true });
     drawText(this.ctx, `${this.moves}`, width / 2 + 140, safeTop + 50, { fontSize: 34, color: this.moves <= 3 ? Colors.danger : Colors.textDark, bold: true });
 
-    // 连击显示
+    // 连击提示
     if (this.comboCount > 1) {
-      drawText(this.ctx, `${this.comboCount}连击!`, width / 2, safeTop + 105, {
-        fontSize: 22,
-        color: Colors.warning
-      });
+      drawText(this.ctx, `${this.comboCount}连击!`, width / 2, safeTop + 105, { fontSize: 22, color: Colors.warning });
     }
 
     // 按钮
@@ -398,7 +349,6 @@ export default class Match3Game {
     // 网格背景
     const gridW = this.gridSize * this.cellSize;
     const gridH = this.gridSize * this.cellSize;
-
     drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 24, '#fff', this.theme.primary, 4);
 
     // 宝石
@@ -411,45 +361,28 @@ export default class Match3Game {
     // 进度条
     const progress = Math.min(this.score / this.target, 1);
     drawProgress(this.ctx, 30, height - safeBottom - 70, width - 60, 42, progress, this.theme.primary, 20);
-
-    drawText(this.ctx, `${this.score} / ${this.target}`, width / 2, height - safeBottom - 49, {
-      fontSize: 26,
-      color: progress > 0.6 ? Colors.white : Colors.textDark,
-      bold: true
-    });
+    drawText(this.ctx, `${this.score}/${this.target}`, width / 2, height - safeBottom - 49, { fontSize: 26, color: progress > 0.6 ? Colors.white : Colors.textDark, bold: true });
   }
 
   drawGem(row, col) {
     if (this.grid[row][col] < 0) return;
-
     const x = this.gridStartX + col * this.cellSize + 8;
     const y = this.gridStartY + row * this.cellSize + 8;
     const size = Math.max(20, this.cellSize - 16);
-
     const gemColor = Colors.gems[this.grid[row][col]];
     const isSelected = this.selectedGem && this.selectedGem.row === row && this.selectedGem.col === col;
-
     drawRoundRect(this.ctx, x, y, size, size, Math.min(12, size / 4), gemColor, isSelected ? Colors.white : null, isSelected ? 3 : 0);
 
     // 高光
     const highlightSize = Math.max(10, size * 0.4);
     this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
     this.ctx.beginPath();
-    // 高光兼容处理
-    this.ctx.fillStyle = "rgba(255,255,255,0.3)";
-    this.ctx.beginPath();
     const r = 6;
     this.ctx.moveTo(x + 4 + r, y + 4);
-    this.ctx.lineTo(x + 4 + highlightSize - r, y + 4);
     this.ctx.arcTo(x + 4 + highlightSize, y + 4, x + 4 + highlightSize, y + 4 + r, r);
-    this.ctx.lineTo(x + 4 + highlightSize, y + 4 + highlightSize - r);
     this.ctx.arcTo(x + 4 + highlightSize, y + 4 + highlightSize, x + 4 + highlightSize - r, y + 4 + highlightSize, r);
-    this.ctx.lineTo(x + 4 + r, y + 4 + highlightSize);
     this.ctx.arcTo(x + 4, y + 4 + highlightSize, x + 4, y + 4 + highlightSize - r, r);
-    this.ctx.lineTo(x + 4, y + 4 + r);
     this.ctx.arcTo(x + 4, y + 4, x + 4 + r, y + 4, r);
-    this.ctx.closePath();
-    this.ctx.fill();
     this.ctx.fill();
   }
 }

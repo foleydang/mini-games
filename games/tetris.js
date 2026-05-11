@@ -1,11 +1,14 @@
 /**
- * 俄罗斯方块 - 音效 + 多难度关卡
+ * 俄罗斯方块 - 无限型游戏（里程碑成就系统）
+ * - 单局无限游戏，方块堆到顶部为止
+ * - 速度随消除行数自动递增
+ * - 里程碑：消10行(铜)、30行(银)、50行(金)、100行(白金)、200行(钻石)
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
   drawText, Storage, shareGame
 } from '../common/utils.js';
-import { Levels } from '../common/config.js';
+import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 export default class TetrisGame {
@@ -15,7 +18,13 @@ export default class TetrisGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
-    this.level = Storage.load('tetris_level') || 0;
+    const config = Milestones.tetris;
+    this.targets = config.targets;
+    this.milestoneNames = config.names;
+    this.speedStart = config.speedStart;
+    this.speedMin = config.speedMin;
+    this.speedDecPerLines = config.speedDecPerLines;
+
     this.cols = 10;
     this.rows = 16;
     this.cellSize = 36;
@@ -23,11 +32,11 @@ export default class TetrisGame {
     this.currentPiece = null;
     this.score = 0;
     this.lines = 0;
-    this.targetLines = 10;
     this.bestScore = Storage.load('tetris_best') || 0;
+    this.bestLines = Storage.load('tetris_best_lines') || 0;
     this.gameOver = false;
-    this.speed = 380;
-    this.levelName = '';
+    this.speed = this.speedStart;
+    this.achievedMilestone = -1;
 
     this.shapes = [
       { shape: [[1, 1, 1, 1]], color: 0 },
@@ -41,7 +50,6 @@ export default class TetrisGame {
 
     this.touchStartPos = null;
     this.theme = Colors.themes.tetris;
-
     this.backButton = { x: designSize.width - 140, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.shareButton = { x: 20, y: designSize.safeTop + 85, width: 120, height: 55 };
     this.soundButton = { x: designSize.width / 2 - 60, y: designSize.safeTop + 85, width: 120, height: 55 };
@@ -51,19 +59,12 @@ export default class TetrisGame {
   }
 
   initGame() {
-    const levelConfig = Levels.tetris[this.level] || Levels.tetris[0];
-    this.speed = levelConfig.speed;
-    this.targetLines = levelConfig.lines;
-    this.levelName = levelConfig.name;
-
     const { width, height, safeTop, safeBottom } = this.designSize;
     const headerHeight = 150;
     const footerHeight = 50;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 40;
-
     this.cellSize = Math.min(availableWidth / this.cols, availableHeight / this.rows, 52);
-
     this.gridStartX = (width - this.cols * this.cellSize) / 2;
     this.gridStartY = safeTop + headerHeight;
 
@@ -78,6 +79,8 @@ export default class TetrisGame {
     this.score = 0;
     this.lines = 0;
     this.gameOver = false;
+    this.speed = this.speedStart;
+    this.achievedMilestone = -1;
 
     this.spawnPiece();
     this.render();
@@ -90,8 +93,21 @@ export default class TetrisGame {
     }, this.speed);
   }
 
-  destroy() {
-    if (this.timer) clearInterval(this.timer);
+  destroy() { if (this.timer) clearInterval(this.timer); }
+
+  getCurrentMilestone() {
+    for (let i = this.targets.length - 1; i >= 0; i--) {
+      if (this.lines >= this.targets[i]) return i;
+    }
+    return -1;
+  }
+
+  getNextMilestone() {
+    const current = this.getCurrentMilestone();
+    if (current < this.targets.length - 1) {
+      return { target: this.targets[current + 1], name: this.milestoneNames[current + 1] };
+    }
+    return null;
   }
 
   spawnPiece() {
@@ -107,32 +123,18 @@ export default class TetrisGame {
       this.gameOver = true;
       playSound(SoundType.GAME_OVER);
 
-      if (this.score > this.bestScore) {
-        this.bestScore = this.score;
-        Storage.save('tetris_best', this.bestScore);
-      }
+      if (this.score > this.bestScore) { this.bestScore = this.score; Storage.save('tetris_best', this.bestScore); }
+      if (this.lines > this.bestLines) { this.bestLines = this.lines; Storage.save('tetris_best_lines', this.bestLines); }
 
-      const hasNext = this.level + 1 < Levels.tetris.length;
-      const reached = this.lines >= this.targetLines;
-
+      const milestone = this.getCurrentMilestone();
       wx.showModal({
-        title: reached ? '🎉 达成目标！' : '游戏结束',
-        content: `关卡: ${this.levelName}\n得分: ${this.score}\n消除: ${this.lines}行\n目标: ${this.targetLines}行`,
-        confirmText: hasNext && reached ? '下一关' : '重试',
+        title: milestone >= 0 ? `🎉 ${this.milestoneNames[milestone]}` : '游戏结束',
+        content: `消除: ${this.lines}行\n得分: ${this.score}\n最高行数: ${this.bestLines}`,
+        confirmText: '重试',
         cancelText: '返回',
         success: (res) => {
-          if (res.confirm) {
-            if (hasNext && reached) {
-              this.level++;
-              Storage.save('tetris_level', this.level);
-            }
-            this.destroy();
-            this.initGame();
-            this.startLoop();
-          } else {
-            this.destroy();
-            this.onEnd(this.score);
-          }
+          if (res.confirm) { this.destroy(); this.initGame(); this.startLoop(); }
+          else { this.destroy(); this.onEnd(this.score); }
         }
       });
     }
@@ -142,9 +144,7 @@ export default class TetrisGame {
     for (let row = 0; row < shape.length; row++) {
       for (let col = 0; col < shape[row].length; col++) {
         if (shape[row][col]) {
-          const newX = x + col;
-          const newY = y + row;
-
+          const newX = x + col, newY = y + row;
           if (newX < 0 || newX >= this.cols || newY >= this.rows) return true;
           if (newY >= 0 && this.board[newY][newX] !== -1) return true;
         }
@@ -168,8 +168,7 @@ export default class TetrisGame {
     for (let row = 0; row < this.currentPiece.shape.length; row++) {
       for (let col = 0; col < this.currentPiece.shape[row].length; col++) {
         if (this.currentPiece.shape[row][col]) {
-          const y = this.currentPiece.y + row;
-          const x = this.currentPiece.x + col;
+          const y = this.currentPiece.y + row, x = this.currentPiece.x + col;
           if (y >= 0) this.board[y][x] = this.currentPiece.color;
         }
       }
@@ -178,7 +177,6 @@ export default class TetrisGame {
 
   clearLines() {
     let linesCleared = 0;
-
     for (let row = this.rows - 1; row >= 0; row--) {
       if (this.board[row].every(cell => cell !== -1)) {
         this.board.splice(row, 1);
@@ -187,15 +185,21 @@ export default class TetrisGame {
         row++;
       }
     }
-
     if (linesCleared > 0) {
       playSound(SoundType.CLEAR);
       this.lines += linesCleared;
       this.score += linesCleared * 100 * linesCleared;
 
-      // 每10行加速
-      if (this.lines % 10 === 0 && this.speed > 80) {
-        this.speed = Math.max(80, this.speed - 40);
+      const newMilestone = this.getCurrentMilestone();
+      if (newMilestone > this.achievedMilestone) {
+        this.achievedMilestone = newMilestone;
+        playSound(SoundType.LEVEL_UP);
+      }
+
+      // 自动加速
+      const targetSpeed = Math.max(this.speedMin, this.speedStart - Math.floor(this.lines / this.speedDecPerLines) * 40);
+      if (targetSpeed < this.speed) {
+        this.speed = targetSpeed;
         clearInterval(this.timer);
         this.startLoop();
       }
@@ -211,10 +215,7 @@ export default class TetrisGame {
   }
 
   rotate() {
-    const rotated = this.currentPiece.shape[0].map((_, i) =>
-      this.currentPiece.shape.map(row => row[i]).reverse()
-    );
-
+    const rotated = this.currentPiece.shape[0].map((_, i) => this.currentPiece.shape.map(row => row[i]).reverse());
     if (!this.checkCollision(rotated, this.currentPiece.x, this.currentPiece.y)) {
       playSound(SoundType.MOVE);
       this.currentPiece.shape = rotated;
@@ -234,126 +235,77 @@ export default class TetrisGame {
     this.render();
   }
 
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
+  checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
-    if (this.checkButton(pos, this.backButton)) {
-      playSound(SoundType.CLICK);
-      this.destroy();
-      this.onEnd(this.score);
-      return;
-    }
-
-    if (this.checkButton(pos, this.shareButton)) {
-      playSound(SoundType.SUCCESS);
-      shareGame('方块', this.score);
-      return;
-    }
-
-    if (this.checkButton(pos, this.soundButton)) {
-      audioManager.toggle();
-      this.render();
-      return;
-    }
-
+    if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
+    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('方块', this.score); return; }
+    if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     this.touchStartPos = pos;
   }
 
   onTouchMove(pos) {
     if (!this.touchStartPos || this.gameOver) return;
-
     const dx = pos.x - this.touchStartPos.x;
-
-    if (Math.abs(dx) > 30) {
-      this.move(dx > 0 ? 1 : -1);
-      this.touchStartPos = pos;
-    }
+    if (Math.abs(dx) > 30) { this.move(dx > 0 ? 1 : -1); this.touchStartPos = pos; }
   }
 
   onTouchEnd(pos) {
     if (this.touchStartPos) {
-      const dx = pos.x - this.touchStartPos.x;
-      const dy = pos.y - this.touchStartPos.y;
-
-      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
-        this.rotate();
-      } else if (dy > 60) {
-        this.hardDrop();
-      }
+      const dx = pos.x - this.touchStartPos.x, dy = pos.y - this.touchStartPos.y;
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) this.rotate();
+      else if (dy > 60) this.hardDrop();
     }
-
     this.touchStartPos = null;
   }
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    // 标题
-    drawText(this.ctx, '方块', width / 2, safeTop + 55, {
-      fontSize: 52,
-      color: this.theme.primary,
-      bold: true
-    });
+    drawText(this.ctx, '方块', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
 
-    // 关卡名
-    drawText(this.ctx, this.levelName, width / 2 - 80, safeTop + 55, { fontSize: 22, color: Colors.textLight });
+    const milestone = this.getCurrentMilestone();
+    if (milestone >= 0) drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 100, safeTop + 55, { fontSize: 22, color: Colors.warning });
 
-    // 按钮
     drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享 ↗', Colors.success, { fontSize: 32, radius: 16 });
     drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
-    // 游戏区域
-    const gridW = this.cols * this.cellSize;
-    const gridH = this.rows * this.cellSize;
-
+    const gridW = this.cols * this.cellSize, gridH = this.rows * this.cellSize;
     drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 22, '#fff', this.theme.primary, 4);
 
-    // 已固定方块
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        if (this.board[row][col] !== -1) {
-          this.drawCell(col, row, Colors.tetris[this.board[row][col]]);
-        }
+        if (this.board[row][col] !== -1) this.drawCell(col, row, Colors.tetris[this.board[row][col]]);
       }
     }
 
-    // 当前方块
     if (this.currentPiece) {
       for (let row = 0; row < this.currentPiece.shape.length; row++) {
         for (let col = 0; col < this.currentPiece.shape[row].length; col++) {
           if (this.currentPiece.shape[row][col]) {
-            this.drawCell(
-              this.currentPiece.x + col,
-              this.currentPiece.y + row,
-              Colors.tetris[this.currentPiece.color]
-            );
+            this.drawCell(this.currentPiece.x + col, this.currentPiece.y + row, Colors.tetris[this.currentPiece.color]);
           }
         }
       }
     }
 
-    // 分数显示
     const scoreY = this.gridStartY + gridH + 35;
-    drawText(this.ctx, `得分: ${this.score}  |  消除: ${this.lines}/${this.targetLines}`, width / 2, scoreY, { fontSize: 32, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `得分:${this.score} | 消除:${this.lines}行`, width / 2, scoreY, { fontSize: 32, color: Colors.textDark, bold: true });
 
-    // 底部提示
-    drawText(this.ctx, '滑动移动 | 点击旋转 | 下滑快降', width / 2, height - safeBottom - 32, {
-      fontSize: 24,
-      color: Colors.textMuted
-    });
+    let hint = '滑动移动 | 点击旋转 ';
+    for (let i = 0; i < this.targets.length; i++) {
+      hint += this.lines >= this.targets[i] ? '✓' : ` →${this.targets[i]}`;
+      if (this.lines < this.targets[i]) break;
+    }
+    drawText(this.ctx, hint, width / 2, height - safeBottom - 32, { fontSize: 22, color: Colors.textMuted });
   }
 
   drawCell(col, row, color) {
     const x = this.gridStartX + col * this.cellSize + 4;
     const y = this.gridStartY + row * this.cellSize + 4;
     const size = this.cellSize - 8;
-
     drawRoundRect(this.ctx, x, y, size, size, 6, color);
   }
 }
