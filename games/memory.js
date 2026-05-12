@@ -185,15 +185,31 @@ export default class MemoryGame {
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
 
     this.cards.forEach(card => {
+      const fontSize = Math.min(card.width, card.height) * 0.45;
+      
+      // 卡片阴影
+      this.ctx.shadowColor = 'rgba(0,0,0,0.1)';
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowOffsetY = 4;
+      
       if (card.matched) {
-        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, Colors.success);
-        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: 32 });
+        // 已配对 - 金色背景庆祝效果
+        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 16, '#fef3c7', '#fbbf24', 3);
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetY = 0;
+        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: fontSize, color: '#92400e' });
       } else if (card.flipped) {
-        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, this.theme.primary);
-        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: 32 });
+        // 已翻开 - 显示图标，主题色背景
+        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 16, this.theme.bg, this.theme.primary, 2);
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetY = 0;
+        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: fontSize, color: this.theme.primary });
       } else {
-        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 20, '#d1d5db');
-        drawText(this.ctx, '?', card.x + card.width / 2, card.y + card.height / 2, { fontSize: 48, color: Colors.textLight });
+        // 未翻开 - 灰色背面，问号提示
+        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 16, '#f3f4f6', '#d1d5db', 2);
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetY = 0;
+        drawText(this.ctx, '?', card.x + card.width / 2, card.y + card.height / 2, { fontSize: fontSize * 1.2, color: '#9ca3af' });
       }
     });
 

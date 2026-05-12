@@ -375,7 +375,25 @@ export default class Match3Game {
     // 网格背景
     const gridW = this.cols * this.cellSize;
     const gridH = this.rows * this.cellSize;
-    drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 24, '#fff', this.theme.primary, 4);
+    // 网格背景 - 深色背景让宝石更突出
+    drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 24, '#2d3748', this.theme.primary, 4);
+    // 内部格子线
+    this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    this.ctx.lineWidth = 1;
+    for (let i = 0; i <= this.cols; i++) {
+      const lx = this.gridStartX + i * this.cellSize;
+      this.ctx.beginPath();
+      this.ctx.moveTo(lx, this.gridStartY);
+      this.ctx.lineTo(lx, this.gridStartY + gridH);
+      this.ctx.stroke();
+    }
+    for (let i = 0; i <= this.rows; i++) {
+      const ly = this.gridStartY + i * this.cellSize;
+      this.ctx.beginPath();
+      this.ctx.moveTo(this.gridStartX, ly);
+      this.ctx.lineTo(this.gridStartX + gridW, ly);
+      this.ctx.stroke();
+    }
 
     // 宝石
     for (let row = 0; row < this.rows; row++) {
@@ -397,39 +415,44 @@ export default class Match3Game {
     if (this.grid[row][col] < 0) return;
     const isSelected = this.selectedGem && this.selectedGem.row === row && this.selectedGem.col === col;
     
-    // 选中时放大并居中
-    const scale = isSelected ? 1.15 : 1;
-    const baseSize = Math.max(20, this.cellSize - 20);
-    const size = baseSize * scale;
-    const offset = isSelected ? (baseSize - size) / 2 : 0;
+    const gemType = this.grid[row][col];
+    const cellSize = this.cellSize;
+    const x = this.gridStartX + col * cellSize + cellSize / 2;
+    const y = this.gridStartY + row * cellSize + cellSize / 2;
+    const radius = (cellSize - 16) / 2 * (isSelected ? 1.2 : 1);
+    const gemColor = Colors.gems[gemType];
     
-    const x = this.gridStartX + col * this.cellSize + 10 + offset;
-    const y = this.gridStartY + row * this.cellSize + 10 + offset;
-    const gemColor = Colors.gems[this.grid[row][col]];
+    // 外发光效果
+    this.ctx.shadowColor = isSelected ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.15)';
+    this.ctx.shadowBlur = isSelected ? 12 : 6;
+    this.ctx.shadowOffsetY = 2;
     
-    // 选中时加粗阴影
-    this.ctx.shadowColor = isSelected ? 'rgba(139,92,246,0.4)' : 'rgba(0,0,0,0.08)';
-    this.ctx.shadowBlur = isSelected ? 8 : 4;
-    this.ctx.shadowOffsetY = isSelected ? 4 : 2;
+    // 宝石主体 - 圆形更有宝石感
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+    this.ctx.fillStyle = gemColor;
+    this.ctx.fill();
     
-    // 宝石主体
-    drawRoundRect(this.ctx, x, y, size, size, size * 0.22, gemColor);
-    
-    // 选中时加粗白色边框
+    // 选中时白色边框
     if (isSelected) {
-      drawRoundRect(this.ctx, x, y, size, size, size * 0.22, null, '#fff', 4);
+      this.ctx.strokeStyle = '#fff';
+      this.ctx.lineWidth = 4;
+      this.ctx.stroke();
     }
     
     this.ctx.shadowBlur = 0;
     this.ctx.shadowOffsetY = 0;
     
-    // 高光
-    this.ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    // 内部光泽 - 大光斑
     this.ctx.beginPath();
-    const hlSize = size * 0.35;
-    const hlX = x + size * 0.15;
-    const hlY = y + size * 0.15;
-    this.ctx.arc(hlX + hlSize/2, hlY + hlSize/2, hlSize/2, 0, Math.PI * 2);
+    this.ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.35, 0, Math.PI * 2);
+    this.ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    this.ctx.fill();
+    
+    // 小亮点
+    this.ctx.beginPath();
+    this.ctx.arc(x - radius * 0.15, y - radius * 0.4, radius * 0.12, 0, Math.PI * 2);
+    this.ctx.fillStyle = 'rgba(255,255,255,0.7)';
     this.ctx.fill();
   }
 }
