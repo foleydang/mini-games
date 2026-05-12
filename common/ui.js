@@ -3,36 +3,36 @@
  */
 import { Colors, drawButton, drawText, drawRoundRect } from './utils.js';
 
-// 返回按钮 - 左上角（240x100）
+// 返回按钮 - 左上角，相对于 safeTop
 export function getBackButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
     x: 30,
-    y: 100,
-    width: 140,  // 2/3 of 240
+    y: safeTop + 50,  // 相对于 safeTop，给标题留空间
+    width: 140,
     height: 50
   };
 }
 
-// 分享按钮 - 返回按钮右边（240x100）
+// 分享按钮 - 返回按钮右边，相对于 safeTop
 export function getShareButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   const backBtn = getBackButton(designSize);
   return {
     x: backBtn.x + backBtn.width + 20,
     y: backBtn.y,
-    width: 140,  // 2/3 of 240
+    width: 140,
     height: 50
   };
 }
 
-// 音效按钮 - 右上角（280x100）
+// 音效按钮 - 右上角，相对于 safeTop
 export function getSoundButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
     x: width - 180,
-    y: 100,
-    width: 140,  // 2/3 of 280
+    y: safeTop + 50,  // 相对于 safeTop
+    width: 140,
     height: 50
   };
 }
