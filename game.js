@@ -45,7 +45,7 @@ class MainGame {
     const cols = 2;
     const rows = 4;
     const cardGapH = 40;
-    const cardGapV = 60;  // 卡片+按钮高度：160+40+5=205，间距需要更大
+    const cardGapV = 80;  // 卡片高度100+按钮36+偏移5，间距80更舒展
     const paddingX = 30;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
