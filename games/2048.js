@@ -52,7 +52,7 @@ export default class Game2048 {
     const availableWidth = width - 50;
     this.cellSize = Math.min(availableWidth / this.gridSize, availableHeight / this.gridSize, 180);
     this.gridStartX = (width - this.gridSize * this.cellSize) / 2;
-    this.gridStartY = safeTop + 250;
+    this.gridStartY = safeTop + 280;
 
     this.grid = [];
     for (let i = 0; i < this.gridSize; i++) {
