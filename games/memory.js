@@ -1,218 +1,234 @@
 /**
- * 翻牌配对 - 关卡型游戏（配对完成过关）
+ * 翻牌配对游戏 - 视觉优化版
  */
-import {
-  Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, Storage, shareGame
-} from '../common/utils.js';
-import { Levels, MemorySymbols } from '../common/config.js';
-import { playSound, SoundType, audioManager } from '../common/audio.js';
-import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
-
-function shuffleArray(arr) {
-  const result = [...arr];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 export default class MemoryGame {
   constructor(canvas, ctx, designSize, onEnd) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
-
-    this.level = Storage.load('memory_level') || 0;
+    
+    this.level = 1;
     this.cards = [];
     this.flippedCards = [];
     this.matchedPairs = 0;
     this.totalPairs = 6;
     this.moves = 0;
-    this.bestMoves = Storage.load('memory_best') || 999;
+    this.bestMoves = 999;
     this.gameOver = false;
     this.checkingMatch = false;
-    this.levelName = '入门';
-    this.cols = 4;
-    this.rows = 3;
-
-    this.theme = Colors.themes.memory;
-    // 按钮在左下角和右下角（远离胶囊按钮）
-    this.backButton = getBackButton(designSize);
-    this.shareButton = getShareButton(designSize);
-    this.soundButton = getSoundButton(designSize);
-
+    
+    // 卡片样式配置
+    this.cardColors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+      '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
+    ];
+    
+    this.symbols = ['★', '♦', '♣', '♠', '♥', '●', '▲', '■'];
+    
     this.initGame();
-    this.startLoop();
   }
 
   initGame() {
-    const levelConfig = Levels.memory[this.level] || Levels.memory[0];
-    this.cols = levelConfig.cols;
-    this.rows = levelConfig.rows;
-    this.totalPairs = levelConfig.pairs;
-    this.levelName = levelConfig.name;
-
-    const symbols = MemorySymbols.slice(0, this.totalPairs);
-
-    const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 250;
-    this.gameAreaBottom = height - safeBottom - 120;
-    this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
-
-    const padding = 28;
-    const gap = 22;
-    const cardWidth = (width - padding * 2 - gap * (this.cols - 1)) / this.cols;
-    const cardHeight = (this.gameAreaHeight - 40 - gap * (this.rows - 1)) / this.rows;
-
-    const pairs = shuffleArray([...symbols, ...symbols]);
-
+    const { width, safeTop, safeBottom, height } = this.designSize;
+    
+    // 游戏区域
+    const cols = 4;
+    const rows = 3;
+    this.totalPairs = 6;
+    
+    const gameAreaTop = safeTop + 250;
+    const gameAreaBottom = height - safeBottom - 120;
+    const gameAreaHeight = gameAreaBottom - gameAreaTop;
+    
+    const padding = 20;
+    const gap = 15;
+    const cardWidth = (width - padding * 2 - gap * (cols - 1)) / cols;
+    const cardHeight = (gameAreaHeight - gap * (rows - 1)) / rows;
+    
+    // 创建卡片
+    const symbols = this.symbols.slice(0, this.totalPairs);
+    const pairs = [...symbols, ...symbols];
+    
+    // 洗牌
+    for (let i = pairs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+    }
+    
     this.cards = [];
-    for (let i = 0; i < this.rows * this.cols; i++) {
-      const col = i % this.cols;
-      const row = Math.floor(i / this.cols);
+    for (let i = 0; i < rows * cols; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
       this.cards.push({
         x: padding + col * (cardWidth + gap),
-        y: this.gameAreaTop + 22 + row * (cardHeight + gap),
+        y: gameAreaTop + row * (cardHeight + gap),
         width: cardWidth,
         height: cardHeight,
         symbol: pairs[i],
+        color: this.cardColors[symbols.indexOf(pairs[i])],
         flipped: false,
-        matched: false
+        matched: false,
+        flipProgress: 0
       });
     }
-
+    
     this.flippedCards = [];
     this.matchedPairs = 0;
     this.moves = 0;
     this.gameOver = false;
     this.checkingMatch = false;
-    this.render();
+    
+    this.draw();
   }
 
-  startLoop() { this.timer = setInterval(() => { this.render(); }, 50); }
-  destroy() { if (this.timer) clearInterval(this.timer); }
+  draw() {
+    const ctx = this.ctx;
+    const { width, safeTop, height, safeBottom } = this.designSize;
+    
+    // 清空画布
+    ctx.clearRect(0, 0, width, height);
+    
+    // 绘制标题
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('翻牌配对', width / 2, safeTop + 60);
+    
+    // 绘制信息
+    ctx.font = '32px sans-serif';
+    ctx.fillStyle = '#4b5563';
+    ctx.textAlign = 'left';
+    ctx.fillText('步数: ' + this.moves, 50, safeTop + 130);
+    ctx.textAlign = 'right';
+    ctx.fillText('配对: ' + this.matchedPairs + '/' + this.totalPairs, width - 50, safeTop + 130);
+    
+    // 绘制卡片
+    for (const card of this.cards) {
+      this.drawCard(card);
+    }
+    
+    // 游戏结束提示
+    if (this.gameOver) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 48px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('恭喜过关！', width / 2, safeTop + 300);
+      ctx.font = '32px sans-serif';
+      ctx.fillText('总步数: ' + this.moves, width / 2, safeTop + 360);
+    }
+  }
 
-  checkMatch() {
-    if (this.flippedCards.length !== 2) return;
-    const [card1, card2] = this.flippedCards;
-
-    if (card1.symbol === card2.symbol) {
-      card1.matched = true;
-      card2.matched = true;
-      this.matchedPairs++;
-      this.flippedCards = [];
-      this.checkingMatch = false;  // 重置状态，允许继续点击
-      playSound(SoundType.MATCH_PAIR);
-
-      if (this.matchedPairs === this.totalPairs) {
-        this.gameOver = true;
-        if (this.moves < this.bestMoves) { this.bestMoves = this.moves; Storage.save('memory_best', this.bestMoves); }
-        playSound(SoundType.LEVEL_UP);
-
-        const hasNext = this.level + 1 < Levels.memory.length;
-        wx.showModal({
-          title: '🎉 过关！',
-          content: `关卡: ${this.levelName}\n用了 ${this.moves} 步\n最佳: ${this.bestMoves} 步`,
-          confirmText: hasNext ? '下一关' : '重玩',
-          cancelText: '返回',
-          success: (res) => {
-            if (res.confirm) {
-              if (hasNext) { this.level++; Storage.save('memory_level', this.level); }
-              this.destroy(); this.initGame(); this.startLoop();
-            } else { this.destroy(); this.onEnd(this.moves); }
-          }
-        });
-      }
+  drawCard(card) {
+    const ctx = this.ctx;
+    const { x, y, width, height, flipped, matched, symbol, color } = card;
+    
+    // 卡片背景
+    if (matched) {
+      // 已匹配 - 显示半透明
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+      ctx.strokeStyle = '#ccc';
+    } else if (flipped) {
+      // 翻开 - 显示正面
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#fff';
     } else {
-      playSound(SoundType.FAIL);
+      // 未翻开 - 显示背面
+      ctx.fillStyle = '#2c3e50';
+      ctx.strokeStyle = '#1a252f';
+    }
+    
+    ctx.lineWidth = 3;
+    
+    // 绘制圆角矩形卡片
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, 12);
+    ctx.fill();
+    ctx.stroke();
+    
+    // 绘制卡片内容
+    if (flipped || matched) {
+      // 正面 - 显示符号
+      ctx.fillStyle = matched ? '#999' : '#fff';
+      ctx.font = `bold ${Math.min(width, height) * 0.5}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(symbol, x + width / 2, y + height / 2);
+    } else {
+      // 背面 - 显示问号
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.min(width, height) * 0.4}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', x + width / 2, y + height / 2);
+      
+      // 背面装饰
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 10, y + 10);
+      ctx.lineTo(x + width - 10, y + height - 10);
+      ctx.moveTo(x + width - 10, y + 10);
+      ctx.lineTo(x + 10, y + height - 10);
+      ctx.stroke();
+    }
+    
+    // 选中效果
+    if (flipped && !matched) {
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.roundRect(x - 2, y - 2, width + 4, height + 4, 14);
+      ctx.stroke();
+    }
+  }
+
+  handleClick(pos) {
+    if (this.gameOver || this.checkingMatch) return;
+    
+    // 找到点击的卡片
+    const card = this.cards.find(c => 
+      pos.x >= c.x && pos.x <= c.x + c.width &&
+      pos.y >= c.y && pos.y <= c.y + c.height &&
+      !c.flipped && !c.matched
+    );
+    
+    if (!card) return;
+    
+    // 翻开卡片
+    card.flipped = true;
+    this.flippedCards.push(card);
+    this.moves++;
+    this.draw();
+    
+    // 检查是否翻开两张
+    if (this.flippedCards.length === 2) {
+      this.checkingMatch = true;
+      
+      const [card1, card2] = this.flippedCards;
+      
       setTimeout(() => {
-        card1.flipped = false;
-        card2.flipped = false;
+        if (card1.symbol === card2.symbol) {
+          // 匹配成功
+          card1.matched = true;
+          card2.matched = true;
+          this.matchedPairs++;
+          
+          if (this.matchedPairs === this.totalPairs) {
+            this.gameOver = true;
+          }
+        } else {
+          // 匹配失败，翻回去
+          card1.flipped = false;
+          card2.flipped = false;
+        }
+        
         this.flippedCards = [];
         this.checkingMatch = false;
-      }, 700);
+        this.draw();
+      }, 500);
     }
-  }
-
-  checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
-
-  onTouchStart(pos) {
-    if (this.checkingMatch) return;
-    if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.moves); return; }
-    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('翻牌', this.moves); return; }
-    if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
-    if (this.gameOver) return;
-
-    for (const card of this.cards) {
-      if (!card.flipped && !card.matched && pos.x >= card.x && pos.x <= card.x + card.width && pos.y >= card.y && pos.y <= card.y + card.height) {
-        card.flipped = true;
-        this.flippedCards.push(card);
-        this.moves++;
-        playSound(SoundType.CARD);
-        if (this.flippedCards.length === 2) { this.checkingMatch = true; this.checkMatch(); }
-        break;
-      }
-    }
-  }
-
-  onTouchMove(pos) {}
-  onTouchEnd(pos) {}
-
-  render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    // 底部按钮在后面统一绘制
-
-    drawText(this.ctx, '翻牌配对', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
-    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2, safeTop + 100, { fontSize: 32, color: Colors.textLight });
-    drawText(this.ctx, `${this.matchedPairs}/${this.totalPairs} 步:${this.moves}`, width / 2, safeTop + 145, { fontSize: 34, color: Colors.textDark, bold: true });
-
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
-
-    drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
-
-    this.cards.forEach(card => {
-      const fontSize = Math.min(card.width, card.height) * 0.45;
-      
-      // 卡片阴影
-      this.ctx.shadowColor = 'rgba(0,0,0,0.1)';
-      this.ctx.shadowBlur = 8;
-      this.ctx.shadowOffsetY = 4;
-      
-      if (card.matched) {
-        // 已配对 - 金色背景庆祝效果
-        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 16, '#fef3c7', '#fbbf24', 3);
-        this.ctx.shadowBlur = 0;
-        this.ctx.shadowOffsetY = 0;
-        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: fontSize, color: '#92400e' });
-      } else if (card.flipped) {
-        // 已翻开 - 显示图标，主题色背景
-        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 16, this.theme.bg, this.theme.primary, 2);
-        this.ctx.shadowBlur = 0;
-        this.ctx.shadowOffsetY = 0;
-        drawText(this.ctx, card.symbol, card.x + card.width / 2, card.y + card.height / 2, { fontSize: fontSize, color: this.theme.primary });
-      } else {
-        // 未翻开 - 灰色背面，问号提示
-        drawRoundRect(this.ctx, card.x, card.y, card.width, card.height, 16, '#f3f4f6', '#d1d5db', 2);
-        this.ctx.shadowBlur = 0;
-        this.ctx.shadowOffsetY = 0;
-        drawText(this.ctx, '?', card.x + card.width / 2, card.y + card.height / 2, { fontSize: fontSize * 1.2, color: '#9ca3af' });
-      }
-    });
-
-    drawText(this.ctx, '点击翻开找配对', width / 2, height - safeBottom - 40, { fontSize: 26, color: Colors.textMuted });
   }
 }
