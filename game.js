@@ -53,7 +53,7 @@ class MainGame {
     const cardHeight = 160;
 
     const startX = paddingX;
-    const startY = safeTop + 420;
+    const startY = safeTop + 320;
 
     Games.forEach((game, index) => {
       const col = index % cols;

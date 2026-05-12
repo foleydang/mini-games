@@ -483,13 +483,15 @@ export function getTouchPos(touch, designSize) {
   const ratio = designSize.width / info.screenWidth;
   
   // clientY 是相对于屏幕顶部的坐标
-  // canvas 绘制也从屏幕顶部开始（safeTop 只是安全区域的顶部偏移）
-  // 所以直接转换，保持相对于屏幕顶部
+  // canvas 绘制从 safeArea.top 开始
+  // 需要减去 safeArea.top 的像素偏移
+  
+  const safeTopPx = info.safeArea.top;
   
   const x = Math.floor(touch.clientX * ratio);
-  const y = Math.floor(touch.clientY * ratio);
+  const y = Math.floor((touch.clientY - safeTopPx) * ratio);
   
-  console.log('坐标转换:', 'clientY=', touch.clientY, 'ratio=', ratio, '转换后y=', y);
+  console.log('坐标转换:', 'clientY=', touch.clientY, 'safeTopPx=', safeTopPx, 'ratio=', ratio, '转换后y=', y);
   
   return { x, y };
 }
