@@ -8,7 +8,7 @@ export function getBackButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
     x: 30,
-    y: safeTop + 50,  // 相对于 safeTop，给标题留空间
+    y: safeTop + 120,  // 相对于 safeTop，给标题留空间
     width: 140,
     height: 50
   };
@@ -31,7 +31,7 @@ export function getSoundButton(designSize) {
   const { width, height, safeTop, safeBottom } = designSize;
   return {
     x: width - 180,
-    y: safeTop + 50,  // 相对于 safeTop
+    y: safeTop + 120,  // 相对于 safeTop
     width: 140,
     height: 50
   };
