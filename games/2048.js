@@ -46,13 +46,13 @@ export default class Game2048 {
 
   initGame() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 80;
+    const headerHeight = 220;
     const footerHeight = 75;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
     this.cellSize = Math.min(availableWidth / this.gridSize, availableHeight / this.gridSize, 180);
     this.gridStartX = (width - this.gridSize * this.cellSize) / 2;
-    this.gridStartY = safeTop + 180;
+    this.gridStartY = safeTop + 220;
 
     this.grid = [];
     for (let i = 0; i < this.gridSize; i++) {

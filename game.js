@@ -45,7 +45,7 @@ class MainGame {
     const cols = 2;
     const rows = 4;
     const cardGapH = 40;
-    const cardGapV = 52;
+    const cardGapV = 60;  // 卡片+按钮高度：160+40+5=205，间距需要更大
     const paddingX = 30;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
@@ -78,9 +78,9 @@ class MainGame {
         // 排行榜按钮区域：在卡片下方（完全不覆盖卡片主体）
         rankBtn: {
           x: cardX + 20,
-          y: cardY + cardHeight + 5,  // 卡片下方5单位
+          y: cardY + cardHeight + 8,  // 卡片下方8单位
           width: cardWidth - 40,
-          height: 40
+          height: 36  // 按钮高度36，加上偏移8，间距60足够
         }
       });
     });
