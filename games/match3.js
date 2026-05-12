@@ -1,458 +1,427 @@
-/**
- * 消消乐 - 关卡型游戏（优化UI）
- */
-import {
-  Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawProgress, Storage, shareGame
-} from '../common/utils.js';
-import { Levels } from '../common/config.js';
-import { playSound, SoundType, audioManager } from '../common/audio.js';
-import { 
-  getBackButton, getShareButton, getSoundButton,
-  drawBottomButtons, checkBottomButtons, drawHint
-} from '../common/ui.js';
+// 消消乐游戏 - 视觉优化版
+class Match3Game {
+  constructor() {
+    this.rows = 8;
+    this.cols = 6;
+    this.grid = [];
+    this.selected = null;
+    this.score = 0;
+    this.moves = 30;
+    this.cellSize = 60;
+    this.gridStartX = 0;
+    this.gridStartY = 0;
+    this.animating = false;
+    
+    // 宝石类型 - 6种不同颜色和形状
+    this.gemTypes = [
+      { color: '#ff4757', shape: 'circle', name: 'ruby' },      // 红宝石 - 圆形
+      { color: '#2ed573', shape: 'diamond', name: 'emerald' },   // 绿宝石 - 菱形
+      { color: '#1e90ff', shape: 'star', name: 'sapphire' },     // 蓝宝石 - 星形
+      { color: '#ffa502', shape: 'square', name: 'topaz' },      // 黄宝石 - 方形
+      { color: '#ff6b81', shape: 'heart', name: 'rose' },        // 粉宝石 - 心形
+      { color: '#a55eea', shape: 'hexagon', name: 'amethyst' }   // 紫宝石 - 六边形
+    ];
+  }
 
-export default class Match3Game {
-  constructor(canvas, ctx, designSize, onEnd) {
+  init(canvas, ctx, designSize) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
-    this.onEnd = onEnd;
-
-    this.level = Storage.load('match3_level') || 0;
     
-    this.colors = 4;
-    this.moves = 20;
-    this.target = 800;
-    this.score = 0;
-    this.bestScore = Storage.load('match3_best') || 0;
-    this.cellSize = 70;
-    this.grid = [];
-    this.selectedGem = null;
-    this.isAnimating = false;
-    this.touchStartPos = null;
-    this.comboCount = 0;
-    this.levelName = '入门';
-
-    this.theme = Colors.themes.match3;
-
-    // 按钮在左下角和右下角（远离胶囊按钮）
-    this.backButton = getBackButton(designSize);
-    this.shareButton = getShareButton(designSize);
-    this.soundButton = getSoundButton(designSize);
-
-    this.initGame();
-    this.startLoop();
+    // 计算网格位置 - 居中显示
+    const gridWidth = this.cols * this.cellSize;
+    const gridHeight = this.rows * this.cellSize;
+    this.gridStartX = (designSize.width - gridWidth) / 2;
+    this.gridStartY = 280; // 从标题下方开始
+    
+    // 初始化网格
+    this.initGrid();
+    this.draw();
   }
 
-  initGame() {
-    const levelConfig = Levels.match3[this.level] || Levels.match3[0];
-    this.cols = levelConfig.cols;
-    this.rows = levelConfig.rows;
-    this.colors = levelConfig.colors;
-    this.moves = levelConfig.moves;
-    this.target = levelConfig.target;
-    this.levelName = levelConfig.name;
-    this.score = 0;
-    this.selectedGem = null;
-    this.isAnimating = false;
-    this.comboCount = 0;
-
-    const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 380;
-    const footerHeight = 85;
-    const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
-    const availableWidth = width - 50;
-
-    this.cellSize = Math.max(70, Math.min(availableWidth / this.cols, availableHeight / this.rows, 100));
-    this.gridStartX = (width - this.cols * this.cellSize) / 2;
-    this.gridStartY = safeTop + headerHeight;
-
+  initGrid() {
+    // 初始化网格，确保没有初始匹配
     this.grid = [];
-    for (let row = 0; row < this.rows; row++) {
-      this.grid[row] = [];
-      for (let col = 0; col < this.cols; col++) {
-        this.grid[row][col] = Math.floor(Math.random() * this.colors);
+    for (let r = 0; r < this.rows; r++) {
+      this.grid[r] = [];
+      for (let c = 0; c < this.cols; c++) {
+        let type;
+        do {
+          type = Math.floor(Math.random() * this.gemTypes.length);
+        } while (this.wouldMatch(r, c, type));
+        this.grid[r][c] = type;
       }
     }
-
-    while (this.findMatches().length > 0) {
-      this.clearMatches();
-      this.fillGrid();
-    }
-
-    this.render();
   }
 
-  startLoop() {
-    this.timer = setInterval(() => {
-      if (!this.isAnimating) this.render();
-    }, 50);
+  wouldMatch(row, col, type) {
+    // 检查是否会形成初始匹配
+    // 检查左边两个
+    if (col >= 2 && 
+        this.grid[row][col-1] === type && 
+        this.grid[row][col-2] === type) {
+      return true;
+    }
+    // 检查上边两个
+    if (row >= 2 && 
+        this.grid[row-1][col] === type && 
+        this.grid[row-2][col] === type) {
+      return true;
+    }
+    return false;
   }
 
-  destroy() {
-    if (this.timer) clearInterval(this.timer);
-  }
-
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
-
-  onTouchStart(pos) {
-    if (this.isAnimating) return;
-
-    // 调试：显示按钮位置和点击位置
-    console.log('游戏内点击:', 'pos=', pos.x, pos.y);
-    console.log('返回按钮:', this.backButton);
-    console.log('分享按钮:', this.shareButton);
-
-    // 公共按钮（左上角）
-    if (this.checkButton(pos, this.backButton)) {
-      playSound(SoundType.CLICK);
-      this.destroy();
-      this.onEnd(this.score);
-      return;
+  draw() {
+    const ctx = this.ctx;
+    const { width, safeTop } = this.designSize;
+    
+    // 清空画布
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // 绘制标题
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('消消乐', width / 2, safeTop + 60);
+    
+    // 绘制分数和步数
+    ctx.font = '32px sans-serif';
+    ctx.fillStyle = '#4b5563';
+    ctx.textAlign = 'left';
+    ctx.fillText('分数: ' + this.score, 50, safeTop + 130);
+    ctx.textAlign = 'right';
+    ctx.fillText('步数: ' + this.moves, width - 50, safeTop + 130);
+    
+    // 绘制网格背景
+    const gridWidth = this.cols * this.cellSize;
+    const gridHeight = this.rows * this.cellSize;
+    
+    // 网格背景 - 渐变效果
+    const gradient = ctx.createLinearGradient(
+      this.gridStartX, this.gridStartY,
+      this.gridStartX, this.gridStartY + gridHeight
+    );
+    gradient.addColorStop(0, '#1e3a5f');
+    gradient.addColorStop(1, '#0f1f3d');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 20);
+    ctx.fill();
+    
+    // 绘制网格线
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= this.cols; i++) {
+      ctx.beginPath();
+      ctx.moveTo(this.gridStartX + i * this.cellSize, this.gridStartY);
+      ctx.lineTo(this.gridStartX + i * this.cellSize, this.gridStartY + gridHeight);
+      ctx.stroke();
     }
-
-    if (this.checkButton(pos, this.shareButton)) {
-      playSound(SoundType.SUCCESS);
-      shareGame('消消乐', this.score);
-      return;
+    for (let i = 0; i <= this.rows; i++) {
+      ctx.beginPath();
+      ctx.moveTo(this.gridStartX, this.gridStartY + i * this.cellSize);
+      ctx.lineTo(this.gridStartX + gridWidth, this.gridStartY + i * this.cellSize);
+      ctx.stroke();
     }
-
-    if (this.checkButton(pos, this.soundButton)) {
-      audioManager.toggle();
-      this.render();
-      return;
-    }
-
-    const cell = this.getCellAtPos(pos);
-    if (cell) {
-      this.touchStartPos = pos;
-      if (this.selectedGem) {
-        const dr = Math.abs(cell.row - this.selectedGem.row);
-        const dc = Math.abs(cell.col - this.selectedGem.col);
-        if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-          playSound(SoundType.SWAP);
-          this.trySwap(this.selectedGem.row, this.selectedGem.col, cell.row, cell.col);
-        } else {
-          this.selectedGem = cell;
+    
+    // 绘制宝石
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.grid[r][c] >= 0) {
+          this.drawGem(r, c, this.grid[r][c]);
         }
-      } else {
-        this.selectedGem = cell;
       }
-      this.render();
+    }
+    
+    // 游戏结束提示
+    if (this.moves <= 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, width, this.designSize.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 48px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('游戏结束', width / 2, safeTop + 300);
+      ctx.font = '32px sans-serif';
+      ctx.fillText('最终得分: ' + this.score, width / 2, safeTop + 360);
+      ctx.fillText('点击重新开始', width / 2, safeTop + 420);
     }
   }
 
-  onTouchMove(pos) {
-    if (this.isAnimating || !this.touchStartPos || !this.selectedGem) return;
-    const dx = pos.x - this.touchStartPos.x;
-    const dy = pos.y - this.touchStartPos.y;
-    if (Math.abs(dx) > this.cellSize * 0.15 || Math.abs(dy) > this.cellSize * 0.15) {
-      let targetRow = this.selectedGem.row;
-      let targetCol = this.selectedGem.col;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        targetCol += dx > 0 ? 1 : -1;
+  drawGem(row, col, type) {
+    const ctx = this.ctx;
+    const gem = this.gemTypes[type];
+    const x = this.gridStartX + col * this.cellSize + this.cellSize / 2;
+    const y = this.gridStartY + row * this.cellSize + this.cellSize / 2;
+    const size = this.cellSize * 0.35;
+    
+    const isSelected = this.selected && 
+                       this.selected.row === row && 
+                       this.selected.col === col;
+    
+    // 外发光效果
+    ctx.shadowColor = isSelected ? '#fff' : gem.color;
+    ctx.shadowBlur = isSelected ? 15 : 10;
+    ctx.shadowOffsetY = 2;
+    
+    // 根据形状绘制不同宝石
+    ctx.fillStyle = gem.color;
+    ctx.beginPath();
+    
+    switch (gem.shape) {
+      case 'circle':
+        // 圆形宝石 - 红宝石
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+        // 内部光泽
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath();
+        ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+        
+      case 'diamond':
+        // 菱形宝石 - 绿宝石
+        ctx.moveTo(x, y - size);
+        ctx.lineTo(x + size, y);
+        ctx.lineTo(x, y + size);
+        ctx.lineTo(x - size, y);
+        ctx.closePath();
+        ctx.fill();
+        // 光泽线条
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - size * 0.5, y - size * 0.5);
+        ctx.lineTo(x + size * 0.3, y + size * 0.3);
+        ctx.stroke();
+        break;
+        
+      case 'star':
+        // 星形宝石 - 蓝宝石
+        this.drawStar(ctx, x, y, size, 5);
+        ctx.fill();
+        break;
+        
+      case 'square':
+        // 方形宝石 - 黄宝石
+        ctx.roundRect(x - size, y - size, size * 2, size * 2, 8);
+        ctx.fill();
+        // 内部方块
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.roundRect(x - size * 0.4, y - size * 0.4, size * 0.8, size * 0.8, 4);
+        ctx.fill();
+        break;
+        
+      case 'heart':
+        // 心形宝石 - 粉宝石
+        this.drawHeart(ctx, x, y, size);
+        ctx.fill();
+        break;
+        
+      case 'hexagon':
+        // 六边形宝石 - 紫宝石
+        this.drawHexagon(ctx, x, y, size);
+        ctx.fill();
+        break;
+    }
+    
+    // 选中状态 - 白色边框
+    if (isSelected) {
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x, y, size + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    
+    ctx.shadowBlur = 0;
+  }
+
+  drawStar(ctx, cx, cy, size, points) {
+    const outerRadius = size;
+    const innerRadius = size * 0.4;
+    
+    for (let i = 0; i < points * 2; i++) {
+      const radius = i % 2 === 0 ? outerRadius : innerRadius;
+      const angle = (i * Math.PI) / points - Math.PI / 2;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      
+      if (i === 0) {
+        ctx.moveTo(x, y);
       } else {
-        targetRow += dy > 0 ? 1 : -1;
+        ctx.lineTo(x, y);
       }
-      if (targetRow >= 0 && targetRow < this.rows && targetCol >= 0 && targetCol < this.cols) {
-        playSound(SoundType.SWAP);
-        this.trySwap(this.selectedGem.row, this.selectedGem.col, targetRow, targetCol);
+    }
+    ctx.closePath();
+  }
+
+  drawHeart(ctx, cx, cy, size) {
+    ctx.moveTo(cx, cy + size * 0.3);
+    ctx.bezierCurveTo(cx, cy - size * 0.5, cx - size, cy - size * 0.5, cx - size, cy + size * 0.1);
+    ctx.bezierCurveTo(cx - size, cy + size, cx, cy + size, cx, cy + size);
+    ctx.bezierCurveTo(cx, cy + size, cx + size, cy + size, cx + size, cy + size * 0.1);
+    ctx.bezierCurveTo(cx + size, cy - size * 0.5, cx, cy - size * 0.5, cx, cy + size * 0.3);
+    ctx.closePath();
+  }
+
+  drawHexagon(ctx, cx, cy, size) {
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3 - Math.PI / 2;
+      const x = cx + Math.cos(angle) * size;
+      const y = cy + Math.sin(angle) * size;
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
       }
-      this.touchStartPos = null;
+    }
+    ctx.closePath();
+  }
+
+  handleClick(pos) {
+    if (this.animating || this.moves <= 0) {
+      // 游戏结束时点击重新开始
+      if (this.moves <= 0) {
+        this.score = 0;
+        this.moves = 30;
+        this.initGrid();
+        this.draw();
+      }
+      return;
+    }
+    
+    const col = Math.floor((pos.x - this.gridStartX) / this.cellSize);
+    const row = Math.floor((pos.y - this.gridStartY) / this.cellSize);
+    
+    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
+      return;
+    }
+    
+    if (!this.selected) {
+      this.selected = { row, col };
+      this.draw();
+    } else {
+      // 检查是否相邻
+      const dr = Math.abs(row - this.selected.row);
+      const dc = Math.abs(col - this.selected.col);
+      
+      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+        // 交换
+        this.swap(this.selected.row, this.selected.col, row, col);
+      } else {
+        // 重新选择
+        this.selected = { row, col };
+        this.draw();
+      }
     }
   }
 
-  onTouchEnd(pos) {
-    this.touchStartPos = null;
-  }
-
-  getCellAtPos(pos) {
-    // 减去gridStartX和gridStartY，然后除以cellSize
-    const x = pos.x - this.gridStartX;
-    const y = pos.y - this.gridStartY;
-    
-    // 宝石绘制时有+10的padding，但点击检测应该从grid边界开始
-    // 所以不减去+10，而是直接用grid坐标
-    if (x < 0 || x >= this.cols * this.cellSize || y < 0 || y >= this.rows * this.cellSize) return null;
-    
-    const row = Math.floor(y / this.cellSize);
-    const col = Math.floor(x / this.cellSize);
-    
-    console.log('消消乐点击:', 'pos.y=', pos.y, 'gridStartY=', this.gridStartY, 'y=', y, 'cellSize=', this.cellSize, 'row=', row);
-    
-    return { row, col };
-  }
-
-  trySwap(r1, c1, r2, c2) {
+  swap(r1, c1, r2, c2) {
     const temp = this.grid[r1][c1];
     this.grid[r1][c1] = this.grid[r2][c2];
     this.grid[r2][c2] = temp;
-    if (this.findMatches().length > 0) {
+    
+    this.selected = null;
+    
+    // 检查是否有匹配
+    const matches = this.findMatches();
+    
+    if (matches.length > 0) {
       this.moves--;
-      this.selectedGem = null;
-      this.comboCount = 0;
-      this.processMatches();
+      this.removeMatches(matches);
     } else {
+      // 无效交换，恢复
       this.grid[r2][c2] = this.grid[r1][c1];
       this.grid[r1][c1] = temp;
-      this.selectedGem = null;
+      this.draw();
     }
-    this.render();
   }
 
   findMatches() {
     const matches = [];
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols - 2; col++) {
-        if (this.grid[row][col] === this.grid[row][col + 1] && this.grid[row][col] === this.grid[row][col + 2]) {
-          matches.push({ row, col, dir: 'h' });
+    
+    // 横向检查
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols - 2; c++) {
+        if (this.grid[r][c] === this.grid[r][c+1] &&
+            this.grid[r][c] === this.grid[r][c+2] &&
+            this.grid[r][c] >= 0) {
+          matches.push({ row: r, col: c });
+          matches.push({ row: r, col: c + 1 });
+          matches.push({ row: r, col: c + 2 });
         }
       }
     }
-    for (let row = 0; row < this.rows - 2; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.grid[row][col] === this.grid[row + 1][col] && this.grid[row][col] === this.grid[row + 2][col]) {
-          matches.push({ row, col, dir: 'v' });
+    
+    // 纵向检查
+    for (let c = 0; c < this.cols; c++) {
+      for (let r = 0; r < this.rows - 2; r++) {
+        if (this.grid[r][c] === this.grid[r+1][c] &&
+            this.grid[r][c] === this.grid[r+2][c] &&
+            this.grid[r][c] >= 0) {
+          matches.push({ row: r, col: c });
+          matches.push({ row: r + 1, col: c });
+          matches.push({ row: r + 2, col: c });
         }
       }
     }
+    
     return matches;
   }
 
-  processMatches() {
-    const matches = this.findMatches();
-    if (matches.length === 0) {
-      this.checkGameEnd();
-      return;
+  removeMatches(matches) {
+    this.animating = true;
+    
+    // 计算分数
+    this.score += matches.length * 10;
+    
+    // 移除匹配的宝石
+    for (const m of matches) {
+      this.grid[m.row][m.col] = -1;
     }
-    this.isAnimating = true;
-    this.comboCount++;
-    if (this.comboCount > 1) playSound(SoundType.SUCCESS);
-    else playSound(SoundType.MATCH);
-
-    const toRemove = new Set();
-    matches.forEach(m => {
-      if (m.dir === 'h') {
-        for (let i = 0; i < 3; i++) toRemove.add(`${m.row},${m.col + i}`);
-      } else {
-        for (let i = 0; i < 3; i++) toRemove.add(`${m.row + i},${m.col}`);
-      }
-    });
-
-    const baseScore = toRemove.size * 10;
-    const comboBonus = this.comboCount > 1 ? (this.comboCount - 1) * 50 : 0;
-    this.score += baseScore + comboBonus;
-
-    toRemove.forEach(key => {
-      const [row, col] = key.split(',').map(Number);
-      this.grid[row][col] = -1;
-    });
-
+    
+    this.draw();
+    
+    // 填充空位
     setTimeout(() => {
-      this.dropGrid();
       this.fillGrid();
-      this.render();
-      setTimeout(() => {
-        this.isAnimating = false;
-        this.processMatches();
-      }, 200);
-    }, 200);
+      this.animating = false;
+      
+      // 检查新的匹配
+      const newMatches = this.findMatches();
+      if (newMatches.length > 0) {
+        this.removeMatches(newMatches);
+      } else {
+        this.draw();
+      }
+    }, 300);
   }
 
-  dropGrid() {
-    for (let col = 0; col < this.cols; col++) {
+  fillGrid() {
+    // 下落填补空位
+    for (let c = 0; c < this.cols; c++) {
       let emptyRow = this.rows - 1;
-      for (let row = this.rows - 1; row >= 0; row--) {
-        if (this.grid[row][col] >= 0) {
-          if (row !== emptyRow) {
-            this.grid[emptyRow][col] = this.grid[row][col];
-            this.grid[row][col] = -1;
+      
+      // 从底部向上填充
+      for (let r = this.rows - 1; r >= 0; r--) {
+        if (this.grid[r][c] >= 0) {
+          if (r !== emptyRow) {
+            this.grid[emptyRow][c] = this.grid[r][c];
+            this.grid[r][c] = -1;
           }
           emptyRow--;
         }
       }
-    }
-  }
-
-  fillGrid() {
-    for (let col = 0; col < this.cols; col++) {
-      for (let row = 0; row < this.rows; row++) {
-        if (this.grid[row][col] === -1) {
-          this.grid[row][col] = Math.floor(Math.random() * this.colors);
-        }
+      
+      // 填充顶部空位
+      for (let r = emptyRow; r >= 0; r--) {
+        this.grid[r][c] = Math.floor(Math.random() * this.gemTypes.length);
       }
     }
-  }
-
-  clearMatches() {
-    const matches = this.findMatches();
-    matches.forEach(m => {
-      if (m.dir === 'h') {
-        for (let i = 0; i < 3; i++) this.grid[m.row][m.col + i] = -1;
-      } else {
-        for (let i = 0; i < 3; i++) this.grid[m.row + i][m.col] = -1;
-      }
-    });
-  }
-
-  checkGameEnd() {
-    if (this.score >= this.target) {
-      playSound(SoundType.LEVEL_UP);
-      if (this.score > this.bestScore) {
-        this.bestScore = this.score;
-        Storage.save('match3_best', this.bestScore);
-      }
-      const hasNext = this.level + 1 < Levels.match3.length;
-      const nextName = hasNext ? Levels.match3[this.level + 1].name : '已通关全部';
-      wx.showModal({
-        title: '🎉 过关！',
-        content: `关卡${this.levelName} ✓\n得分: ${this.score}\n连击: ${this.comboCount}次\n${hasNext ? '下一关: ' + nextName : '恭喜通关全部关卡！'}`,
-        confirmText: hasNext ? '下一关' : '重玩',
-        cancelText: '返回',
-        success: (res) => {
-          if (res.confirm) {
-            this.level = hasNext ? this.level + 1 : 0;
-            Storage.save('match3_level', this.level);
-            this.initGame();
-          } else {
-            this.destroy();
-            this.onEnd(this.score);
-          }
-        }
-      });
-    } else if (this.moves <= 0) {
-      playSound(SoundType.GAME_OVER);
-      wx.showModal({
-        title: '未达成目标',
-        content: `关卡: ${this.levelName}\n得分: ${this.score}/${this.target}\n连击: ${this.comboCount}次`,
-        confirmText: '重试',
-        cancelText: '返回',
-        success: (res) => {
-          if (res.confirm) this.initGame();
-          else {
-            this.destroy();
-            this.onEnd(this.score);
-          }
-        }
-      });
-    }
-  }
-
-  render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;
-    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-
-    // 标题 + 关卡
-    drawText(this.ctx, '消消乐', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
-    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2, safeTop + 85, { fontSize: 20, color: Colors.textLight });
-
-    // 分数和步数
-    drawText(this.ctx, `${this.score}`, width / 2 - 140, safeTop + 50, { fontSize: 34, color: Colors.textDark, bold: true });
-    drawText(this.ctx, `${this.moves}`, width / 2 + 140, safeTop + 50, { fontSize: 34, color: this.moves <= 3 ? Colors.danger : Colors.textDark, bold: true });
-
-    // 连击提示
-    if (this.comboCount > 1) {
-      drawText(this.ctx, `${this.comboCount}连击!`, width / 2, safeTop + 105, { fontSize: 22, color: Colors.warning });
-    }
-
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
-
-    // 网格背景
-    const gridW = this.cols * this.cellSize;
-    const gridH = this.rows * this.cellSize;
-    // 网格背景 - 深色背景让宝石更突出
-    drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 24, '#2d3748', this.theme.primary, 4);
-    // 内部格子线
-    this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    this.ctx.lineWidth = 1;
-    for (let i = 0; i <= this.cols; i++) {
-      const lx = this.gridStartX + i * this.cellSize;
-      this.ctx.beginPath();
-      this.ctx.moveTo(lx, this.gridStartY);
-      this.ctx.lineTo(lx, this.gridStartY + gridH);
-      this.ctx.stroke();
-    }
-    for (let i = 0; i <= this.rows; i++) {
-      const ly = this.gridStartY + i * this.cellSize;
-      this.ctx.beginPath();
-      this.ctx.moveTo(this.gridStartX, ly);
-      this.ctx.lineTo(this.gridStartX + gridW, ly);
-      this.ctx.stroke();
-    }
-
-    // 宝石
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        this.drawGem(row, col);
-      }
-    }
-
-    // 进度条
-    const progress = Math.min(this.score / this.target, 1);
-    drawProgress(this.ctx, 30, height - safeBottom - 130, width - 60, 42, progress, this.theme.primary, 20);
-    drawText(this.ctx, `${this.score}/${this.target}`, width / 2, height - safeBottom - 109, { fontSize: 26, color: progress > 0.6 ? Colors.white : Colors.textDark, bold: true });
-
-    // 底部提示
-    drawHint(this.ctx, this.designSize, '滑动交换宝石');
-  }
-
-  drawGem(row, col) {
-    if (this.grid[row][col] < 0) return;
-    const isSelected = this.selectedGem && this.selectedGem.row === row && this.selectedGem.col === col;
-    
-    const gemType = this.grid[row][col];
-    const cellSize = this.cellSize;
-    const x = this.gridStartX + col * cellSize + cellSize / 2;
-    const y = this.gridStartY + row * cellSize + cellSize / 2;
-    const radius = (cellSize - 16) / 2 * (isSelected ? 1.2 : 1);
-    const gemColor = Colors.gems[gemType];
-    
-    // 外发光效果
-    this.ctx.shadowColor = isSelected ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.15)';
-    this.ctx.shadowBlur = isSelected ? 12 : 6;
-    this.ctx.shadowOffsetY = 2;
-    
-    // 宝石主体 - 圆形更有宝石感
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-    this.ctx.fillStyle = gemColor;
-    this.ctx.fill();
-    
-    // 选中时白色边框
-    if (isSelected) {
-      this.ctx.strokeStyle = '#fff';
-      this.ctx.lineWidth = 4;
-      this.ctx.stroke();
-    }
-    
-    this.ctx.shadowBlur = 0;
-    this.ctx.shadowOffsetY = 0;
-    
-    // 内部光泽 - 大光斑
-    this.ctx.beginPath();
-    this.ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.35, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    this.ctx.fill();
-    
-    // 小亮点
-    this.ctx.beginPath();
-    this.ctx.arc(x - radius * 0.15, y - radius * 0.4, radius * 0.12, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    this.ctx.fill();
   }
 }
+
+module.exports = Match3Game;
