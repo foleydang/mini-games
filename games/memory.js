@@ -58,7 +58,7 @@ export default class MemoryGame {
     const symbols = MemorySymbols.slice(0, this.totalPairs);
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 270;
+    this.gameAreaTop = safeTop + 280;
     this.gameAreaBottom = height - safeBottom - 60;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
@@ -167,7 +167,7 @@ export default class MemoryGame {
 
     drawText(this.ctx, '翻牌配对', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
     drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2, safeTop + 100, { fontSize: 32, color: Colors.textLight });
-    drawText(this.ctx, `${this.matchedPairs}/${this.totalPairs} 步:${this.moves}`, width / 2, safeTop + 140, { fontSize: 34, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `${this.matchedPairs}/${this.totalPairs} 步:${this.moves}`, width / 2, safeTop + 200, { fontSize: 34, color: Colors.textDark, bold: true });
 
     // 底部按钮 - 左下角和右下角
     drawButton(this.ctx, this.backButton.x, this.backButton.y, 
