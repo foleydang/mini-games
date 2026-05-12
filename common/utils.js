@@ -482,6 +482,7 @@ export function getTouchPos(touch, designSize) {
   const info = wx.getSystemInfoSync();
   const ratio = designSize.width / info.screenWidth;
   
+<<<<<<< HEAD
   // 修复：touch.clientY从屏幕顶部开始
   // canvas绘制也从屏幕顶部开始
   // 所以直接转换，不减去safeArea.top
@@ -492,6 +493,18 @@ export function getTouchPos(touch, designSize) {
   console.log('坐标转换:', 'clientY=', touch.clientY, 'ratio=', ratio, '转换后y=', y);
   
   return { x, y };
+=======
+  // clientY 是相对于屏幕顶部的坐标
+  // 但 canvas 内容是从 safeArea.top 开始绘制的
+  // 所以需要减去 safeArea.top 的偏移
+  
+  const safeTopPx = info.safeArea.top;
+  
+  return {
+    x: Math.floor(touch.clientX * ratio),
+    y: Math.floor((touch.clientY - safeTopPx) * ratio)
+  };
+>>>>>>> 7238685 (fix: 修复点击坐标偏移和排行榜按钮检测问题)
 }
 
 // 分享
