@@ -58,7 +58,7 @@ export default class MemoryGame {
     const symbols = MemorySymbols.slice(0, this.totalPairs);
 
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 220;
+    this.gameAreaTop = safeTop + 250;
     this.gameAreaBottom = height - safeBottom - 120;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
