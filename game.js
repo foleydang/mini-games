@@ -50,7 +50,7 @@ class MainGame {
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    const cardHeight = 120;
+    const cardHeight = 100;
 
     const startX = paddingX;
     const startY = safeTop + 320;
@@ -279,12 +279,12 @@ class MainGame {
     drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
     ctx.restore();
 
-    // 卡片内容居中（高度120）
+    // 卡片内容居中（高度100）
     const centerY = y + height / 2;
     
     // 游戏图标在左侧
-    const iconX = x + 45;
-    const iconRadius = 28;
+    const iconX = x + 40;
+    const iconRadius = 25;
 
     ctx.shadowColor = 'rgba(0,0,0,0.1)';
     ctx.shadowBlur = 6;

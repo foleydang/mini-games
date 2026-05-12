@@ -59,7 +59,7 @@ export default class MemoryGame {
 
     const { width, height, safeTop, safeBottom } = this.designSize;
     this.gameAreaTop = safeTop + 220;
-    this.gameAreaBottom = height - safeBottom - 60;
+    this.gameAreaBottom = height - safeBottom - 120;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
     const padding = 28;

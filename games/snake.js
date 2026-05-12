@@ -58,7 +58,7 @@ export default class SnakeGame {
     const availableWidth = width - 50;
     this.cellSize = Math.min(availableWidth / this.gridWidth, availableHeight / this.gridHeight, 65);
     this.gridStartX = (width - this.gridWidth * this.cellSize) / 2;
-    this.gridStartY = safeTop + 280;
+    this.gridStartY = safeTop + 320;
 
     const centerX = Math.floor(this.gridWidth / 2);
     const centerY = Math.floor(this.gridHeight / 2);
