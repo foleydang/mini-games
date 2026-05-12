@@ -61,7 +61,7 @@ export default class TetrisGame {
 
   initGame() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 180;
+    const headerHeight = 220;
     const footerHeight = 50;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 40;

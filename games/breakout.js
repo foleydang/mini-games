@@ -156,8 +156,8 @@ export default class BreakoutGame {
     // 底部按钮在后面统一绘制
 
     drawText(this.ctx, '打砖块', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
-    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });
-    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, { fontSize: 38, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2, safeTop + 90, { fontSize: 22, color: Colors.textLight });
+    drawText(this.ctx, `${this.score}`, width / 2, safeTop + 130, { fontSize: 38, color: Colors.textDark, bold: true });
 
     // 底部按钮 - 左下角和右下角
     drawButton(this.ctx, this.backButton.x, this.backButton.y, 
