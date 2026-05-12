@@ -134,6 +134,8 @@ class MainGame {
   }
 
   startGame(gameId) {
+    // 记录当前游戏ID，用于保存分数到排行榜
+    this.currentRankGame = gameId;
     const gameClasses = {
       match3: Match3Game,
       snake: SnakeGame,
