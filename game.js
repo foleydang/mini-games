@@ -45,12 +45,12 @@ class MainGame {
     const cols = 2;
     const rows = 4;
     const cardGapH = 40;
-    const cardGapV = 50;  // 卡片+按钮高度：160+40+5=205，间距需要更大
+    const cardGapV = 60;  // 卡片+按钮高度：160+40+5=205，间距需要更大
     const paddingX = 30;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    const cardHeight = 80;
+    const cardHeight = 120;
 
     const startX = paddingX;
     const startY = safeTop + 320;
@@ -279,12 +279,12 @@ class MainGame {
     drawRoundRect(ctx, x, y, width, height, 16, '#ffffff', theme.primary, 2);
     ctx.restore();
 
-    // 卡片内容居中（高度80）
+    // 卡片内容居中（高度120）
     const centerY = y + height / 2;
     
     // 游戏图标在左侧
-    const iconX = x + 40;
-    const iconRadius = 25;
+    const iconX = x + 45;
+    const iconRadius = 28;
 
     ctx.shadowColor = 'rgba(0,0,0,0.1)';
     ctx.shadowBlur = 6;
@@ -296,11 +296,11 @@ class MainGame {
     drawGameIcon(ctx, iconX, centerY, iconRadius * 0.65, '#fff', game.shape);
 
     // 游戏名称和描述在右侧（居中）
-    drawText(ctx, game.name, x + width * 0.55, centerY - 8, { fontSize: 28, color: '#1f2937', bold: true });
-    drawText(ctx, game.desc, x + width * 0.55, centerY + 18, { fontSize: 18, color: '#6b7280' });
+    drawText(ctx, game.name, x + width * 0.55, centerY - 10, { fontSize: 30, color: '#1f2937', bold: true });
+    drawText(ctx, game.desc, x + width * 0.55, centerY + 20, { fontSize: 20, color: '#6b7280' });
 
     // 排行榜按钮在卡片下方
-    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 22, radius: 10 });
+    drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 24, radius: 12 });
   }
 }
 
