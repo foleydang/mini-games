@@ -14,14 +14,16 @@ export function getSafeArea() {
   };
 }
 
-// 适配后的设计尺寸
+// 适配后的设计尺寸（基于整个屏幕高度）
 export function getDesignSize() {
   const info = getSafeArea();
   const designWidth = 750;
-  const designHeight = Math.floor(info.safeArea.height * designWidth / info.screenWidth);
+  // 使用整个屏幕高度，不是 safeArea.height，这样触摸坐标和绘制坐标一致
+  const designHeight = Math.floor(info.screenHeight * designWidth / info.screenWidth);
   return {
     width: designWidth,
     height: designHeight,
+    // safeTop 表示内容区域的起始位置（相对于屏幕顶部）
     safeTop: Math.floor(info.safeArea.top * designWidth / info.screenWidth),
     safeBottom: Math.floor((info.screenHeight - info.safeArea.bottom) * designWidth / info.screenWidth)
   };
