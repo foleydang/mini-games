@@ -14,7 +14,7 @@ class Match3Game {
     this.selected = null;
     this.score = 0;
     this.moves = 30;
-    this.cellSize = 60;
+    this.cellSize = 80;
     this.animating = false;
     this.gameOver = false;
     
@@ -34,7 +34,7 @@ class Match3Game {
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
     this.gridStartX = (this.designSize.width - gridWidth) / 2;
-    this.gridStartY = 280;
+    this.gridStartY = 240;
     
     this.initGrid();
     this.draw();
@@ -106,7 +106,7 @@ class Match3Game {
     const gem = this.gemTypes[type];
     const x = this.gridStartX + col * this.cellSize + this.cellSize / 2;
     const y = this.gridStartY + row * this.cellSize + this.cellSize / 2;
-    const size = this.cellSize * 0.35;
+    const size = this.cellSize * 0.38;
     
     const isSelected = this.selected && this.selected.row === row && this.selected.col === col;
     
