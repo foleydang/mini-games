@@ -1,6 +1,6 @@
-/**
- * 翻牌配对游戏 - 视觉优化版
- */
+// 翻牌配对游戏
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../common/utils.js';
+
 export default class MemoryGame {
   constructor(canvas, ctx, designSize, onEnd) {
     this.canvas = canvas;
@@ -8,7 +8,6 @@ export default class MemoryGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
     
-    this.level = 1;
     this.cards = [];
     this.flippedCards = [];
     this.matchedPairs = 0;
@@ -78,44 +77,21 @@ export default class MemoryGame {
     
     ctx.clearRect(0, 0, width, height);
     
-    // 背景
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#fdf4ff');
-    gradient.addColorStop(1, '#e9d5ff');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
     
-    ctx.fillStyle = '#7c3aed';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('翻牌配对', width / 2, safeTop + 60);
-    
-    ctx.font = '32px sans-serif';
-    ctx.fillStyle = '#4b5563';
-    ctx.textAlign = 'left';
-    ctx.fillText('步数: ' + this.moves, 50, safeTop + 130);
-    ctx.textAlign = 'right';
-    ctx.fillText('配对: ' + this.matchedPairs + '/' + this.totalPairs, width - 50, safeTop + 130);
+    drawText(ctx, '翻牌配对', width / 2, safeTop + 60, { fontSize: 48, color: '#7c3aed', bold: true });
+    drawText(ctx, '步数: ' + this.moves, 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'left' });
+    drawText(ctx, '配对: ' + this.matchedPairs + '/' + this.totalPairs, width - 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'right' });
     
     for (const card of this.cards) this.drawCard(card);
     
-    // 返回按钮
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.roundRect(width - 140, safeTop + 85, 120, 55, 16);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 32px sans-serif';
-    ctx.fillText('← 返回', width - 80, safeTop + 117);
+    drawButton(ctx, width - 140, safeTop + 85, 120, 55, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
     
     if (this.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 48px sans-serif';
-      ctx.fillText('恭喜过关！', width / 2, safeTop + 300);
-      ctx.font = '32px sans-serif';
-      ctx.fillText('步数: ' + this.moves, width / 2, safeTop + 360);
+      drawText(ctx, '恭喜过关！', width / 2, safeTop + 300, { fontSize: 48, color: '#fff', bold: true });
+      drawText(ctx, '步数: ' + this.moves, width / 2, safeTop + 360, { fontSize: 32, color: '#fff' });
     }
   }
 
@@ -123,34 +99,28 @@ export default class MemoryGame {
     const ctx = this.ctx;
     const { x, y, width, height, flipped, matched, symbol, color } = card;
     
+    let bgColor, strokeColor;
     if (matched) {
-      ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-      ctx.strokeStyle = '#ccc';
+      bgColor = 'rgba(200, 200, 200, 0.3)';
+      strokeColor = '#ccc';
     } else if (flipped) {
-      ctx.fillStyle = color;
-      ctx.strokeStyle = '#fff';
+      bgColor = color;
+      strokeColor = '#fff';
     } else {
-      ctx.fillStyle = '#2c3e50';
-      ctx.strokeStyle = '#1a252f';
+      bgColor = '#2c3e50';
+      strokeColor = '#1a252f';
     }
     
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 12);
-    ctx.fill();
-    ctx.stroke();
+    drawRoundRect(ctx, x, y, width, height, 12, bgColor, strokeColor, 3);
+    
+    ctx.fillStyle = matched ? '#999' : '#fff';
+    ctx.font = `bold ${Math.min(width, height) * 0.5}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     
     if (flipped || matched) {
-      ctx.fillStyle = matched ? '#999' : '#fff';
-      ctx.font = `bold ${Math.min(width, height) * 0.5}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(symbol, x + width / 2, y + height / 2);
     } else {
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.min(width, height) * 0.4}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText('?', x + width / 2, y + height / 2);
     }
     
@@ -158,7 +128,7 @@ export default class MemoryGame {
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.roundRect(x - 2, y - 2, width + 4, height + 4, 14);
+      ctx.rect(x - 2, y - 2, width + 4, height + 4);
       ctx.stroke();
     }
   }
@@ -166,7 +136,6 @@ export default class MemoryGame {
   onTouchStart(pos) {
     const { width, safeTop } = this.designSize;
     
-    // 返回按钮
     if (pos.x >= width - 140 && pos.x <= width - 20 && pos.y >= safeTop + 85 && pos.y <= safeTop + 140) {
       this.onEnd(this.moves);
       return;

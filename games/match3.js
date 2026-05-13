@@ -1,4 +1,6 @@
 // 消消乐游戏 - 视觉优化版
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../common/utils.js';
+
 class Match3Game {
   constructor(canvas, ctx, designSize, onEnd) {
     this.canvas = canvas;
@@ -16,21 +18,19 @@ class Match3Game {
     this.animating = false;
     this.gameOver = false;
     
-    // 宝石类型 - 6种不同颜色和形状
     this.gemTypes = [
-      { color: '#ff4757', shape: 'circle', name: 'ruby' },
-      { color: '#2ed573', shape: 'diamond', name: 'emerald' },
-      { color: '#1e90ff', shape: 'star', name: 'sapphire' },
-      { color: '#ffa502', shape: 'square', name: 'topaz' },
-      { color: '#ff6b81', shape: 'heart', name: 'rose' },
-      { color: '#a55eea', shape: 'hexagon', name: 'amethyst' }
+      { color: '#ff4757', shape: 'circle' },
+      { color: '#2ed573', shape: 'diamond' },
+      { color: '#1e90ff', shape: 'star' },
+      { color: '#ffa502', shape: 'square' },
+      { color: '#ff6b81', shape: 'heart' },
+      { color: '#a55eea', shape: 'hexagon' }
     ];
     
     this.init();
   }
 
   init() {
-    // 计算网格位置 - 居中显示
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
     this.gridStartX = (this.designSize.width - gridWidth) / 2;
@@ -55,8 +55,8 @@ class Match3Game {
   }
 
   wouldMatch(row, col, type) {
-    if (col >= 2 && this.grid[row][col-1] === type && this.grid[row][col-2] === type) return true;
-    if (row >= 2 && this.grid[row-1][col] === type && this.grid[row-2][col] === type) return true;
+    if (col >= 2 && this.grid[row] && this.grid[row][col-1] === type && this.grid[row][col-2] === type) return true;
+    if (row >= 2 && this.grid[row-1] && this.grid[row-1][col] === type && this.grid[row-2][col] === type) return true;
     return false;
   }
 
@@ -67,37 +67,19 @@ class Match3Game {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
     // 背景
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#fdf4ff');
-    gradient.addColorStop(1, '#e9d5ff');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
     
     // 标题
-    ctx.fillStyle = '#7c3aed';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('消消乐', width / 2, safeTop + 60);
+    drawText(ctx, '消消乐', width / 2, safeTop + 60, { fontSize: 48, color: '#7c3aed', bold: true });
     
     // 分数和步数
-    ctx.font = '32px sans-serif';
-    ctx.fillStyle = '#4b5563';
-    ctx.textAlign = 'left';
-    ctx.fillText('分数: ' + this.score, 50, safeTop + 130);
-    ctx.textAlign = 'right';
-    ctx.fillText('步数: ' + this.moves, width - 50, safeTop + 130);
+    drawText(ctx, '分数: ' + this.score, 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'left' });
+    drawText(ctx, '步数: ' + this.moves, width - 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'right' });
     
     // 网格背景
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
-    
-    const bgGradient = ctx.createLinearGradient(this.gridStartX, this.gridStartY, this.gridStartX, this.gridStartY + gridHeight);
-    bgGradient.addColorStop(0, '#1e3a5f');
-    bgGradient.addColorStop(1, '#0f1f3d');
-    ctx.fillStyle = bgGradient;
-    ctx.beginPath();
-    ctx.roundRect(this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 20);
-    ctx.fill();
+    drawRoundRect(ctx, this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 20, '#1e3a5f');
     
     // 绘制宝石
     for (let r = 0; r < this.rows; r++) {
@@ -107,24 +89,15 @@ class Match3Game {
     }
     
     // 返回按钮
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.roundRect(width - 140, safeTop + 85, 120, 55, 16);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 32px sans-serif';
-    ctx.fillText('← 返回', width - 80, safeTop + 117);
+    drawButton(ctx, width - 140, safeTop + 85, 120, 55, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
     
     // 游戏结束
     if (this.moves <= 0 && !this.animating) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 48px sans-serif';
-      ctx.fillText('游戏结束', width / 2, safeTop + 300);
-      ctx.font = '32px sans-serif';
-      ctx.fillText('得分: ' + this.score, width / 2, safeTop + 360);
-      ctx.fillText('点击返回', width / 2, safeTop + 420);
+      drawText(ctx, '游戏结束', width / 2, safeTop + 300, { fontSize: 48, color: '#fff', bold: true });
+      drawText(ctx, '得分: ' + this.score, width / 2, safeTop + 360, { fontSize: 32, color: '#fff' });
+      drawText(ctx, '点击返回', width / 2, safeTop + 420, { fontSize: 28, color: '#ccc' });
     }
   }
 
@@ -146,10 +119,6 @@ class Match3Game {
       case 'circle':
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.beginPath();
-        ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.3, 0, Math.PI * 2);
-        ctx.fill();
         break;
       case 'diamond':
         ctx.moveTo(x, y - size);
@@ -164,8 +133,7 @@ class Match3Game {
         ctx.fill();
         break;
       case 'square':
-        ctx.roundRect(x - size, y - size, size * 2, size * 2, 8);
-        ctx.fill();
+        drawRoundRect(ctx, x - size, y - size, size * 2, size * 2, 8, gem.color);
         break;
       case 'heart':
         this.drawHeart(ctx, x, y, size);
@@ -231,7 +199,6 @@ class Match3Game {
       return;
     }
     
-    // 游戏结束状态
     if (this.moves <= 0 && !this.animating) {
       this.onEnd(this.score);
       return;
