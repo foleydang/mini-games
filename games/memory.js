@@ -1,5 +1,6 @@
 // 翻牌配对游戏
 import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../common/utils.js';
+import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
 export default class MemoryGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -7,17 +8,24 @@ export default class MemoryGame {
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
+    this.gameId = 'memory';
     
     this.cards = [];
     this.flippedCards = [];
     this.matchedPairs = 0;
-    this.totalPairs = 6;
+    this.totalPairs = 8;
     this.moves = 0;
     this.gameOver = false;
     this.checkingMatch = false;
+    this.soundEnabled = true;
     
-    this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
-    this.symbols = ['★', '♦', '♣', '♠', '♥', '●'];
+    // 按钮配置
+    this.backButton = getBackButton(designSize);
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
+    
+    this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F7DC6F', '#BB8FCE'];
+    this.symbols = ['★', '♦', '♣', '♠', '♥', '●', '▲', '■'];
     
     this.initGame();
   }
@@ -25,22 +33,24 @@ export default class MemoryGame {
   initGame() {
     const { width, safeTop, safeBottom, height } = this.designSize;
     
+    // 更大的卡片布局
     const cols = 4;
-    const rows = 3;
-    this.totalPairs = 6;
+    const rows = 4;
+    this.totalPairs = 8;
     
-    const gameAreaTop = safeTop + 250;
-    const gameAreaBottom = height - safeBottom - 120;
+    const gameAreaTop = this.backButton.y + 80;
+    const gameAreaBottom = height - safeBottom - 100;
     const gameAreaHeight = gameAreaBottom - gameAreaTop;
     
     const padding = 20;
-    const gap = 15;
+    const gap = 12;
     const cardWidth = (width - padding * 2 - gap * (cols - 1)) / cols;
     const cardHeight = (gameAreaHeight - gap * (rows - 1)) / rows;
     
     const symbols = this.symbols.slice(0, this.totalPairs);
     const pairs = [...symbols, ...symbols];
     
+    // 洗牌
     for (let i = pairs.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
@@ -76,22 +86,22 @@ export default class MemoryGame {
     const { width, safeTop, height, safeBottom } = this.designSize;
     
     ctx.clearRect(0, 0, width, height);
-    
     drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
     
-    drawText(ctx, '翻牌配对', width / 2, safeTop + 60, { fontSize: 48, color: '#7c3aed', bold: true });
-    drawText(ctx, '步数: ' + this.moves, 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'left' });
-    drawText(ctx, '配对: ' + this.matchedPairs + '/' + this.totalPairs, width - 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'right' });
+    drawText(ctx, '翻牌配对', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
+    drawText(ctx, '步数: ' + this.moves + '  配对: ' + this.matchedPairs + '/' + this.totalPairs, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
+    
+    // 底部按钮（返回在左边）
+    this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
     
     for (const card of this.cards) this.drawCard(card);
-    
-    drawButton(ctx, width - 140, safeTop + 85, 120, 55, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
     
     if (this.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '恭喜过关！', width / 2, safeTop + 300, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, '步数: ' + this.moves, width / 2, safeTop + 360, { fontSize: 32, color: '#fff' });
+      drawText(ctx, '恭喜过关！', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
+      drawText(ctx, '步数: ' + this.moves, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
+      drawHint(ctx, this.designSize, '点击返回');
     }
   }
 
@@ -114,7 +124,7 @@ export default class MemoryGame {
     drawRoundRect(ctx, x, y, width, height, 12, bgColor, strokeColor, 3);
     
     ctx.fillStyle = matched ? '#999' : '#fff';
-    ctx.font = `bold ${Math.min(width, height) * 0.5}px sans-serif`;
+    ctx.font = `bold ${Math.min(width, height) * 0.45}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -134,10 +144,18 @@ export default class MemoryGame {
   }
 
   onTouchStart(pos) {
-    const { width, safeTop } = this.designSize;
-    
-    if (pos.x >= width - 140 && pos.x <= width - 20 && pos.y >= safeTop + 85 && pos.y <= safeTop + 140) {
+    // 检测按钮点击
+    const btn = checkBottomButtons(pos, this.buttons);
+    if (btn === 'backBtn') {
       this.onEnd(this.moves);
+      return;
+    }
+    if (btn === 'shareBtn') {
+      return;
+    }
+    if (btn === 'soundBtn') {
+      this.soundEnabled = !this.soundEnabled;
+      this.draw();
       return;
     }
     
@@ -183,6 +201,5 @@ export default class MemoryGame {
   }
 
   onTouchMove(pos) {}
-
   onTouchEnd(pos) {}
 }

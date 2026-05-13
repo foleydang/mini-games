@@ -1,5 +1,6 @@
-// 消消乐游戏 - 视觉优化版
-import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../common/utils.js';
+// 消消乐游戏
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
+import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
 class Match3Game {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -7,16 +8,24 @@ class Match3Game {
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
+    this.gameId = 'match3';
     
-    this.rows = 8;
-    this.cols = 6;
+    // 更大的棋盘
+    this.rows = 10;
+    this.cols = 7;
     this.grid = [];
     this.selected = null;
     this.score = 0;
-    this.moves = 30;
-    this.cellSize = 80;
+    this.moves = 35;
+    this.cellSize = 85;
     this.animating = false;
     this.gameOver = false;
+    
+    // 按钮配置
+    this.backButton = getBackButton(designSize);
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
+    this.soundEnabled = true;
     
     this.gemTypes = [
       { color: '#ff4757', shape: 'circle' },
@@ -34,7 +43,7 @@ class Match3Game {
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
     this.gridStartX = (this.designSize.width - gridWidth) / 2;
-    this.gridStartY = 240;
+    this.gridStartY = this.backButton.y + 80; // 按钮下方
     
     this.initGrid();
     this.draw();
@@ -65,21 +74,19 @@ class Match3Game {
     const { width, safeTop, safeBottom, height } = this.designSize;
     
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    // 背景
     drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
     
-    // 标题
-    drawText(ctx, '消消乐', width / 2, safeTop + 60, { fontSize: 48, color: '#7c3aed', bold: true });
+    // 标题和分数
+    drawText(ctx, '消消乐', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
+    drawText(ctx, '分数: ' + this.score + '  步数: ' + this.moves, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
     
-    // 分数和步数
-    drawText(ctx, '分数: ' + this.score, 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'left' });
-    drawText(ctx, '步数: ' + this.moves, width - 50, safeTop + 130, { fontSize: 32, color: '#4b5563', align: 'right' });
+    // 底部按钮（返回在左边）
+    this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
     
     // 网格背景
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
-    drawRoundRect(ctx, this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 20, '#1e3a5f');
+    drawRoundRect(ctx, this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 16, '#1e3a5f');
     
     // 绘制宝石
     for (let r = 0; r < this.rows; r++) {
@@ -88,16 +95,13 @@ class Match3Game {
       }
     }
     
-    // 返回按钮
-    drawButton(ctx, width - 140, safeTop + 85, 120, 55, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
-    
     // 游戏结束
     if (this.moves <= 0 && !this.animating) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '游戏结束', width / 2, safeTop + 300, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, '得分: ' + this.score, width / 2, safeTop + 360, { fontSize: 32, color: '#fff' });
-      drawText(ctx, '点击返回', width / 2, safeTop + 420, { fontSize: 28, color: '#ccc' });
+      drawText(ctx, '游戏结束', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
+      drawText(ctx, '得分: ' + this.score, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
+      drawHint(ctx, this.designSize, '点击返回');
     }
   }
 
@@ -191,11 +195,19 @@ class Match3Game {
   }
 
   onTouchStart(pos) {
-    const { width, safeTop } = this.designSize;
-    
-    // 返回按钮
-    if (pos.x >= width - 140 && pos.x <= width - 20 && pos.y >= safeTop + 85 && pos.y <= safeTop + 140) {
+    // 检测按钮点击
+    const btn = checkBottomButtons(pos, this.buttons);
+    if (btn === 'backBtn') {
       this.onEnd(this.score);
+      return;
+    }
+    if (btn === 'shareBtn') {
+      // 分享功能
+      return;
+    }
+    if (btn === 'soundBtn') {
+      this.soundEnabled = !this.soundEnabled;
+      this.draw();
       return;
     }
     
@@ -228,7 +240,6 @@ class Match3Game {
   }
 
   onTouchMove(pos) {}
-
   onTouchEnd(pos) {}
 
   swap(r1, c1, r2, c2) {
