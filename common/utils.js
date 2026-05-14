@@ -552,10 +552,22 @@ export const RankData = {
   addRank(gameId, score, name = '玩家', sortType = 'desc') {
     if (!score || score <= 0) return;
     
-    // 获取用户信息
-    const userInfo = this.getUserInfo();
-    const nickname = userInfo?.nickName || name;
-    const avatar = userInfo?.avatarUrl || null;
+    // 获取用户设置的昵称和头像
+    let nickname = name;
+    let avatarIndex = 0;
+    let avatarColor = '#7c3aed';
+    
+    try {
+      const myProfile = wx.getStorageSync('myProfile');
+      if (myProfile) {
+        nickname = myProfile.nickname || name;
+        avatarIndex = myProfile.avatarIndex || 0;
+        avatarColor = myProfile.avatarColor || '#7c3aed';
+      }
+    } catch (e) {}
+    
+    // 头像使用颜色索引，服务器端会转换为颜色
+    const avatar = `color:${avatarIndex}`;
     
     // 本地存储
     const data = this.getRank(gameId, sortType);

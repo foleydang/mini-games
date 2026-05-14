@@ -38,10 +38,34 @@ class MainGame {
     this.animFrame = 0;
 
     this.avatarCache = {};  // 头像图片缓存
+    this.showingProfile = false;  // 显示个人设置页
+    this.myProfile = this.loadProfile();  // 用户个人设置
+    this.profileAvatars = [];  // 预设头像列表
+    this.selectedAvatarIndex = 0;
+    this.editingNickname = false;
     this.initCards();
     this.initParticles();
     this.bindEvents();
     this.startAnimation();
+  }
+
+
+  // 加载用户设置
+  loadProfile() {
+    try {
+      const saved = wx.getStorageSync('myProfile');
+      return saved || { nickname: '玩家', avatarIndex: 0, avatarColor: '#7c3aed' };
+    } catch (e) {
+      return { nickname: '玩家', avatarIndex: 0, avatarColor: '#7c3aed' };
+    }
+  }
+
+  // 保存用户设置
+  saveProfile(profile) {
+    this.myProfile = profile;
+    try {
+      wx.setStorageSync('myProfile', profile);
+    } catch (e) {}
   }
 
   initCards() {
@@ -109,7 +133,9 @@ class MainGame {
   bindEvents() {
     wx.onTouchStart((e) => {
       const pos = getTouchPos(e.touches[0], this.designSize);
-      if (this.showingSettings) {
+      if (this.showingProfile) {
+        this.handleProfileTouch(pos);
+      } else if (this.showingSettings) {
         this.handleSettingsTouch(pos);
       } else if (this.showingRank) {
         this.handleRankTouch(pos);
@@ -170,6 +196,18 @@ class MainGame {
   }
 
   handleHomeTouch(pos) {
+    // 检查"我的"按钮
+    if (this.myButton) {
+      const mb = this.myButton;
+      if (pos.x >= mb.x && pos.x <= mb.x + mb.width &&
+          pos.y >= mb.y && pos.y <= mb.y + mb.height) {
+        this.showingProfile = true;
+        this.currentGame = null;
+        this.renderProfile();
+        return;
+      }
+    }
+    
     // 检查设置按钮
     const btn = this.settingsBtn;
     if (pos.x >= btn.x && pos.x <= btn.x + btn.width &&
@@ -335,6 +373,134 @@ class MainGame {
     this.cards.forEach((card, index) => this.drawGameCard(card, index));
 
     drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, { fontSize: 22, color: '#c4b5fd' });
+    
+    // 底部"我的"按钮
+    const myBtnX = width / 2 - 60;
+    const myBtnY = height - safeBottom - 80;
+    drawButton(this.ctx, myBtnX, myBtnY, 120, 50, '👤 我的', '#8b5cf6', { fontSize: 24, radius: 14 });
+    this.myButton = { x: myBtnX, y: myBtnY, width: 120, height: 50 };
+  }
+
+
+  // 渲染个人设置页面
+  renderProfile() {
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    this.drawBg(width, height);
+    
+    // 标题
+    drawText(this.ctx, '个人设置', width / 2, safeTop + 50, { fontSize: 48, color: '#7c3aed', bold: true });
+    
+    // 返回按钮
+    drawButton(this.ctx, 30, safeTop + 110, 140, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
+    this.profileBackBtn = { x: 30, y: safeTop + 110, width: 140, height: 50 };
+    
+    // 当前头像显示
+    const avatarY = safeTop + 250;
+    drawText(this.ctx, '我的头像', width / 2, avatarY - 40, { fontSize: 28, color: '#6b7280' });
+    
+    // 绘制当前头像（大圆形）
+    const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
+    const avatarColor = avatarColors[this.myProfile.avatarIndex] || '#7c3aed';
+    
+    drawCircle(this.ctx, width / 2, avatarY + 30, 60, avatarColor);
+    drawText(this.ctx, this.myProfile.nickname.charAt(0) || '玩', width / 2, avatarY + 30, { fontSize: 48, color: '#fff', bold: true });
+    
+    // 昵称显示
+    const nicknameY = avatarY + 120;
+    drawText(this.ctx, '昵称:', width / 2 - 100, nicknameY, { fontSize: 28, color: '#6b7280', align: 'left' });
+    drawText(this.ctx, this.myProfile.nickname, width / 2 + 60, nicknameY, { fontSize: 32, color: '#1f2937', bold: true, align: 'left' });
+    
+    // 修改昵称按钮
+    drawButton(this.ctx, width / 2 - 80, nicknameY + 40, 160, 45, '修改昵称', '#8b5cf6', { fontSize: 24, radius: 12 });
+    this.editNicknameBtn = { x: width / 2 - 80, y: nicknameY + 40, width: 160, height: 45 };
+    
+    // 头像选择（颜色格子）
+    const colorsY = nicknameY + 120;
+    drawText(this.ctx, '选择头像颜色:', width / 2, colorsY - 30, { fontSize: 24, color: '#6b7280' });
+    
+    const colorBtnSize = 50;
+    const colorGap = 15;
+    const colorsStartX = (width - (colorBtnSize + colorGap) * 10 + colorGap) / 2;
+    
+    this.profileColorBtns = [];
+    avatarColors.forEach((color, i) => {
+      const x = colorsStartX + i * (colorBtnSize + colorGap);
+      const y = colorsY;
+      drawCircle(this.ctx, x + colorBtnSize / 2, y + colorBtnSize / 2, colorBtnSize / 2 - 3, color);
+      
+      // 选中标记
+      if (i === this.myProfile.avatarIndex) {
+        this.ctx.strokeStyle = '#fff';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(x + colorBtnSize / 2, y + colorBtnSize / 2, colorBtnSize / 2 + 2, 0, Math.PI * 2);
+        this.ctx.stroke();
+      }
+      
+      this.profileColorBtns.push({ x, y, width: colorBtnSize, height: colorBtnSize, index: i });
+    });
+    
+    // 提示
+    drawText(this.ctx, '排行榜会显示你的昵称和头像', width / 2, height - safeBottom - 50, { fontSize: 22, color: '#a78bfa' });
+  }
+  
+  // 处理个人设置页面触摸
+  handleProfileTouch(pos) {
+    const { safeTop, width, height, safeBottom } = this.designSize;
+    
+    // 返回按钮
+    if (this.profileBackBtn && 
+        pos.x >= this.profileBackBtn.x && pos.x <= this.profileBackBtn.x + this.profileBackBtn.width &&
+        pos.y >= this.profileBackBtn.y && pos.y <= this.profileBackBtn.y + this.profileBackBtn.height) {
+      this.showingProfile = false;
+      this.startAnimation();
+      return;
+    }
+    
+    // 修改昵称按钮
+    if (this.editNicknameBtn &&
+        pos.x >= this.editNicknameBtn.x && pos.x <= this.editNicknameBtn.x + this.editNicknameBtn.width &&
+        pos.y >= this.editNicknameBtn.y && pos.y <= this.editNicknameBtn.y + this.editNicknameBtn.height) {
+      // 使用微信键盘输入昵称
+      wx.showKeyboard({
+        defaultValue: this.myProfile.nickname,
+        maxLength: 10,
+        multiple: false,
+        confirmHold: false,
+        confirmType: 'done'
+      });
+      
+      wx.onKeyboardInput((res) => {
+        this.myProfile.nickname = res.value || '玩家';
+      });
+      
+      wx.onKeyboardConfirm((res) => {
+        this.saveProfile(this.myProfile);
+        this.renderProfile();
+        wx.offKeyboardInput();
+        wx.offKeyboardConfirm();
+      });
+      
+      wx.onKeyboardComplete(() => {
+        wx.offKeyboardInput();
+        wx.offKeyboardConfirm();
+        wx.offKeyboardComplete();
+      });
+      return;
+    }
+    
+    // 头像颜色选择
+    if (this.profileColorBtns) {
+      for (const btn of this.profileColorBtns) {
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.width &&
+            pos.y >= btn.y && pos.y <= btn.y + btn.height) {
+          this.myProfile.avatarIndex = btn.index;
+          this.saveProfile(this.myProfile);
+          this.renderProfile();
+          return;
+        }
+      }
+    }
   }
 
   renderSettings() {
@@ -394,11 +560,22 @@ class MainGame {
         // 排名
         drawText(this.ctx, `${index + 1}`, 70, y + 30, { fontSize: 28, color: rankColor, bold: true });
         
-        // 头像（圆形）
+        // 头像（颜色圆形）
         const avatarX = 120;
         const avatarY = y + 30;
         const avatarRadius = 20;
-        drawAvatar(this.ctx, avatarX, avatarY, avatarRadius, item.avatar);
+        
+        // 解析头像颜色
+        const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
+        let avatarColor = '#7c3aed';
+        if (item.avatar && item.avatar.startsWith('color:')) {
+          const idx = parseInt(item.avatar.split(':')[1]) || 0;
+          avatarColor = avatarColors[idx] || avatarColor;
+        }
+        
+        drawCircle(this.ctx, avatarX, avatarY, avatarRadius, avatarColor);
+        // 显示昵称首字
+        drawText(this.ctx, (item.nickname || '玩家').charAt(0), avatarX, avatarY, { fontSize: 24, color: '#fff', bold: true });
         
         // 昵称
         const nickname = item.nickname || item.name || '玩家';
