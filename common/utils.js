@@ -514,58 +514,36 @@ export function shareGame(gameName, score) {
 }
 
 
-// 排行榜 - 支持云开发
-let db = null;
-let cloudEnabled = false;
-
-// 初始化云开发（自动调用）
-function initCloudDB() {
-  if (cloudEnabled || !wx.cloud) return;
-  try {
-    wx.cloud.init({ traceUser: true });
-    db = wx.cloud.database();
-    cloudEnabled = true;
-    console.log('云排行榜初始化成功');
-  } catch (e) {
-    console.log('云开发不可用，使用本地排行榜');
-  }
-}
-
-// 集合名称
-const COLLECTION = 'ranks';
+// 排行榜 - 使用服务器API
+const API_BASE = 'https://api.yanten.top/api/games';
 
 export const RankData = {
-  // 同步获取排行榜（用于显示，先返回本地数据）
+  // 同步获取排行榜（本地缓存）
   getRank(gameId, sortType = 'desc') {
-    initCloudDB();
     const data = Storage.load('rank_' + gameId) || [];
     const filtered = data.filter(item => item.score > 0);
     return filtered.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score);
   },
   
-  // 异步从云端获取排行榜并更新本地缓存
+  // 异步从服务器获取排行榜
   async getRankFromCloud(gameId, sortType = 'desc') {
-    initCloudDB();
-    if (!cloudEnabled || !db) return null;
-    
     try {
-      const res = await db.collection(COLLECTION)
-        .where({ gameId: gameId })
-        .orderBy('score', sortType === 'asc' ? 'asc' : 'desc')
-        .limit(10)
-        .get();
+      const res = await new Promise((resolve, reject) => {
+        wx.request({
+          url: `${API_BASE}/rank/${gameId}`,
+          method: 'GET',
+          data: { sort: sortType, limit: 10 },
+          success: resolve,
+          fail: reject
+        });
+      });
       
-      if (res.data && res.data.length > 0) {
-        const localData = res.data.map(item => ({
-          score: item.score,
-          name: item.name || '玩家',
-          date: item.date
-        }));
-        Storage.save('rank_' + gameId, localData);
-        return localData;
+      if (res.data && res.data.success && res.data.data) {
+        Storage.save('rank_' + gameId, res.data.data);
+        return res.data.data;
       }
     } catch (e) {
-      console.log('云端获取失败:', e);
+      console.log('服务器获取排行榜失败:', e);
     }
     return null;
   },
@@ -580,20 +558,15 @@ export const RankData = {
     const top10 = data.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score).slice(0, 10);
     Storage.save('rank_' + gameId, top10);
     
-    // 异步写入云端
-    initCloudDB();
-    if (cloudEnabled && db) {
-      db.collection(COLLECTION).add({
-        data: {
-          gameId: gameId,
-          score: score,
-          name: name,
-          date: new Date().toLocaleDateString('zh-CN'),
-          createTime: db.serverDate()
-        }
-      }).then(() => console.log('云排行榜同步成功'))
-        .catch(e => console.log('云排行榜同步失败:', e));
-    }
+    // 异步提交到服务器
+    wx.request({
+      url: `${API_BASE}/rank/${gameId}`,
+      method: 'POST',
+      data: { score, nickname: name },
+      header: { 'content-type': 'application/json' },
+      success: (res) => console.log('排行榜提交成功'),
+      fail: (e) => console.log('排行榜提交失败:', e)
+    });
   },
   
   save(gameId, score) {
@@ -619,43 +592,3 @@ export const drawCard = (ctx, x, y, w, h, borderColor, opts = {}) => {
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 };
-// 游戏设置管理
-export const GameSettings = {
-  defaults: {
-    soundEnabled: true,     // 音效开关
-    musicEnabled: true,     // 背景音乐开关
-    vibrationEnabled: true  // 振动反馈开关
-  },
-  get() {
-    const saved = Storage.load('gameSettings');
-    return saved ? { ...this.defaults, ...saved } : this.defaults;
-  },
-  save(settings) {
-    Storage.save('gameSettings', settings);
-  },
-  toggle(key) {
-    const settings = this.get();
-    settings[key] = !settings[key];
-    this.save(settings);
-    return settings;
-  }
-};
-
-// 绘制开关按钮
-export function drawToggle(ctx, x, y, width, height, isOn, label) {
-  const bgColor = isOn ? '#10b981' : '#d1d5db';
-  
-  // 背景条
-  drawRoundRect(ctx, x, y, width, height, height / 2, bgColor);
-  
-  // 滑块圆点
-  const dotRadius = height / 2 - 4;
-  const dotX = isOn ? x + width - dotRadius - 4 : x + dotRadius + 4;
-  ctx.beginPath();
-  ctx.arc(dotX, y + height / 2, dotRadius, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-  
-  // 标签文字（在开关左侧）
-  drawText(ctx, label, x - 20, y + height / 2, { fontSize: 28, color: Colors.text, align: 'right' });
-}
