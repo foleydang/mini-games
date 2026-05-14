@@ -499,7 +499,6 @@ export function getTouchPos(touch, designSize) {
   const x = Math.floor(touch.clientX * ratio);
   const y = Math.floor(touch.clientY * ratio);
   
-  console.log('坐标转换:', 'clientY=', touch.clientY, 'ratio=', ratio, '转换后y=', y);
   
   return { x, y };
 }
