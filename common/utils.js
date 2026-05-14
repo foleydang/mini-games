@@ -592,3 +592,37 @@ export const drawCard = (ctx, x, y, w, h, borderColor, opts = {}) => {
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 };
+// 游戏设置管理
+export const GameSettings = {
+  defaults: {
+    soundEnabled: true,
+    musicEnabled: true,
+    vibrationEnabled: true
+  },
+  get() {
+    const saved = Storage.load('gameSettings');
+    return saved ? { ...this.defaults, ...saved } : this.defaults;
+  },
+  save(settings) {
+    Storage.save('gameSettings', settings);
+  },
+  toggle(key) {
+    const settings = this.get();
+    settings[key] = !settings[key];
+    this.save(settings);
+    return settings;
+  }
+};
+
+// 绘制开关按钮
+export function drawToggle(ctx, x, y, width, height, isOn, label) {
+  const bgColor = isOn ? '#10b981' : '#d1d5db';
+  drawRoundRect(ctx, x, y, width, height, height / 2, bgColor);
+  const dotRadius = height / 2 - 4;
+  const dotX = isOn ? x + width - dotRadius - 4 : x + dotRadius + 4;
+  ctx.beginPath();
+  ctx.arc(dotX, y + height / 2, dotRadius, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  drawText(ctx, label, x - 20, y + height / 2, { fontSize: 28, color: Colors.text, align: 'right' });
+}
