@@ -267,8 +267,16 @@ class MainGame {
     this.currentRankGame = gameId;
     this.rankTheme = theme;
     const sortType = gameId === 'memory' ? 'asc' : 'desc';
+    // 先显示本地数据
     this.rankData = RankData.getRank(gameId, sortType);
     this.renderRank(gameName);
+    // 异步从云端获取最新数据
+    RankData.getRankFromCloud(gameId, sortType).then(data => {
+      if (data && data.length > 0) {
+        this.rankData = data;
+        this.renderRank(gameName);
+      }
+    });
   }
 
   drawBg(width, height) {

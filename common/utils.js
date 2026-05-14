@@ -513,31 +513,97 @@ export function shareGame(gameName, score) {
   });
 }
 
-// 排行榜
+
+// 排行榜 - 支持云开发
+let db = null;
+let cloudEnabled = false;
+
+// 初始化云开发（自动调用）
+function initCloudDB() {
+  if (cloudEnabled || !wx.cloud) return;
+  try {
+    wx.cloud.init({ traceUser: true });
+    db = wx.cloud.database();
+    cloudEnabled = true;
+    console.log('云排行榜初始化成功');
+  } catch (e) {
+    console.log('云开发不可用，使用本地排行榜');
+  }
+}
+
+// 集合名称
+const COLLECTION = 'ranks';
+
 export const RankData = {
-  // 排序类型: 'desc' = 分数高的在前, 'asc' = 分数少的在前
+  // 同步获取排行榜（用于显示，先返回本地数据）
   getRank(gameId, sortType = 'desc') {
+    initCloudDB();
     const data = Storage.load('rank_' + gameId) || [];
-    // 不再过滤旧数据，让用户手动清除
     const filtered = data.filter(item => item.score > 0);
     return filtered.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score);
   },
+  
+  // 异步从云端获取排行榜并更新本地缓存
+  async getRankFromCloud(gameId, sortType = 'desc') {
+    initCloudDB();
+    if (!cloudEnabled || !db) return null;
+    
+    try {
+      const res = await db.collection(COLLECTION)
+        .where({ gameId: gameId })
+        .orderBy('score', sortType === 'asc' ? 'asc' : 'desc')
+        .limit(10)
+        .get();
+      
+      if (res.data && res.data.length > 0) {
+        const localData = res.data.map(item => ({
+          score: item.score,
+          name: item.name || '玩家',
+          date: item.date
+        }));
+        Storage.save('rank_' + gameId, localData);
+        return localData;
+      }
+    } catch (e) {
+      console.log('云端获取失败:', e);
+    }
+    return null;
+  },
+  
+  // 添加排行榜记录
   addRank(gameId, score, name = '玩家', sortType = 'desc') {
-    // 0 分不进入排行榜
     if (!score || score <= 0) return;
+    
+    // 本地存储
     const data = this.getRank(gameId, sortType);
     data.push({ score, name, date: new Date().toLocaleDateString("zh-CN") });
     const top10 = data.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score).slice(0, 10);
     Storage.save('rank_' + gameId, top10);
+    
+    // 异步写入云端
+    initCloudDB();
+    if (cloudEnabled && db) {
+      db.collection(COLLECTION).add({
+        data: {
+          gameId: gameId,
+          score: score,
+          name: name,
+          date: new Date().toLocaleDateString('zh-CN'),
+          createTime: db.serverDate()
+        }
+      }).then(() => console.log('云排行榜同步成功'))
+        .catch(e => console.log('云排行榜同步失败:', e));
+    }
   },
+  
   save(gameId, score) {
     this.addRank(gameId, score, '玩家');
   },
+  
   clearRank(gameId) {
     Storage.remove('rank_' + gameId);
   }
 };
-
 // 兼容旧函数名
 export const drawNeonRoundRect = drawRoundRect;
 export const drawNeonButton = drawButton;
