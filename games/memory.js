@@ -147,7 +147,7 @@ export default class MemoryGame {
     // 检测按钮点击
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
-      this.onEnd(this.moves);
+      this.onEnd(1000 - this.moves);
       return;
     }
     if (btn === 'shareBtn') {
@@ -160,7 +160,7 @@ export default class MemoryGame {
     }
     
     if (this.gameOver) {
-      this.onEnd(this.moves);
+      this.onEnd(1000 - this.moves);
       return;
     }
     

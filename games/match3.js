@@ -1,4 +1,4 @@
-// 消消乐游戏
+// 消消乐游戏 - 带动画效果
 import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
@@ -10,7 +10,7 @@ class Match3Game {
     this.onEnd = onEnd;
     this.gameId = 'match3';
     
-    // 更大的棋盘
+    // 棋盘配置
     this.rows = 10;
     this.cols = 7;
     this.grid = [];
@@ -20,6 +20,11 @@ class Match3Game {
     this.cellSize = 85;
     this.animating = false;
     this.gameOver = false;
+    
+    // 动画状态
+    this.swapAnim = null;     // 交换动画
+    this.removeAnim = null;   // 消除动画
+    this.fallAnim = null;     // 下落动画
     
     // 按钮配置
     this.backButton = getBackButton(designSize);
@@ -43,7 +48,7 @@ class Match3Game {
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
     this.gridStartX = (this.designSize.width - gridWidth) / 2;
-    this.gridStartY = this.backButton.y + 80; // 按钮下方
+    this.gridStartY = this.backButton.y + 80;
     
     this.initGrid();
     this.draw();
@@ -80,7 +85,7 @@ class Match3Game {
     drawText(ctx, '消消乐', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
     drawText(ctx, '分数: ' + this.score + '  步数: ' + this.moves, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
     
-    // 底部按钮（返回在左边）
+    // 底部按钮
     this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
     
     // 网格背景
@@ -88,12 +93,8 @@ class Match3Game {
     const gridHeight = this.rows * this.cellSize;
     drawRoundRect(ctx, this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 16, '#1e3a5f');
     
-    // 绘制宝石
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        if (this.grid[r][c] >= 0) this.drawGem(r, c, this.grid[r][c]);
-      }
-    }
+    // 绘制宝石（考虑动画状态）
+    this.drawGemsWithAnimation();
     
     // 游戏结束
     if (this.moves <= 0 && !this.animating) {
@@ -105,17 +106,84 @@ class Match3Game {
     }
   }
 
-  drawGem(row, col, type) {
+  drawGemsWithAnimation() {
+    const ctx = this.ctx;
+    
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        const type = this.grid[r][c];
+        if (type < 0) continue;
+        
+        // 计算宝石位置（考虑动画）
+        let x = this.gridStartX + c * this.cellSize + this.cellSize / 2;
+        let y = this.gridStartY + r * this.cellSize + this.cellSize / 2;
+        let alpha = 1;
+        let scale = 1;
+        
+        // 交换动画：移动两个宝石
+        if (this.swapAnim) {
+          const { gem1, gem2, progress } = this.swapAnim;
+          if (gem1.row === r && gem1.col === c) {
+            // gem1 移向 gem2 位置
+            x = this.lerp(x, this.gridStartX + gem2.col * this.cellSize + this.cellSize / 2, progress);
+            y = this.lerp(y, this.gridStartY + gem2.row * this.cellSize + this.cellSize / 2, progress);
+          } else if (gem2.row === r && gem2.col === c) {
+            // gem2 移向 gem1 位置
+            x = this.lerp(x, this.gridStartX + gem1.col * this.cellSize + this.cellSize / 2, progress);
+            y = this.lerp(y, this.gridStartY + gem1.row * this.cellSize + this.cellSize / 2, progress);
+          }
+        }
+        
+        // 消除动画：闪烁并缩小消失
+        if (this.removeAnim) {
+          const gem = this.removeAnim.gems.find(g => g.row === r && g.col === c);
+          if (gem) {
+            alpha = 1 - this.removeAnim.progress;
+            scale = 1 - this.removeAnim.progress * 0.5;
+            // 闪烁效果
+            if (this.removeAnim.progress < 0.5) {
+              alpha = this.removeAnim.progress < 0.25 ? 1 : 0.5;
+            }
+          }
+        }
+        
+        // 下落动画
+        if (this.fallAnim) {
+          const gem = this.fallAnim.gems.find(g => g.row === r && g.col === c);
+          if (gem) {
+            const startY = this.gridStartY + gem.fromRow * this.cellSize + this.cellSize / 2;
+            y = this.lerp(startY, y, this.fallAnim.progress);
+          }
+        }
+        
+        this.drawGemAt(x, y, type, alpha, scale);
+      }
+    }
+    
+    // 绘制选中高亮（动画中不显示）
+    if (this.selected && !this.animating) {
+      const x = this.gridStartX + this.selected.col * this.cellSize + this.cellSize / 2;
+      const y = this.gridStartY + this.selected.row * this.cellSize + this.cellSize / 2;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x, y, this.cellSize * 0.38 + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  drawGemAt(x, y, type, alpha = 1, scale = 1) {
     const ctx = this.ctx;
     const gem = this.gemTypes[type];
-    const x = this.gridStartX + col * this.cellSize + this.cellSize / 2;
-    const y = this.gridStartY + row * this.cellSize + this.cellSize / 2;
-    const size = this.cellSize * 0.38;
+    const size = this.cellSize * 0.38 * scale;
     
-    const isSelected = this.selected && this.selected.row === row && this.selected.col === col;
-    
-    ctx.shadowColor = isSelected ? '#fff' : gem.color;
-    ctx.shadowBlur = isSelected ? 15 : 10;
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = gem.color;
+    ctx.shadowBlur = 10;
     ctx.fillStyle = gem.color;
     ctx.beginPath();
     
@@ -149,16 +217,8 @@ class Match3Game {
         break;
     }
     
-    if (isSelected) {
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(x, y, size + 5, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 
   drawStar(ctx, cx, cy, size, points) {
@@ -195,14 +255,9 @@ class Match3Game {
   }
 
   onTouchStart(pos) {
-    // 检测按钮点击
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
       this.onEnd(this.score);
-      return;
-    }
-    if (btn === 'shareBtn') {
-      // 分享功能
       return;
     }
     if (btn === 'soundBtn') {
@@ -231,7 +286,7 @@ class Match3Game {
       const dc = Math.abs(col - this.selected.col);
       
       if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-        this.swap(this.selected.row, this.selected.col, row, col);
+        this.startSwapAnimation(this.selected.row, this.selected.col, row, col);
       } else {
         this.selected = { row, col };
         this.draw();
@@ -242,19 +297,172 @@ class Match3Game {
   onTouchMove(pos) {}
   onTouchEnd(pos) {}
 
-  swap(r1, c1, r2, c2) {
+  // 启动交换动画
+  startSwapAnimation(r1, c1, r2, c2) {
+    this.animating = true;
+    this.swapAnim = {
+      gem1: { row: r1, col: c1, type: this.grid[r1][c1] },
+      gem2: { row: r2, col: c2, type: this.grid[r2][c2] },
+      progress: 0,
+      r1, c1, r2, c2
+    };
+    this.selected = null;
+    this.animateSwap();
+  }
+
+  animateSwap() {
+    if (!this.swapAnim) return;
+    
+    this.swapAnim.progress += 0.1;
+    this.draw();
+    
+    if (this.swapAnim.progress < 1) {
+      setTimeout(() => this.animateSwap(), 30);
+    } else {
+      // 交换完成
+      const { r1, c1, r2, c2 } = this.swapAnim;
+      const temp = this.grid[r1][c1];
+      this.grid[r1][c1] = this.grid[r2][c2];
+      this.grid[r2][c2] = temp;
+      this.swapAnim = null;
+      
+      // 检查是否有匹配
+      const matches = this.findMatches();
+      if (matches.length > 0) {
+        this.moves--;
+        this.startRemoveAnimation(matches);
+      } else {
+        // 无效交换，换回去
+        this.startSwapBackAnimation(r1, c1, r2, c2);
+      }
+    }
+  }
+
+  // 无效交换，换回去
+  startSwapBackAnimation(r1, c1, r2, c2) {
+    this.swapAnim = {
+      gem1: { row: r1, col: c1 },
+      gem2: { row: r2, col: c2 },
+      progress: 0,
+      r1, c1, r2, c2
+    };
+    // 先交换数据
     const temp = this.grid[r1][c1];
     this.grid[r1][c1] = this.grid[r2][c2];
     this.grid[r2][c2] = temp;
-    this.selected = null;
     
-    const matches = this.findMatches();
-    if (matches.length > 0) {
-      this.moves--;
-      this.removeMatches(matches);
+    this.animateSwapBack();
+  }
+
+  animateSwapBack() {
+    if (!this.swapAnim) return;
+    
+    this.swapAnim.progress += 0.1;
+    this.draw();
+    
+    if (this.swapAnim.progress < 1) {
+      setTimeout(() => this.animateSwapBack(), 30);
     } else {
-      this.grid[r2][c2] = this.grid[r1][c1];
-      this.grid[r1][c1] = temp;
+      this.swapAnim = null;
+      this.animating = false;
+      this.draw();
+    }
+  }
+
+  // 启动消除动画
+  startRemoveAnimation(matches) {
+    this.animating = true;
+    this.score += matches.length * 10;
+    
+    this.removeAnim = {
+      gems: matches,
+      progress: 0
+    };
+    this.animateRemove();
+  }
+
+  animateRemove() {
+    if (!this.removeAnim) return;
+    
+    this.removeAnim.progress += 0.08;
+    this.draw();
+    
+    if (this.removeAnim.progress < 1) {
+      setTimeout(() => this.animateRemove(), 30);
+    } else {
+      // 消除完成
+      const matches = this.removeAnim.gems;
+      for (const m of matches) this.grid[m.row][m.col] = -1;
+      this.removeAnim = null;
+      
+      // 启动下落动画
+      this.startFallAnimation();
+    }
+  }
+
+  // 启动下落动画
+  startFallAnimation() {
+    // 记录需要下落的宝石
+    const fallingGems = [];
+    
+    for (let c = 0; c < this.cols; c++) {
+      let emptyRow = this.rows - 1;
+      const colGems = [];
+      
+      for (let r = this.rows - 1; r >= 0; r--) {
+        if (this.grid[r][c] >= 0) {
+          if (r !== emptyRow) {
+            colGems.push({ fromRow: r, toRow: emptyRow, col: c });
+            this.grid[emptyRow][c] = this.grid[r][c];
+            this.grid[r][c] = -1;
+          }
+          emptyRow--;
+        }
+      }
+      
+      // 新生成的宝石从顶部下落
+      for (let r = emptyRow; r >= 0; r--) {
+        const newType = Math.floor(Math.random() * this.gemTypes.length);
+        this.grid[r][c] = newType;
+        colGems.push({ fromRow: -1 - (emptyRow - r), toRow: r, col: c });
+      }
+      
+      fallingGems.push(...colGems);
+    }
+    
+    if (fallingGems.length === 0) {
+      this.animating = false;
+      this.checkNewMatches();
+      return;
+    }
+    
+    this.fallAnim = {
+      gems: fallingGems,
+      progress: 0
+    };
+    this.animateFall();
+  }
+
+  animateFall() {
+    if (!this.fallAnim) return;
+    
+    this.fallAnim.progress += 0.12;
+    this.draw();
+    
+    if (this.fallAnim.progress < 1) {
+      setTimeout(() => this.animateFall(), 30);
+    } else {
+      this.fallAnim = null;
+      this.animating = false;
+      this.checkNewMatches();
+    }
+  }
+
+  checkNewMatches() {
+    const newMatches = this.findMatches();
+    if (newMatches.length > 0) {
+      this.startRemoveAnimation(newMatches);
+    } else {
       this.draw();
     }
   }
@@ -276,40 +484,6 @@ class Match3Game {
       }
     }
     return matches;
-  }
-
-  removeMatches(matches) {
-    this.animating = true;
-    this.score += matches.length * 10;
-    
-    for (const m of matches) this.grid[m.row][m.col] = -1;
-    this.draw();
-    
-    setTimeout(() => {
-      this.fillGrid();
-      this.animating = false;
-      const newMatches = this.findMatches();
-      if (newMatches.length > 0) this.removeMatches(newMatches);
-      else this.draw();
-    }, 300);
-  }
-
-  fillGrid() {
-    for (let c = 0; c < this.cols; c++) {
-      let emptyRow = this.rows - 1;
-      for (let r = this.rows - 1; r >= 0; r--) {
-        if (this.grid[r][c] >= 0) {
-          if (r !== emptyRow) {
-            this.grid[emptyRow][c] = this.grid[r][c];
-            this.grid[r][c] = -1;
-          }
-          emptyRow--;
-        }
-      }
-      for (let r = emptyRow; r >= 0; r--) {
-        this.grid[r][c] = Math.floor(Math.random() * this.gemTypes.length);
-      }
-    }
   }
 }
 

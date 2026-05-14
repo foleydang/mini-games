@@ -520,6 +520,8 @@ export const RankData = {
     return data.sort((a, b) => b.score - a.score);
   },
   addRank(gameId, score, name = '玩家') {
+    // 0 分不进入排行榜
+    if (!score || score <= 0) return;
     const data = this.getRank(gameId);
     data.push({ score, name, date: new Date().toLocaleDateString("zh-CN") });
     const top10 = data.sort((a, b) => b.score - a.score).slice(0, 10);
