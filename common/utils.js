@@ -641,7 +641,7 @@ export const RankData = {
         score, 
         nickname: nickname,
         avatar: avatar,
-        openid: userInfo?.openid || null
+        openid: getOpenId()
       },
       header: { 'content-type': 'application/json' },
       success: (res) => console.log('排行榜提交成功'),
