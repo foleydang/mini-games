@@ -408,11 +408,11 @@ renderProfile() {
     const nickname = this.myProfile.nickname || '玩家';
     
     // ===== 头像区域 =====
-    const avatarStartY = safeTop + 180;
+    const avatarStartY = safeTop + 200;
     
     // 头像大圆圈
     const avatarX = width / 2;
-    const avatarY = avatarStartY + 50;
+    const avatarY = avatarStartY;
     const avatarRadius = 55;
     
     drawCircle(this.ctx, avatarX, avatarY, avatarRadius, avatarColor);
@@ -420,21 +420,21 @@ renderProfile() {
     drawText(this.ctx, nickname.charAt(0), avatarX, avatarY, { fontSize: 44, color: '#fff', bold: true });
     
     // 昵称（头像下方）
-    drawText(this.ctx, nickname, width / 2, avatarY + 70, { fontSize: 32, color: '#1f2937', bold: true });
+    drawText(this.ctx, nickname, width / 2, avatarY + 85, { fontSize: 32, color: '#1f2937', bold: true });
     
     // ===== 修改昵称按钮 =====
-    const btnY = avatarY + 100;
+    const btnY = avatarY + 140;
     drawButton(this.ctx, width / 2 - 100, btnY, 200, 50, '修改昵称', '#8b5cf6', { fontSize: 26, radius: 14 });
     this.editNicknameBtn = { x: width / 2 - 100, y: btnY, width: 200, height: 50 };
     
     // ===== 头像颜色选择 =====
-    const colorStartY = btnY + 80;
+    const colorStartY = btnY + 100;
     drawText(this.ctx, '选择头像颜色', width / 2, colorStartY, { fontSize: 24, color: '#6b7280' });
     
     // 颜色按钮分两行
     const colorBtnSize = 55;
-    const colorGap = 20;
-    const rowGap = 25;
+    const colorGap = 30;
+    const rowGap = 35;
     const colorsPerRow = 5;
     const rowWidth = colorBtnSize * colorsPerRow + colorGap * (colorsPerRow - 1);
     const rowStartX = (width - rowWidth) / 2;
