@@ -421,9 +421,9 @@ renderProfile() {
     drawCircle(this.ctx, width / 2, avatarCenterY, 45, avatarColor);
     drawText(this.ctx, this.myProfile.nickname.charAt(0) || '玩', width / 2, avatarCenterY, { fontSize: 36, color: '#fff', bold: true });
     
-    // 昵称卡片区域
+    // 昵称卡片区域（高度增加）
     const nickCardY = cardY + 200;
-    drawRoundRect(this.ctx, 50, nickCardY, width - 100, 100, 16, '#ffffff', '#e0e0e0', 2);
+    drawRoundRect(this.ctx, 50, nickCardY, width - 100, 130, 16, '#ffffff', '#e0e0e0', 2);
     
     // 昵称标题
     drawText(this.ctx, '昵称', width / 2, nickCardY + 20, { fontSize: 24, color: '#6b7280' });
@@ -431,12 +431,12 @@ renderProfile() {
     // 当前昵称（居中显示）
     drawText(this.ctx, this.myProfile.nickname, width / 2, nickCardY + 55, { fontSize: 28, color: '#1f2937', bold: true });
     
-    // 修改昵称按钮（居中）
-    drawButton(this.ctx, width / 2 - 70, nickCardY + 75, 140, 35, '修改昵称', '#8b5cf6', { fontSize: 20, radius: 10 });
-    this.editNicknameBtn = { x: width / 2 - 70, y: nickCardY + 75, width: 140, height: 35 };
+    // 修改昵称按钮（居中，更大）
+    drawButton(this.ctx, width / 2 - 100, nickCardY + 70, 200, 45, '修改昵称', '#8b5cf6', { fontSize: 24, radius: 12 });
+    this.editNicknameBtn = { x: width / 2 - 100, y: nickCardY + 70, width: 200, height: 45 };
     
-    // 头像颜色选择标题
-    const colorsY = nickCardY + 130;
+    // 头像颜色选择标题（位置调整）
+    const colorsY = nickCardY + 160;
     drawText(this.ctx, '选择头像颜色', width / 2, colorsY, { fontSize: 24, color: '#6b7280' });
     
     // 颜色按钮（分两行，每行5个）
@@ -502,7 +502,9 @@ renderProfile() {
       });
       
       wx.onKeyboardConfirm((res) => {
+        this.myProfile.nickname = res.value || '玩家';
         this.saveProfile(this.myProfile);
+        wx.hideKeyboard();  // 关闭键盘
         this.renderProfile();
         wx.offKeyboardInput();
         wx.offKeyboardConfirm();
