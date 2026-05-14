@@ -390,59 +390,51 @@ class MainGame {
 
     drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, { fontSize: 22, color: '#c4b5fd' });
   }
-
-
-  // 渲染个人设置页面
 renderProfile() {
     const { width, height, safeTop, safeBottom } = this.designSize;
     console.log('renderProfile 被调用');
     this.ctx.clearRect(0, 0, width, height);
     this.drawBg(width, height);
     
-    // 标题居中
+    // 标题
     drawText(this.ctx, '个人设置', width / 2, safeTop + 50, { fontSize: 48, color: '#7c3aed', bold: true });
     
-    // 返回按钮左上角
+    // 返回按钮
     drawButton(this.ctx, 30, safeTop + 110, 120, 45, '← 返回', '#dc2626', { fontSize: 28, radius: 12 });
     this.profileBackBtn = { x: 30, y: safeTop + 110, width: 120, height: 45 };
     
-    // 头像卡片区域
-    const cardY = safeTop + 180;
-    drawRoundRect(this.ctx, 50, cardY, width - 100, 180, 16, '#ffffff', '#e0e0e0', 2);
-    
-    // 头像标题
-    drawText(this.ctx, '头像', width / 2, cardY + 25, { fontSize: 24, color: '#6b7280' });
-    
-    // 绘制当前头像（居中大圆形）
     const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
     const avatarColor = avatarColors[this.myProfile.avatarIndex] || '#7c3aed';
-    const avatarCenterY = cardY + 100;
+    const nickname = this.myProfile.nickname || '玩家';
     
-    drawCircle(this.ctx, width / 2, avatarCenterY, 45, avatarColor);
-    drawText(this.ctx, this.myProfile.nickname.charAt(0) || '玩', width / 2, avatarCenterY, { fontSize: 36, color: '#fff', bold: true });
+    // ===== 头像区域 =====
+    const avatarStartY = safeTop + 180;
     
-    // 昵称卡片区域（高度增加）
-    const nickCardY = cardY + 200;
-    drawRoundRect(this.ctx, 50, nickCardY, width - 100, 130, 16, '#ffffff', '#e0e0e0', 2);
+    // 头像大圆圈
+    const avatarX = width / 2;
+    const avatarY = avatarStartY + 50;
+    const avatarRadius = 55;
     
-    // 昵称标题
-    drawText(this.ctx, '昵称', width / 2, nickCardY + 20, { fontSize: 24, color: '#6b7280' });
+    drawCircle(this.ctx, avatarX, avatarY, avatarRadius, avatarColor);
+    // 昵称首字
+    drawText(this.ctx, nickname.charAt(0), avatarX, avatarY, { fontSize: 44, color: '#fff', bold: true });
     
-    // 当前昵称（居中显示）
-    drawText(this.ctx, this.myProfile.nickname, width / 2, nickCardY + 55, { fontSize: 28, color: '#1f2937', bold: true });
+    // 昵称（头像下方）
+    drawText(this.ctx, nickname, width / 2, avatarY + 70, { fontSize: 32, color: '#1f2937', bold: true });
     
-    // 修改昵称按钮（居中，更大）
-    drawButton(this.ctx, width / 2 - 100, nickCardY + 70, 200, 45, '修改昵称', '#8b5cf6', { fontSize: 24, radius: 12 });
-    this.editNicknameBtn = { x: width / 2 - 100, y: nickCardY + 70, width: 200, height: 45 };
+    // ===== 修改昵称按钮 =====
+    const btnY = avatarY + 100;
+    drawButton(this.ctx, width / 2 - 100, btnY, 200, 50, '修改昵称', '#8b5cf6', { fontSize: 26, radius: 14 });
+    this.editNicknameBtn = { x: width / 2 - 100, y: btnY, width: 200, height: 50 };
     
-    // 头像颜色选择标题（位置调整）
-    const colorsY = nickCardY + 160;
-    drawText(this.ctx, '选择头像颜色', width / 2, colorsY, { fontSize: 24, color: '#6b7280' });
+    // ===== 头像颜色选择 =====
+    const colorStartY = btnY + 80;
+    drawText(this.ctx, '选择头像颜色', width / 2, colorStartY, { fontSize: 24, color: '#6b7280' });
     
-    // 颜色按钮（分两行，每行5个）
-    const colorBtnSize = 50;
-    const colorGap = 18;
-    const rowGap = 20;
+    // 颜色按钮分两行
+    const colorBtnSize = 55;
+    const colorGap = 20;
+    const rowGap = 25;
     const colorsPerRow = 5;
     const rowWidth = colorBtnSize * colorsPerRow + colorGap * (colorsPerRow - 1);
     const rowStartX = (width - rowWidth) / 2;
@@ -452,16 +444,16 @@ renderProfile() {
       const row = Math.floor(i / colorsPerRow);
       const col = i % colorsPerRow;
       const x = rowStartX + col * (colorBtnSize + colorGap);
-      const y = colorsY + 25 + row * (colorBtnSize + rowGap);
+      const y = colorStartY + 35 + row * (colorBtnSize + rowGap);
       
-      drawCircle(this.ctx, x + colorBtnSize / 2, y + colorBtnSize / 2, colorBtnSize / 2 - 2, color);
+      drawCircle(this.ctx, x + colorBtnSize / 2, y + colorBtnSize / 2, colorBtnSize / 2 - 3, color);
       
-      // 选中标记（紫色边框）
+      // 选中标记
       if (i === this.myProfile.avatarIndex) {
         this.ctx.strokeStyle = '#7c3aed';
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
-        this.ctx.arc(x + colorBtnSize / 2, y + colorBtnSize / 2, colorBtnSize / 2 + 3, 0, Math.PI * 2);
+        this.ctx.arc(x + colorBtnSize / 2, y + colorBtnSize / 2, colorBtnSize / 2 + 4, 0, Math.PI * 2);
         this.ctx.stroke();
       }
       
