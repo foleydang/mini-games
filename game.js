@@ -163,7 +163,7 @@ class MainGame {
 
   startAnimation() {
     const animate = () => {
-      if (this.currentGame || this.showingRank || this.showingSettings) return;
+      if (this.currentGame || this.showingRank || this.showingSettings || this.showingProfile) return;
       this.animFrame++;
       updateParticles(this.particles);
       this.render();
@@ -392,6 +392,9 @@ class MainGame {
   // 渲染个人设置页面
   renderProfile() {
     const { width, height, safeTop, safeBottom } = this.designSize;
+    console.log('renderProfile 被调用');
+    // 清除画布
+    this.ctx.clearRect(0, 0, width, height);
     this.drawBg(width, height);
     
     // 标题
@@ -513,7 +516,8 @@ class MainGame {
   renderSettings() {
     const { width, height, safeTop, safeBottom } = this.designSize;
     const ctx = this.ctx;
-    
+    console.log('renderSettings 被调用');
+    ctx.clearRect(0, 0, width, height);
     this.drawBg(width, height);
 
     // 标题
@@ -547,6 +551,8 @@ class MainGame {
 
   renderRank(gameName) {
     const { width, height, safeTop, safeBottom } = this.designSize;
+    console.log('renderRank 被调用');
+    this.ctx.clearRect(0, 0, width, height);
     this.drawBg(width, height);
 
     drawText(this.ctx, `${gameName}排行榜`, width / 2, safeTop + 50, { fontSize: 48, color: this.rankTheme.primary, bold: true });
