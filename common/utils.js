@@ -515,16 +515,19 @@ export function shareGame(gameName, score) {
 
 // 排行榜
 export const RankData = {
-  getRank(gameId) {
+  // 排序类型: 'desc' = 分数高的在前, 'asc' = 分数少的在前
+  getRank(gameId, sortType = 'desc') {
     const data = Storage.load('rank_' + gameId) || [];
-    return data.sort((a, b) => b.score - a.score);
+    // 不再过滤旧数据，让用户手动清除
+    const filtered = data.filter(item => item.score > 0);
+    return filtered.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score);
   },
-  addRank(gameId, score, name = '玩家') {
+  addRank(gameId, score, name = '玩家', sortType = 'desc') {
     // 0 分不进入排行榜
     if (!score || score <= 0) return;
-    const data = this.getRank(gameId);
+    const data = this.getRank(gameId, sortType);
     data.push({ score, name, date: new Date().toLocaleDateString("zh-CN") });
-    const top10 = data.sort((a, b) => b.score - a.score).slice(0, 10);
+    const top10 = data.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score).slice(0, 10);
     Storage.save('rank_' + gameId, top10);
   },
   save(gameId, score) {

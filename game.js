@@ -266,7 +266,8 @@ class MainGame {
     this.showingRank = true;
     this.currentRankGame = gameId;
     this.rankTheme = theme;
-    this.rankData = RankData.getRank(gameId);
+    const sortType = gameId === 'memory' ? 'asc' : 'desc';
+    this.rankData = RankData.getRank(gameId, sortType);
     this.renderRank(gameName);
   }
 
@@ -361,7 +362,7 @@ class MainGame {
         drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 10, 12, bgColor);
         const rankColor = index < 3 ? '#fff' : '#5b21b6';
         drawText(this.ctx, `${index + 1}`, 70, y + 28, { fontSize: 28, color: rankColor, bold: true });
-        const displayScore = this.currentRankGame === 'memory' ? (1000 - item.score) + '步' : item.score + '分';
+        const displayScore = this.currentRankGame === 'memory' ? item.score + '步' : item.score + '分';
         drawText(this.ctx, displayScore, width - 100, y + 28, { fontSize: 28, color: rankColor, bold: true });
         if (item.date) {
           drawText(this.ctx, item.date, width / 2, y + 28, { fontSize: 28, color: rankColor });
