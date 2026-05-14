@@ -112,12 +112,12 @@ class MainGame {
       });
     });
 
-    // 设置按钮位置（右上角）
+    // 设置按钮位置（在 render 中动态设置）
     this.settingsBtn = {
       x: width - 120,
-      y: safeTop + 110,
+      y: safeTop + 165,
       width: 90,
-      height: 50
+      height: 45
     };
   }
 
@@ -196,13 +196,14 @@ class MainGame {
   }
 
   handleHomeTouch(pos) {
+    // 先检查右上角按钮区域（我的 + 设置）
     // 检查"我的"按钮
     if (this.myButton) {
       const mb = this.myButton;
       if (pos.x >= mb.x && pos.x <= mb.x + mb.width &&
           pos.y >= mb.y && pos.y <= mb.y + mb.height) {
+        console.log('点击我的按钮');
         this.showingProfile = true;
-        this.currentGame = null;
         this.renderProfile();
         return;
       }
@@ -212,6 +213,7 @@ class MainGame {
     const btn = this.settingsBtn;
     if (pos.x >= btn.x && pos.x <= btn.x + btn.width &&
         pos.y >= btn.y && pos.y <= btn.y + btn.height) {
+      console.log('点击设置按钮');
       this.showingSettings = true;
       this.settings = GameSettings.get();
       this.renderSettings();
@@ -367,18 +369,23 @@ class MainGame {
     drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 150, { fontSize: 52, color: '#7c3aed', bold: true });
     drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 195, { fontSize: 28, color: '#a78bfa' });
 
-    // 设置按钮
-    drawButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', '#8b5cf6', { fontSize: 26, radius: 14 });
+    // 右上角按钮区域（设置 + 我的）
+    // 我的按钮（上方）
+    const myBtnX = width - 120;
+    const myBtnY = safeTop + 110;
+    drawButton(this.ctx, myBtnX, myBtnY, 90, 45, '我的', '#10b981', { fontSize: 24, radius: 12 });
+    this.myButton = { x: myBtnX, y: myBtnY, width: 90, height: 45 };
+    
+    // 设置按钮（下方）
+    this.settingsBtn.x = width - 120;
+    this.settingsBtn.y = safeTop + 165;
+    this.settingsBtn.width = 90;
+    this.settingsBtn.height = 45;
+    drawButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', '#8b5cf6', { fontSize: 24, radius: 12 });
 
     this.cards.forEach((card, index) => this.drawGameCard(card, index));
 
     drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, { fontSize: 22, color: '#c4b5fd' });
-    
-    // 底部"我的"按钮
-    const myBtnX = width / 2 - 60;
-    const myBtnY = height - safeBottom - 80;
-    drawButton(this.ctx, myBtnX, myBtnY, 120, 50, '👤 我的', '#8b5cf6', { fontSize: 24, radius: 14 });
-    this.myButton = { x: myBtnX, y: myBtnY, width: 120, height: 50 };
   }
 
 
