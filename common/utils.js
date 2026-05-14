@@ -552,9 +552,20 @@ export const RankData = {
   addRank(gameId, score, name = '玩家', sortType = 'desc') {
     if (!score || score <= 0) return;
     
+    // 获取用户信息
+    const userInfo = this.getUserInfo();
+    const nickname = userInfo?.nickName || name;
+    const avatar = userInfo?.avatarUrl || null;
+    
     // 本地存储
     const data = this.getRank(gameId, sortType);
-    data.push({ score, name, date: new Date().toLocaleDateString("zh-CN") });
+    data.push({ 
+      score, 
+      name: nickname,
+      nickname: nickname,
+      avatar: avatar,
+      date: new Date().toLocaleDateString("zh-CN") 
+    });
     const top10 = data.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score).slice(0, 10);
     Storage.save('rank_' + gameId, top10);
     
@@ -562,11 +573,25 @@ export const RankData = {
     wx.request({
       url: `${API_BASE}/rank/${gameId}`,
       method: 'POST',
-      data: { score, nickname: name },
+      data: { 
+        score, 
+        nickname: nickname,
+        avatar: avatar,
+        openid: userInfo?.openid || null
+      },
       header: { 'content-type': 'application/json' },
       success: (res) => console.log('排行榜提交成功'),
       fail: (e) => console.log('排行榜提交失败:', e)
     });
+  },
+  
+  // 获取用户信息（从本地存储）
+  getUserInfo() {
+    try {
+      return wx.getStorageSync('userInfo') || null;
+    } catch (e) {
+      return null;
+    }
   },
   
   save(gameId, score) {

@@ -8,6 +8,7 @@ import {
   drawGameIcon, GameSettings, drawToggle
 } from './common/utils.js';
 import { Games } from './common/config.js';
+import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
 import Match3Game from './games/match3.js';
 import SnakeGame from './games/snake.js';
 import Game2048 from './games/2048.js';
@@ -36,6 +37,7 @@ class MainGame {
     this.particles = [];
     this.animFrame = 0;
 
+    this.avatarCache = {};  // 头像图片缓存
     this.initCards();
     this.initParticles();
     this.bindEvents();
@@ -267,14 +269,33 @@ class MainGame {
     this.currentRankGame = gameId;
     this.rankTheme = theme;
     const sortType = gameId === 'memory' ? 'asc' : 'desc';
+    
     // 先显示本地数据
     this.rankData = RankData.getRank(gameId, sortType);
     this.renderRank(gameName);
-    // 异步从云端获取最新数据
+    
+    // 异步从服务器获取最新数据
     RankData.getRankFromCloud(gameId, sortType).then(data => {
       if (data && data.length > 0) {
         this.rankData = data;
+        // 预加载头像图片
+        this.preloadAvatars(data);
         this.renderRank(gameName);
+      }
+    });
+  }
+
+  preloadAvatars(rankData) {
+    // 预加载头像图片到 canvas
+    rankData.forEach(item => {
+      if (item.avatar && !this.avatarCache[item.avatar]) {
+        try {
+          const img = this.ctx.createImage ? this.ctx.createImage() : null;
+          if (img) {
+            img.src = item.avatar;
+            this.avatarCache[item.avatar] = img;
+          }
+        } catch (e) {}
       }
     });
   }
@@ -357,8 +378,8 @@ class MainGame {
 
     drawText(this.ctx, `${gameName}排行榜`, width / 2, safeTop + 50, { fontSize: 48, color: this.rankTheme.primary, bold: true });
 
-    const startY = safeTop + 260;
-    const itemHeight = 55;
+    const startY = safeTop + 220;
+    const itemHeight = 65;  // 增加高度以显示头像
 
     if (this.rankData.length === 0) {
       drawText(this.ctx, '暂无记录', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
@@ -367,14 +388,25 @@ class MainGame {
       this.rankData.forEach((item, index) => {
         const y = startY + index * itemHeight;
         const bgColor = index < 3 ? this.rankTheme.primary : '#f3e8ff';
-        drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 10, 12, bgColor);
+        drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 8, 12, bgColor);
         const rankColor = index < 3 ? '#fff' : '#5b21b6';
-        drawText(this.ctx, `${index + 1}`, 70, y + 28, { fontSize: 28, color: rankColor, bold: true });
+        
+        // 排名
+        drawText(this.ctx, `${index + 1}`, 70, y + 30, { fontSize: 28, color: rankColor, bold: true });
+        
+        // 头像（圆形）
+        const avatarX = 120;
+        const avatarY = y + 30;
+        const avatarRadius = 20;
+        drawAvatar(this.ctx, avatarX, avatarY, avatarRadius, item.avatar);
+        
+        // 昵称
+        const nickname = item.nickname || item.name || '玩家';
+        drawText(this.ctx, nickname, 160, y + 30, { fontSize: 26, color: rankColor, align: 'left' });
+        
+        // 分数
         const displayScore = this.currentRankGame === 'memory' ? item.score + '步' : item.score + '分';
-        drawText(this.ctx, displayScore, width - 100, y + 28, { fontSize: 28, color: rankColor, bold: true });
-        if (item.date) {
-          drawText(this.ctx, item.date, width / 2, y + 28, { fontSize: 28, color: rankColor });
-        }
+        drawText(this.ctx, displayScore, width - 80, y + 30, { fontSize: 26, color: rankColor, bold: true });
       });
     }
 
