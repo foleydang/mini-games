@@ -514,8 +514,61 @@ export function shareGame(gameName, score) {
 }
 
 
-// 排行榜 - 使用服务器API
+// 排行榜 - 使用服务器API（支持用户系统）
 const API_BASE = 'https://api.yanten.top/api/games';
+
+// 获取/生成用户唯一ID
+function getOpenId() {
+  try {
+    let openid = wx.getStorageSync('game_openid');
+    if (!openid) {
+      // 生成唯一ID: 时间戳 + 随机数
+      openid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      wx.setStorageSync('game_openid', openid);
+    }
+    return openid;
+  } catch (e) {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+}
+
+// 同步用户设置到服务器
+export function syncUserToServer(profile) {
+  const openid = getOpenId();
+  wx.request({
+    url: `${API_BASE}/user`,
+    method: 'POST',
+    data: {
+      openid: openid,
+      nickname: profile.nickname || '玩家',
+      avatarIndex: profile.avatarIndex || 0
+    },
+    header: { 'content-type': 'application/json' },
+    success: (res) => console.log('用户同步成功:', res.data),
+    fail: (e) => console.log('用户同步失败:', e)
+  });
+}
+
+// 获取用户信息（从服务器）
+export async function getUserFromServer() {
+  const openid = getOpenId();
+  try {
+    const res = await new Promise((resolve, reject) => {
+      wx.request({
+        url: `${API_BASE}/user/${openid}`,
+        method: 'GET',
+        success: resolve,
+        fail: reject
+      });
+    });
+    if (res.data && res.data.success && res.data.data) {
+      return res.data.data;
+    }
+  } catch (e) {
+    console.log('获取用户信息失败:', e);
+  }
+  return null;
+}
 
 export const RankData = {
   // 同步获取排行榜（本地缓存）

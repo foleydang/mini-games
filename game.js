@@ -9,6 +9,7 @@ import {
 } from './common/utils.js';
 import { Games } from './common/config.js';
 import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
+import { syncUserToServer } from './common/utils.js';
 import Match3Game from './games/match3.js';
 import SnakeGame from './games/snake.js';
 import Game2048 from './games/2048.js';
@@ -60,12 +61,14 @@ class MainGame {
     }
   }
 
-  // 保存用户设置
+  // 保存用户设置（本地 + 服务器）
   saveProfile(profile) {
     this.myProfile = profile;
     try {
       wx.setStorageSync('myProfile', profile);
     } catch (e) {}
+    // 同步到服务器
+    syncUserToServer(profile);
   }
 
   initCards() {
