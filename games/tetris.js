@@ -1,8 +1,5 @@
 /**
  * 俄罗斯方块 - 无限型游戏（里程碑成就系统）
- * - 单局无限游戏，方块堆到顶部为止
- * - 速度随消除行数自动递增
- * - 里程碑：消10行(铜)、30行(银)、50行(金)、100行(白金)、200行(钻石)
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
@@ -51,7 +48,7 @@ export default class TetrisGame {
 
     this.touchStartPos = null;
     this.theme = Colors.themes.tetris;
-    this.backButton = getBackButton(designSize); // y在render中动态计算;
+    this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -197,7 +194,6 @@ export default class TetrisGame {
         playSound(SoundType.LEVEL_UP);
       }
 
-      // 自动加速
       const targetSpeed = Math.max(this.speedMin, this.speedStart - Math.floor(this.lines / this.speedDecPerLines) * 40);
       if (targetSpeed < this.speed) {
         this.speed = targetSpeed;
@@ -261,37 +257,54 @@ export default class TetrisGame {
   }
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    // 底部按钮在后面统一绘制
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
     drawText(this.ctx, '俄罗斯方块', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
 
+    // 分数和里程碑 - 分行显示，避免重叠
     const milestone = this.getCurrentMilestone();
-    if (milestone >= 0) drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 100, safeTop + 55, { fontSize: 22, color: Colors.warning });
+    if (milestone >= 0) drawText(this.ctx, `🏆 ${this.milestoneNames[milestone]}`, width / 2 - 100, safeTop + 105, { fontSize: 24, color: Colors.warning, bold: true });
+    
+    drawText(this.ctx, `得分: ${this.score}`, width / 2 + 100, safeTop + 105, { fontSize: 28, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `消除: ${this.lines}行`, width / 2 + 100, safeTop + 145, { fontSize: 24, color: Colors.textLight });
+    const next = this.getNextMilestone();
+    if (next) drawText(this.ctx, `→${next.target}行`, width / 2 + 200, safeTop + 145, { fontSize: 20, color: Colors.textMuted });
 
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     const gridW = this.cols * this.cellSize, gridH = this.rows * this.cellSize;
     drawRoundRect(this.ctx, this.gridStartX - 14, this.gridStartY - 14, gridW + 28, gridH + 28, 22, '#fff', this.theme.primary, 4);
 
+    // 已放置的方块 - 带光泽效果
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         if (this.board[row][col] !== -1) this.drawCell(col, row, Colors.tetris[this.board[row][col]]);
       }
     }
 
+    // 当前方块 + 投影（半透明预判落点）
     if (this.currentPiece) {
+      // 投影
+      let ghostY = this.currentPiece.y;
+      while (!this.checkCollision(this.currentPiece.shape, this.currentPiece.x, ghostY + 1)) ghostY++;
+      if (ghostY > this.currentPiece.y) {
+        for (let row = 0; row < this.currentPiece.shape.length; row++) {
+          for (let col = 0; col < this.currentPiece.shape[row].length; col++) {
+            if (this.currentPiece.shape[row][col]) {
+              const x = this.gridStartX + (this.currentPiece.x + col) * this.cellSize + 4;
+              const y = this.gridStartY + (ghostY + row) * this.cellSize + 4;
+              const size = this.cellSize - 8;
+              this.ctx.globalAlpha = 0.2;
+              drawRoundRect(this.ctx, x, y, size, size, 6, Colors.tetris[this.currentPiece.color]);
+              this.ctx.globalAlpha = 1;
+            }
+          }
+        }
+      }
+      // 当前方块
       for (let row = 0; row < this.currentPiece.shape.length; row++) {
         for (let col = 0; col < this.currentPiece.shape[row].length; col++) {
           if (this.currentPiece.shape[row][col]) {
@@ -300,9 +313,6 @@ export default class TetrisGame {
         }
       }
     }
-
-    const scoreY = this.gridStartY + gridH + 35;
-    drawText(this.ctx, `得分:${this.score} | 消除:${this.lines}行`, width / 2, scoreY, { fontSize: 32, color: Colors.textDark, bold: true });
 
     let hint = '滑动移动 | 点击旋转 ';
     for (let i = 0; i < this.targets.length; i++) {
@@ -317,5 +327,8 @@ export default class TetrisGame {
     const y = this.gridStartY + row * this.cellSize + 4;
     const size = this.cellSize - 8;
     drawRoundRect(this.ctx, x, y, size, size, 6, color);
+    // 高光效果
+    this.ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    this.ctx.fillRect(x, y, size, size * 0.4);
   }
 }
