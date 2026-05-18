@@ -1,8 +1,5 @@
 /**
  * 弹球 - 无限型游戏（里程碑成就系统）
- * - 单局无限游戏，球掉落为止
- * - 难度渐进：速度加快、平台变窄
- * - 里程碑：50分(铜)、100分(银)、200分(金)、500分(白金)、1000分(钻石)
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
@@ -35,7 +32,7 @@ export default class BounceGame {
     this.achievedMilestone = -1;
 
     this.theme = Colors.themes.bounce;
-    this.backButton = getBackButton(designSize); // y在render中动态计算;
+    this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -45,7 +42,7 @@ export default class BounceGame {
 
   initGame() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 180;
+    this.gameAreaTop = safeTop + 250;
     this.gameAreaBottom = height - safeBottom - 60;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
@@ -115,7 +112,6 @@ export default class BounceGame {
         const newMilestone = this.getCurrentMilestone();
         if (newMilestone > this.achievedMilestone) { this.achievedMilestone = newMilestone; playSound(SoundType.LEVEL_UP); }
 
-        // 难度渐进
         if (this.score % this.speedIncPerScore === 0 && this.score > 0) {
           this.scrollSpeed = Math.min(this.speedMax, this.scrollSpeed + 0.3);
         }
@@ -166,32 +162,46 @@ export default class BounceGame {
   onTouchEnd(pos) {}
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    // 底部按钮在后面统一绘制
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
     drawText(this.ctx, '弹球', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
     const milestone = this.getCurrentMilestone();
-    if (milestone >= 0) drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 100, safeTop + 55, { fontSize: 22, color: Colors.warning });
-    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 55, { fontSize: 42, color: Colors.textDark, bold: true });
+    if (milestone >= 0) drawText(this.ctx, `🏆 ${this.milestoneNames[milestone]}`, width / 2 - 120, safeTop + 115, { fontSize: 24, color: Colors.warning, bold: true });
+    drawText(this.ctx, `${this.score}`, width / 2 + 120, safeTop + 115, { fontSize: 42, color: Colors.textDark, bold: true });
     const next = this.getNextMilestone();
-    if (next) drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 55, { fontSize: 20, color: Colors.textLight });
+    if (next) drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 115, { fontSize: 20, color: Colors.textLight });
 
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
-    this.platforms.forEach(p => { drawRoundRect(this.ctx, p.x, p.y, p.width, p.height, 10, p.color); });
-    drawCircle(this.ctx, this.ball.x, this.ball.y, this.ball.size, this.theme.primary);
+
+    // 平台 - 带阴影效果
+    this.platforms.forEach(p => {
+      this.ctx.shadowColor = 'rgba(0,0,0,0.15)';
+      this.ctx.shadowBlur = 6;
+      this.ctx.shadowOffsetY = 3;
+      drawRoundRect(this.ctx, p.x, p.y, p.width, p.height, 10, p.color);
+      this.ctx.shadowBlur = 0;
+      this.ctx.shadowOffsetY = 0;
+    });
+
+    // 球 - 带光晕和高光
+    const bx = this.ball.x, by = this.ball.y, bs = this.ball.size;
+    // 光晕
+    this.ctx.fillStyle = 'rgba(236, 72, 153, 0.15)';
+    this.ctx.beginPath();
+    this.ctx.arc(bx, by, bs + 8, 0, Math.PI * 2);
+    this.ctx.fill();
+    // 主体
+    drawCircle(this.ctx, bx, by, bs, this.theme.primary);
+    // 高光
+    this.ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    this.ctx.beginPath();
+    this.ctx.arc(bx - bs * 0.25, by - bs * 0.25, bs * 0.4, 0, Math.PI * 2);
+    this.ctx.fill();
 
     let hint = '点击左/右控制 ';
     for (let i = 0; i < this.targets.length; i++) {

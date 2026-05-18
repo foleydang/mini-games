@@ -482,19 +482,19 @@ export function getTouchPos(touch, designSize) {
   const info = wx.getSystemInfoSync();
   const ratio = designSize.width / info.screenWidth;
   
-  // 修复：touch.clientY从屏幕顶部开始
-  // canvas绘制也从屏幕顶部开始
-  // 所以直接转换，不减去safeArea.top
+  // clientY 是相对于屏幕顶部的坐标
+  // 但 canvas 内容是从 safeArea.top 开始绘制的
+  // 所以需要减去 safeArea.top 的偏移
+  
+  const safeTopPx = info.safeArea.top;
   
   const x = Math.floor(touch.clientX * ratio);
-  const y = Math.floor(touch.clientY * ratio);
+  const y = Math.floor((touch.clientY - safeTopPx) * ratio);
   
-  console.log('坐标转换:', 'clientY=', touch.clientY, 'ratio=', ratio, '转换后y=', y);
+  console.log('坐标转换:', 'clientY=', touch.clientY, 'safeTopPx=', safeTopPx, 'ratio=', ratio, '转换后y=', y);
   
   return { x, y };
 }
-
-// 分享
 export function shareGame(gameName, score) {
   wx.shareAppMessage({
     title: `我在${gameName}获得了${score}分！来铃铛快乐屋挑战我吧！`,

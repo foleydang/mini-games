@@ -1,8 +1,5 @@
 /**
  * 飞鸟 - 无限型游戏（里程碑成就系统）
- * - 单局无限游戏，撞到管道/边界为止
- * - 难度渐进：间隙随分数缩小
- * - 里程碑：飞过5个(起飞)、15个(飞行)、30个(翱翔)、50个(云端)、100个(天空之王)
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
@@ -39,7 +36,7 @@ export default class FlappyGame {
     this.achievedMilestone = -1;
 
     this.theme = Colors.themes.flappy;
-    this.backButton = getBackButton(designSize); // y在render中动态计算;
+    this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -49,7 +46,7 @@ export default class FlappyGame {
 
   initGame() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    this.gameAreaTop = safeTop + 180;
+    this.gameAreaTop = safeTop + 250;
     this.gameAreaBottom = height - safeBottom - 55;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
@@ -118,7 +115,6 @@ export default class FlappyGame {
           playSound(SoundType.LEVEL_UP);
         }
 
-        // 难度渐进：间隙缩小
         const newGap = Math.max(this.gapMin, this.gapStart - Math.floor(this.score / this.gapDecPerScore) * 5);
         if (newGap < this.pipeGap) this.pipeGap = newGap;
       }
@@ -165,52 +161,65 @@ export default class FlappyGame {
   onTouchEnd(pos) {}
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    // 底部按钮在后面统一绘制
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
     drawText(this.ctx, '飞鸟', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
     const milestone = this.getCurrentMilestone();
-    if (milestone >= 0) drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.warning });
-    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, { fontSize: 38, color: Colors.textDark, bold: true });
+    if (milestone >= 0) drawText(this.ctx, `🏆 ${this.milestoneNames[milestone]}`, width / 2 - 120, safeTop + 110, { fontSize: 24, color: Colors.warning, bold: true });
+    drawText(this.ctx, `${this.score}`, width / 2 + 120, safeTop + 110, { fontSize: 38, color: Colors.textDark, bold: true });
     const next = this.getNextMilestone();
-    if (next) drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 50, { fontSize: 20, color: Colors.textLight });
+    if (next) drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 110, { fontSize: 20, color: Colors.textLight });
 
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
+
+    // 管道 - 带渐变和帽檐效果
     this.pipes.forEach(pipe => {
-      drawRoundRect(this.ctx, pipe.x, this.gameAreaTop, this.pipeWidth, pipe.top - this.gameAreaTop, 16, '#d1d5db');
-      drawRoundRect(this.ctx, pipe.x, pipe.bottom, this.pipeWidth, this.gameAreaBottom - pipe.bottom, 16, '#d1d5db');
+      // 上管道
+      drawRoundRect(this.ctx, pipe.x, this.gameAreaTop, this.pipeWidth, pipe.top - this.gameAreaTop, 16, '#94a3b8');
+      // 上管道帽檐
+      drawRoundRect(this.ctx, pipe.x - 6, pipe.top - 20, this.pipeWidth + 12, 20, 8, '#64748b');
+      
+      // 下管道
+      drawRoundRect(this.ctx, pipe.x, pipe.bottom, this.pipeWidth, this.gameAreaBottom - pipe.bottom, 16, '#94a3b8');
+      // 下管道帽檐
+      drawRoundRect(this.ctx, pipe.x - 6, pipe.bottom, this.pipeWidth + 12, 20, 8, '#64748b');
     });
 
-    drawCircle(this.ctx, this.bird.x, this.bird.y, this.bird.size / 2, this.theme.primary);
+    // 鸟 - 更可爱的设计
+    const bx = this.bird.x, by = this.bird.y, bs = this.bird.size / 2;
+    // 身体
+    drawCircle(this.ctx, bx, by, bs, this.theme.primary);
+    // 身体高光
+    this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    this.ctx.beginPath();
+    this.ctx.arc(bx - bs * 0.2, by - bs * 0.2, bs * 0.45, 0, Math.PI * 2);
+    this.ctx.fill();
+    // 眼白
     this.ctx.fillStyle = '#fff';
     this.ctx.beginPath();
-    this.ctx.arc(this.bird.x + 14, this.bird.y - 10, 11, 0, Math.PI * 2);
+    this.ctx.arc(bx + 14, by - 10, 11, 0, Math.PI * 2);
     this.ctx.fill();
+    // 眼珠
     this.ctx.fillStyle = '#333';
     this.ctx.beginPath();
-    this.ctx.arc(this.bird.x + 16, this.bird.y - 10, 5.5, 0, Math.PI * 2);
+    this.ctx.arc(bx + 16, by - 10, 5.5, 0, Math.PI * 2);
+    this.ctx.fill();
+    // 嘴巴
+    this.ctx.fillStyle = '#f97316';
+    this.ctx.beginPath();
+    this.ctx.moveTo(bx + bs * 0.7, by + 2);
+    this.ctx.lineTo(bx + bs * 1.2, by + 6);
+    this.ctx.lineTo(bx + bs * 0.7, by + 10);
+    this.ctx.closePath();
     this.ctx.fill();
 
     if (!this.started && !this.gameOver) {
-      let hint = '点击起飞 ';
-      for (let i = 0; i < this.targets.length; i++) {
-        hint += '○';
-        if (i === 0) break;
-      }
-      drawText(this.ctx, hint, width / 2, height - safeBottom - 42, { fontSize: 30, color: Colors.textLight });
+      drawText(this.ctx, '点击起飞 🐦', width / 2, height - safeBottom - 42, { fontSize: 30, color: Colors.textLight });
     }
   }
 }

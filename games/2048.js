@@ -1,8 +1,5 @@
 /**
  * 2048 - 无限型游戏（目标块里程碑系统）
- * - 单局无限游戏，合并到无法移动为止
- * - 达到目标块（512/1024/2048/4096/8192）显示成就
- * - 可以继续挑战更高块
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
@@ -19,10 +16,9 @@ export default class Game2048 {
     this.designSize = designSize;
     this.onEnd = onEnd;
 
-    // 里程碑配置
     const config = Milestones['2048'];
-    this.targets = config.targets;       // [512, 1024, 2048, 4096, 8192]
-    this.milestoneNames = config.names;  // ['入门', '挑战', '大师', '传奇', '神级']
+    this.targets = config.targets;
+    this.milestoneNames = config.names;
 
     this.gridSize = 4;
     this.cellSize = 130;
@@ -31,12 +27,12 @@ export default class Game2048 {
     this.bestScore = Storage.load('2048_best') || 0;
     this.bestBlock = Storage.load('2048_best_block') || 0;
     this.gameOver = false;
-    this.maxBlock = 0;  // 当前最大块
+    this.maxBlock = 0;
     this.achievedMilestone = -1;
     this.touchStartPos = null;
 
     this.theme = Colors.themes['2048'];
-    this.backButton = getBackButton(designSize); // y在render中动态计算;
+    this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -46,13 +42,13 @@ export default class Game2048 {
 
   initGame() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    const headerHeight = 80;
+    const headerHeight = 220;
     const footerHeight = 75;
     const availableHeight = height - safeTop - safeBottom - headerHeight - footerHeight;
     const availableWidth = width - 50;
     this.cellSize = Math.min(availableWidth / this.gridSize, availableHeight / this.gridSize, 180);
     this.gridStartX = (width - this.gridSize * this.cellSize) / 2;
-    this.gridStartY = safeTop + 180;
+    this.gridStartY = safeTop + 280;
 
     this.grid = [];
     for (let i = 0; i < this.gridSize; i++) {
@@ -72,13 +68,8 @@ export default class Game2048 {
     this.render();
   }
 
-  startLoop() {
-    this.timer = setInterval(() => { this.render(); }, 50);
-  }
-
-  destroy() {
-    if (this.timer) clearInterval(this.timer);
-  }
+  startLoop() { this.timer = setInterval(() => { this.render(); }, 50); }
+  destroy() { if (this.timer) clearInterval(this.timer); }
 
   addRandomTile() {
     const empty = [];
@@ -109,27 +100,12 @@ export default class Game2048 {
     return null;
   }
 
-  checkButton(pos, btn) {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height;
-  }
+  checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
-    if (this.checkButton(pos, this.backButton)) {
-      playSound(SoundType.CLICK);
-      this.destroy();
-      this.onEnd(this.score);
-      return;
-    }
-    if (this.checkButton(pos, this.shareButton)) {
-      playSound(SoundType.SUCCESS);
-      shareGame('2048', this.score);
-      return;
-    }
-    if (this.checkButton(pos, this.soundButton)) {
-      audioManager.toggle();
-      this.render();
-      return;
-    }
+    if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
+    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('2048', this.score); return; }
+    if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     this.touchStartPos = pos;
   }
 
@@ -181,7 +157,6 @@ export default class Game2048 {
             this.score += this.grid[newRow][newCol];
             this.maxBlock = Math.max(this.maxBlock, this.grid[newRow][newCol]);
             
-            // 检查里程碑
             const newMilestone = this.getCurrentMilestone();
             if (newMilestone > this.achievedMilestone) {
               this.achievedMilestone = newMilestone;
@@ -209,7 +184,6 @@ export default class Game2048 {
   }
 
   checkGameState() {
-    // 检查是否游戏结束
     for (let i = 0; i < this.gridSize; i++) {
       for (let j = 0; j < this.gridSize; j++) {
         if (this.grid[i][j] === 0) return;
@@ -226,70 +200,43 @@ export default class Game2048 {
     this.gameOver = true;
     playSound(SoundType.GAME_OVER);
 
-    if (this.score > this.bestScore) {
-      this.bestScore = this.score;
-      Storage.save('2048_best', this.bestScore);
-    }
-    if (this.maxBlock > this.bestBlock) {
-      this.bestBlock = this.maxBlock;
-      Storage.save('2048_best_block', this.bestBlock);
-    }
+    if (this.score > this.bestScore) { this.bestScore = this.score; Storage.save('2048_best', this.bestScore); }
+    if (this.maxBlock > this.bestBlock) { this.bestBlock = this.maxBlock; Storage.save('2048_best_block', this.bestBlock); }
 
     const milestone = this.getCurrentMilestone();
-    const milestoneText = milestone >= 0 ? `\n成就: ${this.milestoneNames[milestone]}` : '';
-    const blockText = milestone >= 0 ? `${this.targets[milestone]}` : '未达成目标';
-
     wx.showModal({
       title: milestone >= 0 ? `🎉 ${this.milestoneNames[milestone]}` : '游戏结束',
-      content: `最高块: ${this.maxBlock}${milestoneText}\n得分: ${this.score}\n历史最高块: ${this.bestBlock}`,
+      content: `最高块: ${this.maxBlock}${milestone >= 0 ? '\n成就: ' + this.milestoneNames[milestone] : ''}\n得分: ${this.score}\n历史最高块: ${this.bestBlock}`,
       confirmText: '重试',
       cancelText: '返回',
       success: (res) => {
-        if (res.confirm) {
-          this.destroy();
-          this.initGame();
-          this.startLoop();
-        } else {
-          this.destroy();
-          this.onEnd(this.score);
-        }
+        if (res.confirm) { this.destroy(); this.initGame(); this.startLoop(); }
+        else { this.destroy(); this.onEnd(this.score); }
       }
     });
   }
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    // 底部按钮在后面统一绘制
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    // 标题
-    drawText(this.ctx, '2048', width / 2, safeTop + 50, { fontSize: 52, color: this.theme.primary, bold: true });
-
-    // 当前最高块 + 成就
+    // 标题区域 - 分两行，避免重叠
+    drawText(this.ctx, '2048', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
+    
+    // 里程碑和分数 - 第二行
     const milestone = this.getCurrentMilestone();
     if (milestone >= 0) {
-      drawText(this.ctx, this.milestoneNames[milestone], width / 2 - 120, safeTop + 50, { fontSize: 22, color: Colors.warning });
+      drawText(this.ctx, `🏆 ${this.milestoneNames[milestone]}`, width / 2 - 120, safeTop + 110, { fontSize: 24, color: Colors.warning, bold: true });
     }
-
-    // 分数 + 下一个目标
-    drawText(this.ctx, `${this.score}`, width / 2 + 120, safeTop + 50, { fontSize: 34, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `${this.score}`, width / 2 + 120, safeTop + 110, { fontSize: 38, color: Colors.textDark, bold: true });
     const next = this.getNextMilestone();
     if (next) {
-      drawText(this.ctx, `→${next.target}`, width / 2 + 180, safeTop + 50, { fontSize: 20, color: Colors.textLight });
+      drawText(this.ctx, `→${next.target}`, width / 2 + 200, safeTop + 110, { fontSize: 20, color: Colors.textLight });
     }
 
-    // 按钮
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     // 网格
     const gridW = this.gridSize * this.cellSize;
@@ -302,15 +249,10 @@ export default class Game2048 {
       }
     }
 
-    // 底部提示
     let hint = '滑动合并数字 ';
     for (let i = 0; i < this.targets.length; i++) {
-      if (this.maxBlock >= this.targets[i]) {
-        hint += '✓';
-      } else {
-        hint += ` →${this.targets[i]}`;
-        break;
-      }
+      if (this.maxBlock >= this.targets[i]) hint += '✓';
+      else { hint += ` →${this.targets[i]}`; break; }
     }
     drawText(this.ctx, hint, width / 2, height - safeBottom - 42, { fontSize: 24, color: Colors.textMuted });
 

@@ -23,7 +23,7 @@ export default class BreakoutGame {
     this.score = 0;
     this.bestScore = Storage.load('breakout_best') || 0;
     this.gameOver = false;
-    this.ballSpeed = 15;
+    this.ballSpeed = 8;
     this.brickRows = 3;
     this.brickCols = 5;
     this.levelName = '入门';
@@ -41,7 +41,7 @@ export default class BreakoutGame {
     const levelConfig = Levels.breakout[this.level] || Levels.breakout[0];
     this.brickRows = levelConfig.rows;
     this.brickCols = levelConfig.cols;
-    this.ballSpeed = 15 + this.level * 1.2;
+    this.ballSpeed = 8 + this.level * 0.8;
     this.levelName = levelConfig.name;
 
     const { width, height, safeTop, safeBottom } = this.designSize;
@@ -49,11 +49,11 @@ export default class BreakoutGame {
     this.gameAreaBottom = height - safeBottom - 55;
     this.gameAreaHeight = this.gameAreaBottom - this.gameAreaTop;
 
-    this.ball = { x: width / 2, y: this.gameAreaBottom - 80, vx: this.ballSpeed * 0.8, vy: -this.ballSpeed, size: 20 };
+    this.ball = { x: width / 2, y: this.gameAreaBottom - 80, vx: this.ballSpeed * 0.6, vy: -this.ballSpeed, size: 18 };
     this.paddle = { x: width / 2 - 65, y: this.gameAreaBottom - 45, width: 130, height: 18 };
 
     const brickWidth = (width - 65) / this.brickCols;
-    const brickHeight = 45;
+    const brickHeight = 42;
     const brickStartY = this.gameAreaTop + 35;
 
     this.bricks = [];
@@ -62,7 +62,7 @@ export default class BreakoutGame {
       for (let col = 0; col < this.brickCols; col++) {
         this.bricks.push({
           x: 32 + col * brickWidth,
-          y: brickStartY + row * (brickHeight + 12),
+          y: brickStartY + row * (brickHeight + 10),
           width: brickWidth - 8,
           height: brickHeight,
           color: brickColors[row % brickColors.length],
@@ -93,10 +93,11 @@ export default class BreakoutGame {
     if (this.ball.x <= this.ball.size || this.ball.x >= width - this.ball.size) { this.ball.vx *= -1; playSound(SoundType.BOUNCE); }
     if (this.ball.y <= this.gameAreaTop + this.ball.size) { this.ball.vy *= -1; playSound(SoundType.BOUNCE); }
 
-    if (this.ball.y + this.ball.size >= this.paddle.y && this.ball.x >= this.paddle.x && this.ball.x <= this.paddle.x + this.paddle.width) {
+    if (this.ball.y + this.ball.size >= this.paddle.y && this.ball.y + this.ball.size <= this.paddle.y + this.paddle.height + 8 &&
+        this.ball.x >= this.paddle.x && this.ball.x <= this.paddle.x + this.paddle.width) {
       this.ball.vy *= -1;
       const hitPos = (this.ball.x - this.paddle.x) / this.paddle.width;
-      this.ball.vx = (hitPos - 0.5) * this.ballSpeed * 1.5;
+      this.ball.vx = (hitPos - 0.5) * this.ballSpeed * 1.8;
       playSound(SoundType.BOUNCE);
     }
 
@@ -152,30 +153,56 @@ export default class BreakoutGame {
   }
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
-    // 底部按钮在后面统一绘制
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
     drawText(this.ctx, '打砖块', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
-    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2 - 100, safeTop + 50, { fontSize: 22, color: Colors.textLight });
-    drawText(this.ctx, `${this.score}`, width / 2 + 140, safeTop + 50, { fontSize: 38, color: Colors.textDark, bold: true });
+    drawText(this.ctx, `第${this.level + 1}关 ${this.levelName}`, width / 2, safeTop + 95, { fontSize: 22, color: Colors.textLight });
+    drawText(this.ctx, `${this.score}`, width / 2, safeTop + 135, { fontSize: 38, color: Colors.textDark, bold: true });
 
-    // 底部按钮 - 左下角和右下角
-    drawButton(this.ctx, this.backButton.x, this.backButton.y, 
-               this.backButton.width, this.backButton.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.shareButton.x, this.shareButton.y,
-               this.shareButton.width, this.shareButton.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-    
-    drawButton(this.ctx, this.soundButton.x, this.soundButton.y,
-               this.soundButton.width, this.soundButton.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    // 关卡进度指示器
+    const maxLevel = Levels.breakout.length;
+    const progressWidth = width - 80;
+    const progressX = 40;
+    const progressY = safeTop + 170;
+    drawRoundRect(this.ctx, progressX, progressY, progressWidth, 16, 8, '#e5e7eb');
+    const fillWidth = Math.max(progressWidth * ((this.level + 1) / maxLevel), 16);
+    drawRoundRect(this.ctx, progressX, progressY, fillWidth, 16, 8, this.theme.primary);
+    drawText(this.ctx, `${this.level + 1}/${maxLevel}`, width / 2, progressY + 8, { fontSize: 12, color: Colors.white, bold: true });
+
+    drawButton(this.ctx, this.backButton.x, this.backButton.y, this.backButton.width, this.backButton.height, '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.shareButton.x, this.shareButton.y, this.shareButton.width, this.shareButton.height, '分享', Colors.success, { fontSize: 32, radius: 16 });
+    drawButton(this.ctx, this.soundButton.x, this.soundButton.y, this.soundButton.width, this.soundButton.height, audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
 
     drawRoundRect(this.ctx, 22, this.gameAreaTop, width - 44, this.gameAreaHeight, 26, '#fff', this.theme.primary, 4);
-    this.bricks.forEach(brick => { if (brick.alive) drawRoundRect(this.ctx, brick.x, brick.y, brick.width, brick.height, 12, brick.color); });
+
+    // 砖块 - 带光泽效果
+    this.bricks.forEach(brick => {
+      if (brick.alive) {
+        drawRoundRect(this.ctx, brick.x, brick.y, brick.width, brick.height, 12, brick.color);
+        // 高光
+        this.ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        this.ctx.fillRect(brick.x, brick.y, brick.width, brick.height * 0.35);
+      }
+    });
+
+    // 挡板 - 带圆角和光泽
     drawRoundRect(this.ctx, this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height, 9, this.theme.primary);
-    drawCircle(this.ctx, this.ball.x, this.ball.y, this.ball.size, Colors.textDark);
+    this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height * 0.4);
+
+    // 球 - 带光晕
+    const bx = this.ball.x, by = this.ball.y, bs = this.ball.size;
+    this.ctx.fillStyle = 'rgba(26, 26, 26, 0.1)';
+    this.ctx.beginPath();
+    this.ctx.arc(bx, by, bs + 4, 0, Math.PI * 2);
+    this.ctx.fill();
+    drawCircle(this.ctx, bx, by, bs, Colors.textDark);
+    this.ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    this.ctx.beginPath();
+    this.ctx.arc(bx - 3, by - 3, bs * 0.35, 0, Math.PI * 2);
+    this.ctx.fill();
+
     drawText(this.ctx, '滑动移动挡板', width / 2, height - safeBottom - 38, { fontSize: 24, color: Colors.textMuted });
   }
 }
