@@ -476,11 +476,12 @@ export function updateParticles(particles, width, height) {
 
 // 本地存储
 export const Storage = {
+  // wx.setStorageSync 本身支持对象存储，不需要额外 JSON 序列化
   save(key, value) {
-    try { wx.setStorageSync(key, JSON.stringify(value)); } catch (e) { console.error('存储失败:', e); }
+    try { wx.setStorageSync(key, value); } catch (e) { console.error('存储失败:', e); }
   },
   load(key) {
-    try { const data = wx.getStorageSync(key); return data ? JSON.parse(data) : null; } catch (e) { return null; }
+    try { return wx.getStorageSync(key) || null; } catch (e) { return null; }
   },
   remove(key) {
     try { wx.removeStorageSync(key); } catch (e) { }
