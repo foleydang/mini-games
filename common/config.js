@@ -11,7 +11,9 @@ export const Games = [
   { id: 'flappy', name: '飞鸟', shortName: '飞', desc: '穿越障碍看反应', shape: 'bird', type: 'endless' },
   { id: 'breakout', name: '打砖块', shortName: '打', desc: '击碎砖块真解压', shape: 'brick', type: 'levels' },
   { id: 'memory', name: '翻牌', shortName: '翻', desc: '记忆配对练脑子', shape: 'card', type: 'levels' },
-  { id: 'bounce', name: '弹球', shortName: '弹', desc: '反弹跳跃得高分', shape: 'ball', type: 'endless' }
+  { id: 'bounce', name: '弹球', shortName: '弹', desc: '反弹跳跃得高分', shape: 'ball', type: 'endless' },
+  { id: 'sheep', name: '羊了个羊', shortName: '羊', desc: '堆叠消除解谜题', shape: 'card', type: 'levels' },
+  { id: 'fruit', name: '水果消消乐', shortName: '果', desc: '水果掉落三消乐', shape: 'fruit', type: 'levels' }
 ];
 
 // 🎯 关卡型游戏配置（有明确过关目标）
@@ -25,6 +27,15 @@ export const Levels = {
     { cols: 6, rows: 8, colors: 6, moves: 15, target: 3500, name: '专家' }
   ],
 
+  // 水果消消乐：掉落速度递增，水果种类递增
+  fruit: [
+    { dropInterval: 1800, fruitCount: 4, name: '入门' },
+    { dropInterval: 1400, fruitCount: 5, name: '简单' },
+    { dropInterval: 1100, fruitCount: 6, name: '普通' },
+    { dropInterval: 800, fruitCount: 7, name: '困难' },
+    { dropInterval: 500, fruitCount: 8, name: '专家' }
+  ],
+
   // 打砖块：砖块数量递增
   breakout: [
     { rows: 3, cols: 5, name: '入门' },
@@ -32,6 +43,15 @@ export const Levels = {
     { rows: 5, cols: 7, name: '普通' },
     { rows: 6, cols: 8, name: '困难' },
     { rows: 7, cols: 9, name: '专家' }
+  ],
+
+  // 羊了个羊：牌数和图案种类递增
+  sheep: [
+    { layers: 2, rows: 3, cols: 4, emojiCount: 4, name: '入门' },
+    { layers: 3, rows: 4, cols: 5, emojiCount: 6, name: '简单' },
+    { layers: 3, rows: 5, cols: 5, emojiCount: 8, name: '普通' },
+    { layers: 4, rows: 5, cols: 6, emojiCount: 10, name: '困难' },
+    { layers: 4, rows: 6, cols: 6, emojiCount: 12, name: '专家' }
   ],
 
   // 翻牌：牌数递增

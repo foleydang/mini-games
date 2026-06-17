@@ -98,6 +98,18 @@ export const Colors = {
       secondary: '#f9a8d4',
       bg: '#fdf2f8',
       pattern: '#fce7f3'
+    },
+    sheep: {
+      primary: '#d97706',
+      secondary: '#fbbf24',
+      bg: '#fffbeb',
+      pattern: '#fef3c7'
+    },
+    fruit: {
+      primary: '#10b981',
+      secondary: '#34d399',
+      bg: '#ecfdf5',
+      pattern: '#d1fae5'
     }
   },
 

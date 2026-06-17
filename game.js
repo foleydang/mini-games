@@ -18,6 +18,10 @@ import FlappyGame from './games/flappy.js';
 import BreakoutGame from './games/breakout.js';
 import MemoryGame from './games/memory.js';
 import BounceGame from './games/bounce.js';
+import SheepGame from './games/sheep.js';
+import FruitGame from './games/fruit.js';
+import SheepGame from './games/sheep.js';
+import FruitGame from './games/fruit.js';
 
 class MainGame {
   constructor() {
@@ -185,7 +189,11 @@ class MainGame {
       flappy: FlappyGame,
       breakout: BreakoutGame,
       memory: MemoryGame,
-      bounce: BounceGame
+      bounce: BounceGame,
+      sheep: SheepGame,
+      fruit: FruitGame,
+      sheep: SheepGame,
+      fruit: FruitGame
     };
     const GameClass = gameClasses[gameId];
     if (!GameClass) return;
