@@ -165,15 +165,18 @@ class FruitGame {
   }
 
   generateMathProblem() {
-    const a = Math.floor(Math.random() * 20) + 1;
-    const b = Math.floor(Math.random() * 20) + 1;
-    const ops = ['+', '-', '\u00d7'];
+    // 只用加法和乘法，避免产生负数（键盘没有负号）
+    const ops = ['+', '\u00d7'];
     const op = ops[Math.floor(Math.random() * ops.length)];
-    let answer;
-    switch (op) {
-      case '+': answer = a + b; break;
-      case '-': answer = a - b; break;
-      case '\u00d7': answer = a * b; break;
+    let a, b, answer;
+    if (op === '+') {
+      a = Math.floor(Math.random() * 15) + 1;
+      b = Math.floor(Math.random() * 15) + 1;
+      answer = a + b;
+    } else {
+      a = Math.floor(Math.random() * 9) + 2;
+      b = Math.floor(Math.random() * 9) + 2;
+      answer = a * b;
     }
     this.mathProblem = `${a} ${op} ${b} = ?`;
     this.mathAnswer = answer;
@@ -408,12 +411,16 @@ class FruitGame {
     // 数学题弹窗：用数字按钮代替键盘输入
     if (this.mathShow && !this.mathRewardGiven) {
       const { width, height } = this.designSize;
-      const cX = width / 2; const cY = height / 2 - 80;
-      const pW = 380; const pH = 380;
+      const cX = width / 2; const cY = height / 2;
+      const pW = 360; const pH = 430;
+      const cardTop = cY - pH / 2;
+      const kbStartY = cardTop + 160;
+      const numW = 65; const numH = 52; const numGap = 8;
+      const kbWidth = 3 * numW + 2 * numGap;
+      const numStartX = cX - kbWidth / 2;
+      const numStartY = kbStartY;
 
       // 数字按钮 0-9（3列4行）
-      const numStartX = cX - 120; const numStartY = cY + 80;
-      const numW = 80; const numH = 65; const numGap = 8;
       for (let n = 0; n <= 9; n++) {
         const col = n === 0 ? 1 : (n - 1) % 3;
         const row = n === 0 ? 3 : Math.floor((n - 1) / 3);
@@ -558,42 +565,48 @@ class FruitGame {
 
   drawMathPopup(ctx) {
     const { width, height } = this.designSize;
-    const cX = width / 2; const cY = height / 2 - 80;
-    const pW = 380; const pH = 380;
+    const cX = width / 2; const cY = height / 2;
+    const pW = 360; const pH = 430;
+    const cardTop = cY - pH / 2;
 
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, width, height);
-    drawRoundRect(ctx, cX - pW / 2, cY - pH / 2, pW, pH, 16, '#fff', '#7c3aed', 3);
-    drawText(ctx, '\ud83e\uddee \u7b54\u5bf9\u5f97\u9524\u5b50\uff01', cX, cY - 70, { fontSize: 26, color: '#7c3aed', bold: true });
-    drawText(ctx, this.mathProblem, cX, cY - 30, { fontSize: 36, color: '#1a1a1a', bold: true });
+    drawRoundRect(ctx, cX - pW / 2, cardTop, pW, pH, 16, '#fff', '#7c3aed', 3);
+
+    // 标题（卡片内顶部）
+    drawText(ctx, '\ud83e\uddee \u7b54\u5bf9\u5f97\u9524\u5b50\uff01', cX, cardTop + 30, { fontSize: 26, color: '#7c3aed', bold: true });
+    // 题目
+    drawText(ctx, this.mathProblem, cX, cardTop + 65, { fontSize: 36, color: '#1a1a1a', bold: true });
 
     const timeLeft = Math.ceil(this.mathTimer);
     drawText(ctx, `\u23f1 ${timeLeft}s`, cX - pW / 2 + 15, cY + pH / 2 - 15, { fontSize: 18, color: '#ef4444' });
 
     // 已输入的答案
-    drawRoundRect(ctx, cX - 100, cY + 5, 200, 48, 10, '#f3f4f6', '#d1d5db', 2);
-    drawText(ctx, this.mathInput || '\u8f93\u5165\u7b54\u6848...', cX, cY + 30, { fontSize: 26, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
+    drawRoundRect(ctx, cX - 100, cardTop + 90, 200, 48, 10, '#f3f4f6', '#d1d5db', 2);
+    drawText(ctx, this.mathInput || '\u8f93\u5165\u7b54\u6848...', cX, cardTop + 115, { fontSize: 26, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
 
-    // 数字按钮 0-9
-    const numStartX = cX - 120; const numStartY = cY + 80;
-    const numW = 80; const numH = 65; const numGap = 8;
+    // 数字按钮 0-9（居中在卡片内）
+    const numW = 65; const numH = 52; const numGap = 8;
+    const kbWidth = 3 * numW + 2 * numGap;
+    const numStartX = cX - kbWidth / 2;
+    const numStartY = cardTop + 160;
     const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     for (let n of nums) {
       const col = (n - 1) % 3; const row = Math.floor((n - 1) / 3);
       const nx = numStartX + col * (numW + numGap); const ny = numStartY + row * (numH + numGap);
       drawRoundRect(ctx, nx, ny, numW, numH, 10, '#e5e7eb');
-      drawText(ctx, `${n}`, nx + numW / 2, ny + numH / 2, { fontSize: 28, color: '#1a1a1a', bold: true });
+      drawText(ctx, `${n}`, nx + numW / 2, ny + numH / 2, { fontSize: 24, color: '#1a1a1a', bold: true });
     }
 
     // 0 / 清除 / 提交 按钮（第4行）
     const row4Y = numStartY + 3 * (numH + numGap);
     drawRoundRect(ctx, numStartX + 1 * (numW + numGap), row4Y, numW, numH, 10, '#e5e7eb');
-    drawText(ctx, '0', numStartX + 1 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 28, color: '#1a1a1a', bold: true });
+    drawText(ctx, '0', numStartX + 1 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 24, color: '#1a1a1a', bold: true });
 
     drawRoundRect(ctx, numStartX, row4Y, numW, numH, 10, '#ef4444');
-    drawText(ctx, '\u2716', numStartX + numW / 2, row4Y + numH / 2, { fontSize: 28, color: '#fff' });
+    drawText(ctx, '\u2716', numStartX + numW / 2, row4Y + numH / 2, { fontSize: 24, color: '#fff' });
 
     drawRoundRect(ctx, numStartX + 2 * (numW + numGap), row4Y, numW, numH, 10, '#7c3aed');
-    drawText(ctx, '\u2713', numStartX + 2 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 28, color: '#fff' });
+    drawText(ctx, '\u2713', numStartX + 2 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 24, color: '#fff' });
   }
 
   destroy() {
