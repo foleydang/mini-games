@@ -52,7 +52,7 @@ class SheepGame {
 
     // 计算布局
     this.slotY = height - safeBottom - 130;
-    this.gridStartY = safeTop + 250;
+    this.gridStartY = safeTop + 250 + 55;  // 给操作按钮留空间
 
     this.generateLevel(this.currentLevel);
     this.draw();
@@ -314,31 +314,32 @@ class SheepGame {
     const ctx = this.ctx;
     const { width } = this.designSize;
 
-    // 撤销按钮 - 在牌堆上方左侧
+    // 撤销按钮 - 牌堆上方左侧
+    const btnY = this.gridStartY - 55;
     this.undoBtn = {
       x: 50,
-      y: this.gridStartY - 60,
-      width: 120,
+      y: btnY,
+      width: 130,
       height: 44
     };
     drawButton(ctx, this.undoBtn.x, this.undoBtn.y, this.undoBtn.width, this.undoBtn.height,
                '↩ 撤销', '#8b5cf6', { fontSize: 24, radius: 12 });
 
-    // 洗牌按钮 - 在牌堆上方右侧
+    // 洗牌按钮 - 牌堆上方中间
     this.shuffleBtn = {
-      x: width - 170,
-      y: this.gridStartY - 60,
-      width: 120,
+      x: width / 2 - 65,
+      y: btnY,
+      width: 130,
       height: 44
     };
     drawButton(ctx, this.shuffleBtn.x, this.shuffleBtn.y, this.shuffleBtn.width, this.shuffleBtn.height,
                '🔄 洗牌', '#3b82f6', { fontSize: 24, radius: 12 });
 
-    // 重试按钮 - 中间
+    // 重试按钮 - 牌堆上方右侧
     this.retryBtn = {
-      x: width / 2 - 60,
-      y: this.gridStartY - 60,
-      width: 120,
+      x: width - 180,
+      y: btnY,
+      width: 130,
       height: 44
     };
     drawButton(ctx, this.retryBtn.x, this.retryBtn.y, this.retryBtn.width, this.retryBtn.height,
