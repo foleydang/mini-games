@@ -1,8 +1,7 @@
 /**
- * 音效管理器 - 微信小游戏音效系统 + 背景音乐 + 震动
+ * 音效管理器 - 微信小游戏音效系统 + 背景音乐 + 震动 + 音效文件
  */
 
-// 音效类型
 export const SoundType = {
   CLICK: 'click',
   SUCCESS: 'success',
@@ -24,42 +23,25 @@ export const SoundType = {
   MATH_WRONG: 'math_wrong'
 };
 
-// 是否需要震动
 const shouldVibrate = {
-  click: false,
-  success: true,
-  fail: true,
-  swap: false,
-  match: true,
-  drop: false,
-  clear: true,
-  move: false,
-  gameover: true,
-  levelup: true,
-  flap: false,
-  bounce: false,
-  brick: true,
-  card: false,
-  pair: true,
-  hammer: true,
-  math_correct: true,
-  math_wrong: true
+  click: false, success: true, fail: true, swap: false, match: true,
+  drop: false, clear: true, move: false, gameover: true, levelup: true,
+  flap: false, bounce: false, brick: true, card: false, pair: true,
+  hammer: true, math_correct: true, math_wrong: true
 };
 
-// 震动强度
-const vibrateType = {
-  click: 'light',
-  success: 'medium',
-  fail: 'heavy',
-  match: 'medium',
-  clear: 'medium',
-  gameover: 'heavy',
-  levelup: 'medium',
-  brick: 'medium',
-  pair: 'medium',
-  hammer: 'heavy',
-  math_correct: 'medium',
-  math_wrong: 'heavy'
+// 音效文件映射
+const soundFiles = {
+  drop: 'audio/drop.wav',
+  clear: 'audio/clear.wav',
+  click: 'audio/click.wav',
+  hammer: 'audio/hammer.wav',
+  gameover: 'audio/fail.wav',
+  levelup: 'audio/win.wav',
+  success: 'audio/clear.wav',
+  match: 'audio/clear.wav',
+  brick: 'audio/hammer.wav',
+  pair: 'audio/clear.wav'
 };
 
 class AudioManager {
@@ -71,8 +53,12 @@ class AudioManager {
     this.minInterval = 100;
     this.bgMusic = null;
     this.bgMusicPlaying = false;
+    this.sfxPool = []; // 音效对象池（复用避免创建太多）
+    this.sfxIndex = 0;
+    this.poolSize = 5;
 
     this.initBgMusic();
+    this.initSfxPool();
   }
 
   initBgMusic() {
@@ -80,19 +66,25 @@ class AudioManager {
       this.bgMusic = wx.createInnerAudioContext();
       this.bgMusic.loop = true;
       this.bgMusic.volume = 0.3;
-      // 背景音乐URL - 使用项目中自带的音频
-      this.bgMusic.src = 'audio/bg.mp3';
+      this.bgMusic.src = 'audio/bg.wav';
       this.bgMusic.onError(() => {
-        // 如果本地文件不存在，静默处理
-        console.log('背景音乐加载失败，使用纯震动反馈');
+        console.log('背景音乐加载失败');
       });
-    } catch (e) {
-      console.log('创建背景音乐失败');
+    } catch (e) {}
+  }
+
+  initSfxPool() {
+    for (let i = 0; i < this.poolSize; i++) {
+      try {
+        const sfx = wx.createInnerAudioContext();
+        sfx.volume = 0.5;
+        this.sfxPool.push(sfx);
+      } catch (e) {}
     }
   }
 
   startBgMusic() {
-    if (!this.musicEnabled || !this.bgMusic || this.bgMusicPlaying) return;
+    if (!this.musicEnabled || !this.enabled || !this.bgMusic || this.bgMusicPlaying) return;
     try {
       this.bgMusic.play();
       this.bgMusicPlaying = true;
@@ -109,11 +101,8 @@ class AudioManager {
 
   toggleMusic() {
     this.musicEnabled = !this.musicEnabled;
-    if (this.musicEnabled) {
-      this.startBgMusic();
-    } else {
-      this.stopBgMusic();
-    }
+    if (this.musicEnabled && this.enabled) { this.startBgMusic(); }
+    else { this.stopBgMusic(); }
     return this.musicEnabled;
   }
 
@@ -126,35 +115,33 @@ class AudioManager {
       if (now - this.lastVibrateTime > this.minInterval) {
         this.lastVibrateTime = now;
         try {
-          const vt = vibrateType[type] || 'light';
-          if (vt === 'heavy') {
+          if (type === 'gameover' || type === 'math_wrong') {
             wx.vibrateLong();
+          } else if (type === 'hammer' || type === 'fail' || type === 'levelup') {
+            wx.vibrateShort({ type: 'medium' });
           } else {
-            wx.vibrateShort({ type: vt });
+            wx.vibrateShort({ type: 'light' });
           }
         } catch (e) {}
       }
     }
 
-    // 音效播放 - 使用 wx.createInnerAudioContext 生成简短提示音
-    if (this.soundEnabled) {
+    // 音效文件播放
+    if (this.soundEnabled && soundFiles[type]) {
       try {
-        const sfx = wx.createInnerAudioContext();
-        // 根据音效类型使用不同频率的合成音
-        // 微信小游戏不支持动态合成，但可以通过不同src实现
-        // 这里我们主要依赖震动反馈，音效部分需要实际音频文件
-        sfx.destroy(); // 暂时只用震动
+        const sfx = this.sfxPool[this.sfxIndex % this.poolSize];
+        this.sfxIndex++;
+        sfx.stop();
+        sfx.src = soundFiles[type];
+        sfx.play();
       } catch (e) {}
     }
   }
 
   toggle() {
     this.enabled = !this.enabled;
-    if (!this.enabled) {
-      this.stopBgMusic();
-    } else if (this.musicEnabled) {
-      this.startBgMusic();
-    }
+    if (!this.enabled) { this.stopBgMusic(); }
+    else if (this.musicEnabled) { this.startBgMusic(); }
     return this.enabled;
   }
 }
