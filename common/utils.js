@@ -585,7 +585,8 @@ export async function getUserFromServer() {
 export const RankData = {
   // 同步获取排行榜（本地缓存）
   getRank(gameId, sortType = 'desc') {
-    const data = Storage.load('rank_' + gameId) || [];
+    let data = Storage.load('rank_' + gameId);
+    if (!Array.isArray(data)) data = [];
     const filtered = data.filter(item => item.score > 0);
     return filtered.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score);
   },
