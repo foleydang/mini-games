@@ -20,8 +20,6 @@ import MemoryGame from './games/memory.js';
 import BounceGame from './games/bounce.js';
 import SheepGame from './games/sheep.js';
 import FruitGame from './games/fruit.js';
-import SheepGame from './games/sheep.js';
-import FruitGame from './games/fruit.js';
 
 class MainGame {
   constructor() {
@@ -190,8 +188,6 @@ class MainGame {
       breakout: BreakoutGame,
       memory: MemoryGame,
       bounce: BounceGame,
-      sheep: SheepGame,
-      fruit: FruitGame,
       sheep: SheepGame,
       fruit: FruitGame
     };
