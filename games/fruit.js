@@ -74,9 +74,11 @@ class FruitGame {
     this.bucketFruits = [];
     this.droppingFruits = [];
 
+    // 顶部按钮（标题栏位置）
     this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
+    this.hammerButton = null;
 
     this.init();
   }
@@ -89,7 +91,6 @@ class FruitGame {
 
   generateTopFruits() {
     this.topFruits = [];
-    // 8种水果各3个，共24个
     const types = [];
     for (let t = 0; t < FRUITS.length; t++) {
       for (let i = 0; i < 3; i++) types.push(t);
@@ -106,12 +107,9 @@ class FruitGame {
       const fruitDef = FRUITS[type];
       const x = this.boxLeft + padding + radius + Math.random() * (areaW - radius * 2);
       const y = this.boxTop + padding + radius + Math.random() * (areaH - radius * 2);
-
       this.topFruits.push({
-        x, y,
-        type, radius,
-        emoji: fruitDef.emoji,
-        color: fruitDef.color,
+        x, y, type, radius,
+        emoji: fruitDef.emoji, color: fruitDef.color,
         removed: false,
       });
     }
@@ -129,12 +127,9 @@ class FruitGame {
           const minDist = f.radius + other.radius + minGap;
           if (dist < minDist && dist > 0) {
             const overlap = minDist - dist;
-            const nx = dx / dist;
-            const ny = dy / dist;
-            f.x -= nx * overlap * 0.5;
-            f.y -= ny * overlap * 0.5;
-            other.x += nx * overlap * 0.5;
-            other.y += ny * overlap * 0.5;
+            const nx = dx / dist; const ny = dy / dist;
+            f.x -= nx * overlap * 0.5; f.y -= ny * overlap * 0.5;
+            other.x += nx * overlap * 0.5; other.y += ny * overlap * 0.5;
             moved = true;
           }
         }
@@ -155,37 +150,31 @@ class FruitGame {
   clickFruit(fruit) {
     fruit.removed = true;
     const fruitDef = FRUITS[fruit.type];
-
     this.droppingFruits.push({
-      x: fruit.x,
-      y: fruit.y,
-      vx: 0,
-      vy: 0,
-      type: fruit.type,
-      radius: fruitDef.radius,
-      emoji: fruitDef.emoji,
-      color: fruitDef.color,
+      x: fruit.x, y: fruit.y, vx: 0, vy: 0,
+      type: fruit.type, radius: fruitDef.radius,
+      emoji: fruitDef.emoji, color: fruitDef.color,
       phase: 'box',
     });
   }
 
   // ===== 道具：锤子 =====
+  // 点击锤子按钮 → 弹出数学题，答对才能用锤子消除
   useHammer() {
-    if (this.hammers <= 0 || this.bucketFruits.length === 0) return;
-    // 弹出数学题
+    if (this.bucketFruits.length === 0) return;
     this.generateMathProblem();
   }
 
   generateMathProblem() {
     const a = Math.floor(Math.random() * 20) + 1;
     const b = Math.floor(Math.random() * 20) + 1;
-    const ops = ['+', '-', '×'];
+    const ops = ['+', '-', '\u00d7'];
     const op = ops[Math.floor(Math.random() * ops.length)];
     let answer;
     switch (op) {
       case '+': answer = a + b; break;
       case '-': answer = a - b; break;
-      case '×': answer = a * b; break;
+      case '\u00d7': answer = a * b; break;
     }
     this.mathProblem = `${a} ${op} ${b} = ?`;
     this.mathAnswer = answer;
@@ -199,23 +188,19 @@ class FruitGame {
   submitMathAnswer() {
     if (!this.mathShow) return;
     const input = parseInt(this.mathInput);
+    if (isNaN(input)) return;
+
     if (input === this.mathAnswer) {
       this.mathCorrect = true;
       this.hammers++;
       this.mathRewardGiven = true;
-      this.scorePopups.push({
-        text: '✅ +1🔨',
-        x: this.designSize.width / 2,
-        y: this.designSize.height / 2 - 60,
-        progress: 0
-      });
+
       // 消除桶内最上面水果
       let topFruit = null;
       let topY = Infinity;
       for (const bf of this.bucketFruits) {
         if (bf.settled && !this.removing.includes(bf) && bf.y < topY) {
-          topY = bf.y;
-          topFruit = bf;
+          topY = bf.y; topFruit = bf;
         }
       }
       if (topFruit) {
@@ -223,36 +208,26 @@ class FruitGame {
         this.eliminating = true;
         this.removeProgress = 0;
         this.score += 5;
-        this.scorePopups.push({
-          text: '🔨+5',
-          x: topFruit.x,
-          y: topFruit.y - 40,
-          progress: 0
-        });
+        this.scorePopups.push({ text: '\ud83d\udd28+5', x: topFruit.x, y: topFruit.y - 40, progress: 0 });
       }
+      this.scorePopups.push({ text: '\u2705 +1\ud83d\udd28', x: this.designSize.width / 2, y: this.designSize.height / 2 - 60, progress: 0 });
       setTimeout(() => { this.mathShow = false; }, 1500);
     } else {
       this.mathInput = '';
-      this.mathCorrect = false;
     }
   }
 
   // ===== 游戏循环 =====
   gameLoop() {
     if (this.gameOver || this.gameWon) {
-      if (!this.scoreSaved) {
-        RankData.save(this.gameId, this.score);
-        this.scoreSaved = true;
-      }
+      if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.draw();
       return;
     }
 
     if (this.mathShow && !this.mathRewardGiven) {
       this.mathTimer -= 0.033;
-      if (this.mathTimer <= 0) {
-        this.mathShow = false;
-      }
+      if (this.mathTimer <= 0) { this.mathShow = false; }
     }
 
     for (let i = this.droppingFruits.length - 1; i >= 0; i--) {
@@ -264,31 +239,20 @@ class FruitGame {
       bf.vy = Math.min(bf.vy + GRAVITY, MAX_VY);
       bf.y += bf.vy;
       bf.x += (bf.vx || 0);
-
       if (bf.x - bf.radius < this.bucketLeft + 4) { bf.x = this.bucketLeft + 4 + bf.radius; bf.vx = 0; }
       if (bf.x + bf.radius > this.bucketRight - 4) { bf.x = this.bucketRight - 4 - bf.radius; bf.vx = 0; }
-
       if (bf.y + bf.radius >= this.bucketBottom) {
         bf.y = this.bucketBottom - bf.radius;
-        if (bf.vy > 4) {
-          bf.vy = -bf.vy * BOUNCE_FACTOR;
-        } else {
-          bf.vy = 0; bf.vx = 0; bf.settled = true;
-          if (!bf.settleTime) bf.settleTime = Date.now();
-          this.checkBucketElimination();
-        }
+        if (bf.vy > 4) { bf.vy = -bf.vy * BOUNCE_FACTOR; }
+        else { bf.vy = 0; bf.vx = 0; bf.settled = true; if (!bf.settleTime) bf.settleTime = Date.now(); this.checkBucketElimination(); }
       }
-
       for (const other of this.bucketFruits) {
         if (other === bf || !other.settled) continue;
         this.resolveBucketOverlap(bf, other);
       }
-
       if (!bf.settled && bf.vy < 1.5 && bf.vy >= 0) {
         if (bf.y + bf.radius >= this.bucketBottom - 4 || this.hasBucketSupport(bf)) {
-          bf.vy = 0; bf.vx = 0; bf.settled = true;
-          if (!bf.settleTime) bf.settleTime = Date.now();
-          this.checkBucketElimination();
+          bf.vy = 0; bf.vx = 0; bf.settled = true; if (!bf.settleTime) bf.settleTime = Date.now(); this.checkBucketElimination();
         }
       }
     }
@@ -297,10 +261,7 @@ class FruitGame {
       this.removeProgress += 0.07;
       if (this.removeProgress >= 1) {
         this.bucketFruits = this.bucketFruits.filter(f => !this.removing.includes(f));
-        this.removing = [];
-        this.removeProgress = 0;
-        this.eliminating = false;
-        this.unsettleBucket();
+        this.removing = []; this.removeProgress = 0; this.eliminating = false; this.unsettleBucket();
       }
     }
 
@@ -311,7 +272,6 @@ class FruitGame {
 
     this.checkWin();
     this.checkOverflow();
-
     this.draw();
     setTimeout(() => this.gameLoop(), 33);
   }
@@ -330,112 +290,67 @@ class FruitGame {
     if (df.phase === 'box') {
       if (df.x - df.radius < this.boxLeft + 5) { df.x = this.boxLeft + 5 + df.radius; df.vx = 0; }
       if (df.x + df.radius > this.boxRight - 5) { df.x = this.boxRight - 5 - df.radius; df.vx = 0; }
-
       for (const f of this.topFruits) {
         if (f.removed) continue;
-        const dx = df.x - f.x;
-        const dy = df.y - f.y;
+        const dx = df.x - f.x; const dy = df.y - f.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const minDist = df.radius + f.radius + 2;
-
         if (dist < minDist && dist > 0) {
-          const nx = dx / dist;
-          const ny = dy / dist;
+          const nx = dx / dist; const ny = dy / dist;
           const overlap = minDist - dist;
-
-          df.x += nx * overlap;
-          df.y += ny * overlap;
-
-          if (Math.abs(nx) > 0.4) {
-            df.vx = nx * Math.abs(df.vy) * 0.6;
-            df.vy *= 0.4;
-          } else {
-            df.vy = -df.vy * BOUNCE_FACTOR;
-          }
+          df.x += nx * overlap; df.y += ny * overlap;
+          if (Math.abs(nx) > 0.4) { df.vx = nx * Math.abs(df.vy) * 0.6; df.vy *= 0.4; }
+          else { df.vy = -df.vy * BOUNCE_FACTOR; }
         }
       }
-
       df.x = Math.max(this.boxLeft + 5 + df.radius, Math.min(this.boxRight - 5 - df.radius, df.x));
       df.y = Math.max(this.boxTop + 5 + df.radius, df.y);
-
-      if (df.y + df.radius >= this.boxBottom) {
-        df.phase = 'funnel';
-      }
+      if (df.y + df.radius >= this.boxBottom) { df.phase = 'funnel'; }
     }
 
     if (df.phase === 'funnel') {
       const fp = Math.max(0, Math.min(1, (df.y - this.funnelTop) / this.funnelHeight));
       const leftWall = this.funnelTopLeft + (this.bucketLeft - this.funnelTopLeft) * fp;
       const rightWall = this.funnelTopRight - (this.funnelTopRight - this.bucketRight) * fp;
-
-      if (df.x - df.radius < leftWall + 4) {
-        df.x = leftWall + 4 + df.radius;
-        df.vx = 3 + Math.abs(df.vx) * 0.3;
-      }
-      if (df.x + df.radius > rightWall - 4) {
-        df.x = rightWall - 4 - df.radius;
-        df.vx = -(3 + Math.abs(df.vx) * 0.3);
-      }
-
+      if (df.x - df.radius < leftWall + 4) { df.x = leftWall + 4 + df.radius; df.vx = 3 + Math.abs(df.vx) * 0.3; }
+      if (df.x + df.radius > rightWall - 4) { df.x = rightWall - 4 - df.radius; df.vx = -(3 + Math.abs(df.vx) * 0.3); }
       if (df.y + df.radius >= this.bucketTop) {
         df.phase = 'bucket';
-        df.x = Math.max(this.bucketLeft + df.radius + 4,
-                      Math.min(this.bucketRight - df.radius - 4, df.x));
+        df.x = Math.max(this.bucketLeft + df.radius + 4, Math.min(this.bucketRight - df.radius - 4, df.x));
       }
     }
 
     if (df.phase === 'bucket') {
       if (df.x - df.radius < this.bucketLeft + 4) { df.x = this.bucketLeft + 4 + df.radius; df.vx = 0; }
       if (df.x + df.radius > this.bucketRight - 4) { df.x = this.bucketRight - 4 - df.radius; df.vx = 0; }
-
       if (df.y + df.radius >= this.bucketBottom) {
         df.y = this.bucketBottom - df.radius;
-        if (df.vy > 4) {
-          df.vy = -df.vy * BOUNCE_FACTOR;
-        } else {
-          this.finishDrop(df);
-          return true;
-        }
+        if (df.vy > 4) { df.vy = -df.vy * BOUNCE_FACTOR; }
+        else { this.finishDrop(df); return true; }
       }
-
       for (const bf of this.bucketFruits) {
         if (!bf.settled) continue;
-        const dx = bf.x - df.x;
-        const dy = bf.y - df.y;
+        const dx = bf.x - df.x; const dy = bf.y - df.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const minDist = df.radius + bf.radius;
-
         if (dist < minDist && dist > 0) {
           df.y = bf.y - minDist;
           df.x += (df.x > bf.x ? 1 : -1) * (minDist - dist) * 0.3;
-          df.x = Math.max(this.bucketLeft + df.radius + 4,
-                        Math.min(this.bucketRight - df.radius - 4, df.x));
-
-          if (df.vy > 4) {
-            df.vy = -df.vy * BOUNCE_FACTOR;
-          } else {
-            this.finishDrop(df);
-            return true;
-          }
+          df.x = Math.max(this.bucketLeft + df.radius + 4, Math.min(this.bucketRight - df.radius - 4, df.x));
+          if (df.vy > 4) { df.vy = -df.vy * BOUNCE_FACTOR; }
+          else { this.finishDrop(df); return true; }
         }
       }
-
-      if (df.vy < 1.5 && df.vy >= 0) {
-        this.finishDrop(df);
-        return true;
-      }
+      if (df.vy < 1.5 && df.vy >= 0) { this.finishDrop(df); return true; }
     }
-
     return false;
   }
 
   finishDrop(df) {
     this.bucketFruits.push({
       x: df.x, y: df.y, vx: 0, vy: 0,
-      type: df.type, radius: df.radius,
-      emoji: df.emoji, color: df.color,
-      settled: true,
-      settleTime: Date.now(),
+      type: df.type, radius: df.radius, emoji: df.emoji, color: df.color,
+      settled: true, settleTime: Date.now(),
     });
     const idx = this.droppingFruits.indexOf(df);
     if (idx >= 0) this.droppingFruits.splice(idx, 1);
@@ -443,32 +358,22 @@ class FruitGame {
   }
 
   resolveBucketOverlap(a, b) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
+    const dx = b.x - a.x; const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const minDist = a.radius + b.radius;
-
     if (dist < minDist && dist > 0) {
       const overlap = minDist - dist;
-      const nx = dx / dist;
-      const ny = dy / dist;
-      a.x -= nx * overlap;
-      a.y -= ny * overlap;
-      a.x = Math.max(this.bucketLeft + a.radius + 4,
-                    Math.min(this.bucketRight - a.radius - 4, a.x));
-      if (ny < -0.3) {
-        a.vy = -Math.abs(a.vy) * BOUNCE_FACTOR;
-      } else {
-        a.vy *= 0.5;
-      }
+      const nx = dx / dist; const ny = dy / dist;
+      a.x -= nx * overlap; a.y -= ny * overlap;
+      a.x = Math.max(this.bucketLeft + a.radius + 4, Math.min(this.bucketRight - a.radius - 4, a.x));
+      if (ny < -0.3) { a.vy = -Math.abs(a.vy) * BOUNCE_FACTOR; } else { a.vy *= 0.5; }
     }
   }
 
   hasBucketSupport(f) {
     for (const other of this.bucketFruits) {
       if (other === f || !other.settled) continue;
-      const dx = other.x - f.x;
-      const dy = other.y - f.y;
+      const dx = other.x - f.x; const dy = other.y - f.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dy > 0 && dist < f.radius + other.radius + 6) return true;
     }
@@ -479,8 +384,7 @@ class FruitGame {
     for (const bf of this.bucketFruits) {
       if (!bf.settled) continue;
       if (!this.hasBucketSupport(bf) && bf.y + bf.radius < this.bucketBottom - 5) {
-        bf.settled = false;
-        bf.vy = 2;
+        bf.settled = false; bf.vy = 2;
       }
     }
   }
@@ -496,25 +400,13 @@ class FruitGame {
           const b = this.bucketFruits[j];
           if (this.removing.includes(b)) continue;
           if (a.type !== b.type) continue;
-
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
+          const dx = b.x - a.x; const dy = b.y - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < a.radius + b.radius + 8) {
-            this.removing.push(a, b);
-            this.eliminating = true;
-            this.removeProgress = 0;
-            this.combo++;
-            const gain = 10 * this.combo;
-            this.score += gain;
-            this.scorePopups.push({
-              text: `+${gain}`,
-              x: (a.x + b.x) / 2,
-              y: Math.min(a.y, b.y) - 40,
-              progress: 0
-            });
-            found = true;
-            break;
+            this.removing.push(a, b); this.eliminating = true; this.removeProgress = 0;
+            this.combo++; const gain = 10 * this.combo; this.score += gain;
+            this.scorePopups.push({ text: `+${gain}`, x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - 40, progress: 0 });
+            found = true; break;
           }
         }
         if (found) break;
@@ -534,77 +426,57 @@ class FruitGame {
       if (bf.settled && !this.removing.includes(bf)) {
         const age = now - (bf.settleTime || 0);
         if (age < OVERFLOW_GRACE_MS) continue;
-        if (bf.y - bf.radius < this.bucketTop + 30) {
-          this.gameOver = true;
-          return;
-        }
+        if (bf.y - bf.radius < this.bucketTop + 30) { this.gameOver = true; return; }
       }
     }
   }
 
   onTouchStart(pos) {
+    // 顶部按钮检测
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
       if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
-      this.onEnd(this.score);
-      return;
+      this.onEnd(this.score); return;
     }
-    if (btn === 'soundBtn') {
-      this.soundEnabled = !this.soundEnabled;
-      this.draw();
-      return;
-    }
+    if (btn === 'soundBtn') { this.soundEnabled = !this.soundEnabled; this.draw(); return; }
 
-    // 点击锤子按钮
+    // 锤子按钮检测
     if (this.hammerButton &&
         pos.x >= this.hammerButton.x && pos.x <= this.hammerButton.x + this.hammerButton.w &&
         pos.y >= this.hammerButton.y && pos.y <= this.hammerButton.y + this.hammerButton.h) {
-      this.useHammer();
-      return;
+      this.useHammer(); return;
     }
 
     if (this.gameOver || this.gameWon) {
       if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
-      this.onEnd(this.score);
-      return;
+      this.onEnd(this.score); return;
     }
 
     if (this.eliminating) return;
 
-    // 数学题弹窗点击
+    // 数学题弹窗交互
     if (this.mathShow && !this.mathRewardGiven) {
-      const popupCenterX = this.designSize.width / 2;
-      const popupCenterY = this.designSize.height / 2 - 60;
-      const popupWidth = 300;
-      const popupHeight = 160;
+      const cX = this.designSize.width / 2;
+      const cY = this.designSize.height / 2 - 60;
+      const pW = 300; const pH = 160;
 
       // 提交按钮
-      const submitBtnX = popupCenterX - 40;
-      const submitBtnY = popupCenterY + popupHeight / 2 - 25;
-      if (pos.x >= submitBtnX && pos.x <= submitBtnX + 80 &&
-          pos.y >= submitBtnY && pos.y <= submitBtnY + 30) {
-        this.submitMathAnswer();
-        return;
+      if (pos.x >= cX - 40 && pos.x <= cX + 40 && pos.y >= cY + pH / 2 - 25 && pos.y <= cY + pH / 2 + 5) {
+        this.submitMathAnswer(); return;
       }
-
-      // 弹窗内其他点击忽略
-      if (pos.x >= popupCenterX - popupWidth / 2 && pos.x <= popupCenterX + popupWidth / 2 &&
-          pos.y >= popupCenterY - popupHeight / 2 && pos.y <= popupCenterY + popupHeight / 2) {
+      // 弹窗内点击忽略
+      if (pos.x >= cX - pW / 2 && pos.x <= cX + pW / 2 && pos.y >= cY - pH / 2 && pos.y <= cY + pH / 2) {
         return;
       }
     }
 
-    let closest = null;
-    let closestDist = Infinity;
+    // 找最近的可点击水果
+    let closest = null; let closestDist = Infinity;
     for (const f of this.topFruits) {
       if (f.removed) continue;
-      const dx = pos.x - f.x;
-      const dy = pos.y - f.y;
+      const dx = pos.x - f.x; const dy = pos.y - f.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= f.radius + 10 && dist < closestDist) {
-        closest = f;
-        closestDist = dist;
-      }
+      if (dist <= f.radius + 10 && dist < closestDist) { closest = f; closestDist = dist; }
     }
     if (closest) this.clickFruit(closest);
   }
@@ -620,26 +492,18 @@ class FruitGame {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     drawGradientBg(ctx, width, height, '#fef9c3', '#fde68a');
 
+    // 标题 + 分数
     drawText(ctx, '水果消消乐', width / 2, safeTop + 70, { fontSize: 48, color: '#d97706', bold: true });
     drawText(ctx, `分数: ${this.score}`, width / 2, safeTop + 120, { fontSize: 26, color: '#92400e' });
 
-    this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
+    // 顶部按钮行（和其他游戏一样）
+    this.buttons = drawBottomButtons(ctx, this.designSize, '\u2190 \u8fd4\u56de', this.soundEnabled);
 
     this.drawContainer();
 
-    for (const f of this.topFruits) {
-      if (f.removed) continue;
-      this.drawSingleFruit(f, 1, 1);
-    }
-
-    for (const df of this.droppingFruits) {
-      this.drawSingleFruit(df, 1, 1);
-    }
-
-    for (const bf of this.bucketFruits) {
-      if (this.removing.includes(bf)) continue;
-      this.drawSingleFruit(bf, 1, 1);
-    }
+    for (const f of this.topFruits) { if (f.removed) continue; this.drawSingleFruit(f, 1, 1); }
+    for (const df of this.droppingFruits) { this.drawSingleFruit(df, 1, 1); }
+    for (const bf of this.bucketFruits) { if (this.removing.includes(bf)) continue; this.drawSingleFruit(bf, 1, 1); }
 
     if (this.eliminating) {
       const p = this.removeProgress;
@@ -656,33 +520,30 @@ class FruitGame {
       ctx.globalAlpha = 1;
     }
 
-    // 锤子按钮
+    // 锤子按钮（左下角）
     this.drawHammerButton(ctx);
 
     // 数学题弹窗
-    if (this.mathShow && !this.mathRewardGiven) {
-      this.drawMathPopup(ctx);
-    }
+    if (this.mathShow && !this.mathRewardGiven) { this.drawMathPopup(ctx); }
 
     if (this.gameWon) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '🎉 通关！', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, `得分: ${this.score}`, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
-      drawHint(ctx, this.designSize, '点击返回');
+      drawText(ctx, '\ud83c\udf89 \u901a\u5173\uff01', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
+      drawText(ctx, `\u5f97\u5206: ${this.score}`, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
+      drawHint(ctx, this.designSize, '\u70b9\u51fb\u8fd4\u56de');
     } else if (this.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '失败了 😢', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, `得分: ${this.score}`, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
-      drawHint(ctx, this.designSize, '点击返回');
+      drawText(ctx, '\u5931\u8d25\u4e86 \ud83d\ude22', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
+      drawText(ctx, `\u5f97\u5206: ${this.score}`, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
+      drawHint(ctx, this.designSize, '\u70b9\u51fb\u8fd4\u56de');
     }
   }
 
   drawContainer() {
     const ctx = this.ctx;
     const wallW = 12;
-
     ctx.fillStyle = '#78350f';
     ctx.beginPath();
     ctx.moveTo(this.boxLeft - wallW, this.boxTop);
@@ -709,24 +570,12 @@ class FruitGame {
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = '#92400e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(this.boxLeft + 4, this.funnelTop);
-    ctx.lineTo(this.bucketLeft + 4, this.funnelBottom);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(this.boxRight - 4, this.funnelTop);
-    ctx.lineTo(this.bucketRight - 4, this.funnelBottom);
-    ctx.stroke();
+    ctx.strokeStyle = '#92400e'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(this.boxLeft + 4, this.funnelTop); ctx.lineTo(this.bucketLeft + 4, this.funnelBottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(this.boxRight - 4, this.funnelTop); ctx.lineTo(this.bucketRight - 4, this.funnelBottom); ctx.stroke();
 
-    ctx.strokeStyle = '#dc2626';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 4]);
-    ctx.beginPath();
-    ctx.moveTo(this.bucketLeft + 8, this.bucketTop + 30);
-    ctx.lineTo(this.bucketRight - 8, this.bucketTop + 30);
-    ctx.stroke();
+    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.setLineDash([8, 4]);
+    ctx.beginPath(); ctx.moveTo(this.bucketLeft + 8, this.bucketTop + 30); ctx.lineTo(this.bucketRight - 8, this.bucketTop + 30); ctx.stroke();
     ctx.setLineDash([]);
   }
 
@@ -735,58 +584,46 @@ class FruitGame {
     const r = (f.radius || FRUITS[f.type].radius) * scale;
     ctx.globalAlpha = alpha;
     ctx.font = `${Math.floor(r * 2)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(f.emoji || FRUITS[f.type].emoji, f.x, f.y);
     ctx.globalAlpha = 1;
   }
 
   drawHammerButton(ctx) {
-    const { width, height, safeBottom } = this.designSize;
+    const { height, safeBottom } = this.designSize;
     const btnX = 30;
-    const btnY = height - safeBottom - 80;
-    const btnW = 70;
-    const btnH = 70;
-
+    const btnY = height - safeBottom - 85;
+    const btnW = 70; const btnH = 70;
     drawRoundRect(ctx, btnX, btnY, btnW, btnH, 12, this.hammers > 0 ? '#7c3aed' : '#9ca3af');
-    drawText(ctx, '🔨', btnX + btnW / 2, btnY + btnH / 2 - 8, { fontSize: 36 });
+    drawText(ctx, '\ud83d\udd28', btnX + btnW / 2, btnY + btnH / 2 - 8, { fontSize: 36 });
     drawText(ctx, `${this.hammers}`, btnX + btnW / 2, btnY + btnH - 12, { fontSize: 14, color: '#fff' });
-
     this.hammerButton = { x: btnX, y: btnY, w: btnW, h: btnH };
   }
 
   drawMathPopup(ctx) {
     const { width, height } = this.designSize;
-    const cX = width / 2;
-    const cY = height / 2 - 60;
-    const pW = 300;
-    const pH = 160;
+    const cX = width / 2; const cY = height / 2 - 60;
+    const pW = 300; const pH = 160;
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, width, height);
 
     drawRoundRect(ctx, cX - pW / 2, cY - pH / 2, pW, pH, 16, '#fff', '#7c3aed', 3);
-
-    drawText(ctx, '🧮 答对得锤子！', cX, cY - 30, { fontSize: 22, color: '#7c3aed', bold: true });
+    drawText(ctx, '\ud83e\uddee \u7b54\u5bf9\u5f97\u9524\u5b50\uff01', cX, cY - 30, { fontSize: 22, color: '#7c3aed', bold: true });
     drawText(ctx, this.mathProblem, cX, cY + 5, { fontSize: 32, color: '#1a1a1a', bold: true });
 
     const timeLeft = Math.ceil(this.mathTimer);
-    drawText(ctx, `⏱ ${timeLeft}s`, cX - pW / 2 + 15, cY + pH / 2 - 10, { fontSize: 14, color: '#ef4444' });
+    drawText(ctx, `\u23f1 ${timeLeft}s`, cX - pW / 2 + 15, cY + pH / 2 - 10, { fontSize: 14, color: '#ef4444' });
 
-    // 输入框
-    const iX = cX - 90;
-    const iY = cY + 35;
+    const iX = cX - 90; const iY = cY + 35;
     drawRoundRect(ctx, iX, iY, 180, 36, 8, '#f3f4f6', '#d1d5db', 2);
-    drawText(ctx, this.mathInput || '输入答案...', iX + 90, iY + 18, { fontSize: 20, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
+    drawText(ctx, this.mathInput || '\u8f93\u5165\u7b54\u6848...', iX + 90, iY + 18, { fontSize: 20, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
 
-    // 提交按钮
     drawRoundRect(ctx, cX - 40, cY + pH / 2 - 25, 80, 30, 8, '#7c3aed');
-    drawText(ctx, '提交', cX, cY + pH / 2 - 10, { fontSize: 16, color: '#fff', bold: true });
+    drawText(ctx, '\u63d0\u4ea4', cX, cY + pH / 2 - 10, { fontSize: 16, color: '#fff', bold: true });
   }
 
-  destroy() {
-    this.gameOver = true;
-  }
+  destroy() { this.gameOver = true; }
 }
 
 export default FruitGame;
