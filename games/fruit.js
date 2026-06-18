@@ -1,4 +1,4 @@
-// 水果消消乐 - 纯垂直自由落体 + 碰固定水果滑落 + 漏斗进桶 + 消除
+// 水果消消乐 - 纯垂直自由落体 + 碰固定水果滑落 + 漏斗进桶 + 消除 + 锤子道具
 import { drawRoundRect, drawButton, drawText, drawGradientBg, drawCircle, RankData, Storage } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
@@ -9,6 +9,8 @@ const FRUITS = [
   { emoji: '🍓', radius: 30, color: '#ec4899' },
   { emoji: '🍋', radius: 30, color: '#fde047' },
   { emoji: '🍑', radius: 30, color: '#f9a8d4' },
+  { emoji: '🥝', radius: 30, color: '#7c3aed' },
+  { emoji: '🫐', radius: 30, color: '#06b6d4' },
 ];
 
 const GRAVITY = 0.3;
@@ -32,6 +34,16 @@ class FruitGame {
     this.scoreSaved = false;
     this.soundEnabled = true;
     this.combo = 0;
+
+    // 道具：锤子
+    this.hammers = 0;
+    this.mathProblem = null;
+    this.mathAnswer = null;
+    this.mathInput = '';
+    this.mathShow = false;
+    this.mathTimer = 0;
+    this.mathCorrect = false;
+    this.mathRewardGiven = false;
 
     const { width, height, safeTop, safeBottom } = designSize;
 
@@ -77,13 +89,14 @@ class FruitGame {
 
   generateTopFruits() {
     this.topFruits = [];
+    // 8种水果各3个，共24个
     const types = [];
     for (let t = 0; t < FRUITS.length; t++) {
       for (let i = 0; i < 3; i++) types.push(t);
     }
     this.shuffleArray(types);
 
-    const padding = 20;
+    const padding = 15;
     const areaW = this.boxRight - this.boxLeft - padding * 2;
     const areaH = this.boxBottom - this.boxTop - padding * 2;
     const radius = FRUITS[0].radius;
@@ -139,7 +152,6 @@ class FruitGame {
     }
   }
 
-  // 点击水果 - 纯自由落体(vx=0 vy=0)
   clickFruit(fruit) {
     fruit.removed = true;
     const fruitDef = FRUITS[fruit.type];
@@ -157,6 +169,74 @@ class FruitGame {
     });
   }
 
+  // ===== 道具：锤子 =====
+  useHammer() {
+    if (this.hammers <= 0 || this.bucketFruits.length === 0) return;
+    // 弹出数学题
+    this.generateMathProblem();
+  }
+
+  generateMathProblem() {
+    const a = Math.floor(Math.random() * 20) + 1;
+    const b = Math.floor(Math.random() * 20) + 1;
+    const ops = ['+', '-', '×'];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let answer;
+    switch (op) {
+      case '+': answer = a + b; break;
+      case '-': answer = a - b; break;
+      case '×': answer = a * b; break;
+    }
+    this.mathProblem = `${a} ${op} ${b} = ?`;
+    this.mathAnswer = answer;
+    this.mathInput = '';
+    this.mathShow = true;
+    this.mathCorrect = false;
+    this.mathRewardGiven = false;
+    this.mathTimer = 30;
+  }
+
+  submitMathAnswer() {
+    if (!this.mathShow) return;
+    const input = parseInt(this.mathInput);
+    if (input === this.mathAnswer) {
+      this.mathCorrect = true;
+      this.hammers++;
+      this.mathRewardGiven = true;
+      this.scorePopups.push({
+        text: '✅ +1🔨',
+        x: this.designSize.width / 2,
+        y: this.designSize.height / 2 - 60,
+        progress: 0
+      });
+      // 消除桶内最上面水果
+      let topFruit = null;
+      let topY = Infinity;
+      for (const bf of this.bucketFruits) {
+        if (bf.settled && !this.removing.includes(bf) && bf.y < topY) {
+          topY = bf.y;
+          topFruit = bf;
+        }
+      }
+      if (topFruit) {
+        this.removing.push(topFruit);
+        this.eliminating = true;
+        this.removeProgress = 0;
+        this.score += 5;
+        this.scorePopups.push({
+          text: '🔨+5',
+          x: topFruit.x,
+          y: topFruit.y - 40,
+          progress: 0
+        });
+      }
+      setTimeout(() => { this.mathShow = false; }, 1500);
+    } else {
+      this.mathInput = '';
+      this.mathCorrect = false;
+    }
+  }
+
   // ===== 游戏循环 =====
   gameLoop() {
     if (this.gameOver || this.gameWon) {
@@ -168,12 +248,17 @@ class FruitGame {
       return;
     }
 
-    // 更新所有掉落水果
+    if (this.mathShow && !this.mathRewardGiven) {
+      this.mathTimer -= 0.033;
+      if (this.mathTimer <= 0) {
+        this.mathShow = false;
+      }
+    }
+
     for (let i = this.droppingFruits.length - 1; i >= 0; i--) {
       this.updateDropping(this.droppingFruits[i]);
     }
 
-    // 更新桶内未稳定水果
     for (const bf of this.bucketFruits) {
       if (bf.settled) continue;
       bf.vy = Math.min(bf.vy + GRAVITY, MAX_VY);
@@ -242,12 +327,10 @@ class FruitGame {
   }
 
   droppingCollision(df) {
-    // 容器区：碰墙壁 + 碰固定水果（落在上面则侧滑走）
     if (df.phase === 'box') {
       if (df.x - df.radius < this.boxLeft + 5) { df.x = this.boxLeft + 5 + df.radius; df.vx = 0; }
       if (df.x + df.radius > this.boxRight - 5) { df.x = this.boxRight - 5 - df.radius; df.vx = 0; }
 
-      // 碰固定水果：落在上面 → 侧滑继续下落
       for (const f of this.topFruits) {
         if (f.removed) continue;
         const dx = df.x - f.x;
@@ -260,17 +343,13 @@ class FruitGame {
           const ny = dy / dist;
           const overlap = minDist - dist;
 
-          // 推开掉落水果到固定水果表面
           df.x += nx * overlap;
           df.y += ny * overlap;
 
-          // 根据碰撞方向：侧面碰 → 沿表面滑落；上方碰 → 小反弹
           if (Math.abs(nx) > 0.4) {
-            // 侧面碰撞：沿斜面滑落，给水平滑速
             df.vx = nx * Math.abs(df.vy) * 0.6;
-            df.vy *= 0.4; // 减速但继续下落
+            df.vy *= 0.4;
           } else {
-            // 正上方碰撞（落在固定水果上面）：小反弹
             df.vy = -df.vy * BOUNCE_FACTOR;
           }
         }
@@ -284,7 +363,6 @@ class FruitGame {
       }
     }
 
-    // 漏斗区
     if (df.phase === 'funnel') {
       const fp = Math.max(0, Math.min(1, (df.y - this.funnelTop) / this.funnelHeight));
       const leftWall = this.funnelTopLeft + (this.bucketLeft - this.funnelTopLeft) * fp;
@@ -306,7 +384,6 @@ class FruitGame {
       }
     }
 
-    // 桶区
     if (df.phase === 'bucket') {
       if (df.x - df.radius < this.bucketLeft + 4) { df.x = this.bucketLeft + 4 + df.radius; df.vx = 0; }
       if (df.x + df.radius > this.bucketRight - 4) { df.x = this.bucketRight - 4 - df.radius; df.vx = 0; }
@@ -468,10 +545,7 @@ class FruitGame {
   onTouchStart(pos) {
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
-      if (!this.scoreSaved) {
-        RankData.save(this.gameId, this.score);
-        this.scoreSaved = true;
-      }
+      if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.onEnd(this.score);
       return;
     }
@@ -481,16 +555,44 @@ class FruitGame {
       return;
     }
 
+    // 点击锤子按钮
+    if (this.hammerButton &&
+        pos.x >= this.hammerButton.x && pos.x <= this.hammerButton.x + this.hammerButton.w &&
+        pos.y >= this.hammerButton.y && pos.y <= this.hammerButton.y + this.hammerButton.h) {
+      this.useHammer();
+      return;
+    }
+
     if (this.gameOver || this.gameWon) {
-      if (!this.scoreSaved) {
-        RankData.save(this.gameId, this.score);
-        this.scoreSaved = true;
-      }
+      if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.onEnd(this.score);
       return;
     }
 
     if (this.eliminating) return;
+
+    // 数学题弹窗点击
+    if (this.mathShow && !this.mathRewardGiven) {
+      const popupCenterX = this.designSize.width / 2;
+      const popupCenterY = this.designSize.height / 2 - 60;
+      const popupWidth = 300;
+      const popupHeight = 160;
+
+      // 提交按钮
+      const submitBtnX = popupCenterX - 40;
+      const submitBtnY = popupCenterY + popupHeight / 2 - 25;
+      if (pos.x >= submitBtnX && pos.x <= submitBtnX + 80 &&
+          pos.y >= submitBtnY && pos.y <= submitBtnY + 30) {
+        this.submitMathAnswer();
+        return;
+      }
+
+      // 弹窗内其他点击忽略
+      if (pos.x >= popupCenterX - popupWidth / 2 && pos.x <= popupCenterX + popupWidth / 2 &&
+          pos.y >= popupCenterY - popupHeight / 2 && pos.y <= popupCenterY + popupHeight / 2) {
+        return;
+      }
+    }
 
     let closest = null;
     let closestDist = Infinity;
@@ -552,6 +654,14 @@ class FruitGame {
       ctx.globalAlpha = 1 - sp.progress;
       drawText(ctx, sp.text, sp.x, sp.y - sp.progress * 30, { fontSize: 36, color: '#ef4444', bold: true });
       ctx.globalAlpha = 1;
+    }
+
+    // 锤子按钮
+    this.drawHammerButton(ctx);
+
+    // 数学题弹窗
+    if (this.mathShow && !this.mathRewardGiven) {
+      this.drawMathPopup(ctx);
     }
 
     if (this.gameWon) {
@@ -629,6 +739,49 @@ class FruitGame {
     ctx.textBaseline = 'middle';
     ctx.fillText(f.emoji || FRUITS[f.type].emoji, f.x, f.y);
     ctx.globalAlpha = 1;
+  }
+
+  drawHammerButton(ctx) {
+    const { width, height, safeBottom } = this.designSize;
+    const btnX = 30;
+    const btnY = height - safeBottom - 80;
+    const btnW = 70;
+    const btnH = 70;
+
+    drawRoundRect(ctx, btnX, btnY, btnW, btnH, 12, this.hammers > 0 ? '#7c3aed' : '#9ca3af');
+    drawText(ctx, '🔨', btnX + btnW / 2, btnY + btnH / 2 - 8, { fontSize: 36 });
+    drawText(ctx, `${this.hammers}`, btnX + btnW / 2, btnY + btnH - 12, { fontSize: 14, color: '#fff' });
+
+    this.hammerButton = { x: btnX, y: btnY, w: btnW, h: btnH };
+  }
+
+  drawMathPopup(ctx) {
+    const { width, height } = this.designSize;
+    const cX = width / 2;
+    const cY = height / 2 - 60;
+    const pW = 300;
+    const pH = 160;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, width, height);
+
+    drawRoundRect(ctx, cX - pW / 2, cY - pH / 2, pW, pH, 16, '#fff', '#7c3aed', 3);
+
+    drawText(ctx, '🧮 答对得锤子！', cX, cY - 30, { fontSize: 22, color: '#7c3aed', bold: true });
+    drawText(ctx, this.mathProblem, cX, cY + 5, { fontSize: 32, color: '#1a1a1a', bold: true });
+
+    const timeLeft = Math.ceil(this.mathTimer);
+    drawText(ctx, `⏱ ${timeLeft}s`, cX - pW / 2 + 15, cY + pH / 2 - 10, { fontSize: 14, color: '#ef4444' });
+
+    // 输入框
+    const iX = cX - 90;
+    const iY = cY + 35;
+    drawRoundRect(ctx, iX, iY, 180, 36, 8, '#f3f4f6', '#d1d5db', 2);
+    drawText(ctx, this.mathInput || '输入答案...', iX + 90, iY + 18, { fontSize: 20, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
+
+    // 提交按钮
+    drawRoundRect(ctx, cX - 40, cY + pH / 2 - 25, 80, 30, 8, '#7c3aed');
+    drawText(ctx, '提交', cX, cY + pH / 2 - 10, { fontSize: 16, color: '#fff', bold: true });
   }
 
   destroy() {
