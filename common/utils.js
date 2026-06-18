@@ -657,8 +657,8 @@ export const RankData = {
         openid: getOpenId()
       },
       header: { 'content-type': 'application/json' },
-      success: (res) => console.log('排行榜提交成功'),
-      fail: (e) => console.log('排行榜提交失败:', e)
+      success: () => {},
+      fail: () => {}
     });
   },
   
