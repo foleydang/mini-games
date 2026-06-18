@@ -1,4 +1,4 @@
-// 水果消消乐 - 点击水果掉落进桶 + 碰撞消除
+// 水果消消乐 - 点击水果自由落体 + 碰撞固定水果/墙壁/漏斗 + 进桶消除
 import { drawRoundRect, drawButton, drawText, drawGradientBg, drawCircle, RankData, Storage } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
@@ -29,25 +29,23 @@ class FruitGame {
     this.score = 0;
     this.gameOver = false;
     this.gameWon = false;
+    this.scoreSaved = false; // 防止反复保存排行榜
     this.soundEnabled = true;
     this.combo = 0;
 
     const { width, height, safeTop, safeBottom } = designSize;
 
-    // 桶布局
     this.bucketLeft = (width - BUCKET_WIDTH) / 2;
     this.bucketRight = this.bucketLeft + BUCKET_WIDTH;
     this.bucketBottom = height - safeBottom - 30;
     this.bucketTop = this.bucketBottom - BUCKET_HEIGHT;
 
-    // 漏斗：桶口上方斜坡（加长）
     this.funnelHeight = 150;
     this.funnelBottom = this.bucketTop;
     this.funnelTop = this.funnelBottom - this.funnelHeight;
     this.funnelTopLeft = 25;
     this.funnelTopRight = width - 25;
 
-    // 长方形容器：漏斗上方
     this.boxLeft = 25;
     this.boxRight = width - 25;
     this.boxTop = safeTop + 140;
@@ -89,13 +87,11 @@ class FruitGame {
     const padding = 20;
     const areaW = this.boxRight - this.boxLeft - padding * 2;
     const areaH = this.boxBottom - this.boxTop - padding * 2;
-    const radius = FRUITS[0].radius; // 统一大小
+    const radius = FRUITS[0].radius;
 
     for (let i = 0; i < types.length; i++) {
       const type = types[i];
       const fruitDef = FRUITS[type];
-
-      // 散布：随机位置
       const x = this.boxLeft + padding + radius + Math.random() * (areaW - radius * 2);
       const y = this.boxTop + padding + radius + Math.random() * (areaH - radius * 2);
 
@@ -108,7 +104,7 @@ class FruitGame {
       });
     }
 
-    // 碰撞推开确保不重叠
+    // 碰撞推开
     const minGap = 6;
     for (let iter = 0; iter < 30; iter++) {
       let moved = false;
@@ -145,20 +141,16 @@ class FruitGame {
     }
   }
 
+  // 点击水果 → 纯垂直自由落体，vx=0
   clickFruit(fruit) {
     fruit.removed = true;
     const fruitDef = FRUITS[fruit.type];
 
-    // 不碰撞固定水果，直接掉落，给一个向桶口中心的水平推力
-    const offsetFromCenter = fruit.x - this.bucketCenterX;
-    // 推力大小跟偏离中心成正比，越偏推力越大
-    const pushX = -offsetFromCenter * 0.03;
-
     this.droppingFruits.push({
       x: fruit.x,
       y: fruit.y,
-      vx: pushX,
-      vy: 1,
+      vx: 0,  // 纯垂直下落，无水平推力
+      vy: 0,
       type: fruit.type,
       radius: fruitDef.radius,
       emoji: fruitDef.emoji,
@@ -170,11 +162,15 @@ class FruitGame {
   // ===== 游戏循环 =====
   gameLoop() {
     if (this.gameOver || this.gameWon) {
+      if (!this.scoreSaved) {
+        RankData.save(this.gameId, this.score);
+        this.scoreSaved = true;
+      }
       this.draw();
       return;
     }
 
-    // 更新所有掉落水果（独立运动，互不碰撞）
+    // 更新所有掉落水果
     for (let i = this.droppingFruits.length - 1; i >= 0; i--) {
       this.updateDropping(this.droppingFruits[i]);
     }
@@ -240,7 +236,7 @@ class FruitGame {
   updateDropping(df) {
     df.vy = Math.min(df.vy + GRAVITY, MAX_VY);
 
-    const steps = Math.max(1, Math.ceil(df.vy / 5));
+    const steps = Math.max(1, Math.ceil(df.vy / 4));
     for (let s = 0; s < steps; s++) {
       df.y += df.vy / steps;
       df.x += (df.vx || 0) / steps;
@@ -249,17 +245,59 @@ class FruitGame {
   }
 
   droppingCollision(df) {
-    // 容器区：只碰墙壁，不碰固定水果，不碰其他掉落水果
+    // === 容器区：碰墙壁 + 碰固定水果（自然滚滑） ===
     if (df.phase === 'box') {
-      if (df.x - df.radius < this.boxLeft + 5) { df.x = this.boxLeft + 5 + df.radius; df.vx = Math.abs(df.vx) * 0.5; }
-      if (df.x + df.radius > this.boxRight - 5) { df.x = this.boxRight - 5 - df.radius; df.vx = -Math.abs(df.vx) * 0.5; }
+      // 碰左右壁
+      if (df.x - df.radius < this.boxLeft + 5) {
+        df.x = this.boxLeft + 5 + df.radius;
+        df.vx = 0;
+      }
+      if (df.x + df.radius > this.boxRight - 5) {
+        df.x = this.boxRight - 5 - df.radius;
+        df.vx = 0;
+      }
 
+      // 碰固定水果：推开掉落水果 + 自然滑落
+      for (const f of this.topFruits) {
+        if (f.removed) continue;
+        const dx = df.x - f.x;
+        const dy = df.y - f.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = df.radius + f.radius + 2;
+
+        if (dist < minDist && dist > 0) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = minDist - dist;
+
+          // 推开掉落水果到固定水果表面
+          df.x += nx * overlap;
+          df.y += ny * overlap;
+
+          // 沿表面滑落：根据碰撞方向
+          if (Math.abs(nx) > 0.3) {
+            // 侧面碰撞：沿斜面滑落，给一个沿固定水果表面的水平滑速
+            const slideSpeed = Math.abs(df.vy) * Math.abs(nx) * 0.8;
+            df.vx = nx * slideSpeed;
+            df.vy *= 0.4; // 减速但继续下落
+          } else {
+            // 正下方碰撞（落在固定水果上面）：反弹
+            df.vy = -df.vy * BOUNCE_FACTOR;
+          }
+        }
+      }
+
+      // 限制在容器内
+      df.x = Math.max(this.boxLeft + 5 + df.radius, Math.min(this.boxRight - 5 - df.radius, df.x));
+      df.y = Math.max(this.boxTop + 5 + df.radius, df.y);
+
+      // 到达容器底部 → 进入漏斗
       if (df.y + df.radius >= this.boxBottom) {
         df.phase = 'funnel';
       }
     }
 
-    // 漏斗区：斜坡归心
+    // === 漏斗区：碰斜壁，自然滑入 ===
     if (df.phase === 'funnel') {
       const fp = Math.max(0, Math.min(1, (df.y - this.funnelTop) / this.funnelHeight));
       const leftWall = this.funnelTopLeft + (this.bucketLeft - this.funnelTopLeft) * fp;
@@ -267,11 +305,14 @@ class FruitGame {
 
       if (df.x - df.radius < leftWall + 4) {
         df.x = leftWall + 4 + df.radius;
-        df.vx = 3 + Math.abs(df.vx) * 0.3;
+        // 漏斗斜面滑落：推向中心 + 继续下落
+        df.vx = 2 + Math.abs(df.vy) * 0.3;
+        df.vy *= 0.6; // 摩擦减速
       }
       if (df.x + df.radius > rightWall - 4) {
         df.x = rightWall - 4 - df.radius;
-        df.vx = -(3 + Math.abs(df.vx) * 0.3);
+        df.vx = -(2 + Math.abs(df.vy) * 0.3);
+        df.vy *= 0.6;
       }
 
       if (df.y + df.radius >= this.bucketTop) {
@@ -281,11 +322,12 @@ class FruitGame {
       }
     }
 
-    // 桶区
+    // === 桶区 ===
     if (df.phase === 'bucket') {
       if (df.x - df.radius < this.bucketLeft + 4) { df.x = this.bucketLeft + 4 + df.radius; df.vx = 0; }
       if (df.x + df.radius > this.bucketRight - 4) { df.x = this.bucketRight - 4 - df.radius; df.vx = 0; }
 
+      // 碰桶底
       if (df.y + df.radius >= this.bucketBottom) {
         df.y = this.bucketBottom - df.radius;
         if (df.vy > 4) {
@@ -296,6 +338,7 @@ class FruitGame {
         }
       }
 
+      // 碰桶内其他水果
       for (const bf of this.bucketFruits) {
         if (!bf.settled) continue;
         const dx = bf.x - df.x;
@@ -423,7 +466,7 @@ class FruitGame {
   checkWin() {
     if (this.topFruits.every(f => f.removed) && this.bucketFruits.length === 0 && this.droppingFruits.length === 0 && !this.eliminating) {
       this.gameWon = true;
-      RankData.save(this.gameId, this.score);
+      // save在gameLoop开头统一处理
     }
   }
 
@@ -435,7 +478,7 @@ class FruitGame {
         if (age < OVERFLOW_GRACE_MS) continue;
         if (bf.y - bf.radius < this.bucketTop + 30) {
           this.gameOver = true;
-          RankData.save(this.gameId, this.score);
+          // save在gameLoop开头统一处理
           return;
         }
       }
@@ -445,7 +488,10 @@ class FruitGame {
   onTouchStart(pos) {
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
-      RankData.save(this.gameId, this.score);
+      if (!this.scoreSaved) {
+        RankData.save(this.gameId, this.score);
+        this.scoreSaved = true;
+      }
       this.onEnd(this.score);
       return;
     }
@@ -456,7 +502,10 @@ class FruitGame {
     }
 
     if (this.gameOver || this.gameWon) {
-      RankData.save(this.gameId, this.score);
+      if (!this.scoreSaved) {
+        RankData.save(this.gameId, this.score);
+        this.scoreSaved = true;
+      }
       this.onEnd(this.score);
       return;
     }
@@ -544,7 +593,6 @@ class FruitGame {
     const ctx = this.ctx;
     const wallW = 12;
 
-    // 外壳
     ctx.fillStyle = '#78350f';
     ctx.beginPath();
     ctx.moveTo(this.boxLeft - wallW, this.boxTop);
@@ -558,7 +606,6 @@ class FruitGame {
     ctx.closePath();
     ctx.fill();
 
-    // 内部浅色
     ctx.fillStyle = '#fef3c7';
     ctx.beginPath();
     ctx.moveTo(this.boxLeft + 4, this.boxTop + 4);
@@ -572,7 +619,6 @@ class FruitGame {
     ctx.closePath();
     ctx.fill();
 
-    // 漏斗斜坡线
     ctx.strokeStyle = '#92400e';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -584,7 +630,6 @@ class FruitGame {
     ctx.lineTo(this.bucketRight - 4, this.funnelBottom);
     ctx.stroke();
 
-    // 溢出警戒线
     ctx.strokeStyle = '#dc2626';
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 4]);
