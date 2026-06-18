@@ -1,4 +1,4 @@
-// 水果消消乐 - 点击水果自由落体 + 碰撞固定水果/墙壁/漏斗 + 进桶消除
+// 水果消消乐 - 纯垂直自由落体 + 碰固定水果滑落 + 漏斗进桶 + 消除
 import { drawRoundRect, drawButton, drawText, drawGradientBg, drawCircle, RankData, Storage } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
@@ -29,7 +29,7 @@ class FruitGame {
     this.score = 0;
     this.gameOver = false;
     this.gameWon = false;
-    this.scoreSaved = false; // 防止反复保存排行榜
+    this.scoreSaved = false;
     this.soundEnabled = true;
     this.combo = 0;
 
@@ -77,7 +77,6 @@ class FruitGame {
 
   generateTopFruits() {
     this.topFruits = [];
-
     const types = [];
     for (let t = 0; t < FRUITS.length; t++) {
       for (let i = 0; i < 3; i++) types.push(t);
@@ -104,7 +103,6 @@ class FruitGame {
       });
     }
 
-    // 碰撞推开
     const minGap = 6;
     for (let iter = 0; iter < 30; iter++) {
       let moved = false;
@@ -141,7 +139,7 @@ class FruitGame {
     }
   }
 
-  // 点击水果 → 纯垂直自由落体，vx=0
+  // 点击水果 - 纯自由落体(vx=0 vy=0)
   clickFruit(fruit) {
     fruit.removed = true;
     const fruitDef = FRUITS[fruit.type];
@@ -149,7 +147,7 @@ class FruitGame {
     this.droppingFruits.push({
       x: fruit.x,
       y: fruit.y,
-      vx: 0,  // 纯垂直下落，无水平推力
+      vx: 0,
       vy: 0,
       type: fruit.type,
       radius: fruitDef.radius,
@@ -180,7 +178,7 @@ class FruitGame {
       if (bf.settled) continue;
       bf.vy = Math.min(bf.vy + GRAVITY, MAX_VY);
       bf.y += bf.vy;
-      bf.x += bf.vx || 0;
+      bf.x += (bf.vx || 0);
 
       if (bf.x - bf.radius < this.bucketLeft + 4) { bf.x = this.bucketLeft + 4 + bf.radius; bf.vx = 0; }
       if (bf.x + bf.radius > this.bucketRight - 4) { bf.x = this.bucketRight - 4 - bf.radius; bf.vx = 0; }
@@ -235,8 +233,7 @@ class FruitGame {
 
   updateDropping(df) {
     df.vy = Math.min(df.vy + GRAVITY, MAX_VY);
-
-    const steps = Math.max(1, Math.ceil(df.vy / 4));
+    const steps = Math.max(1, Math.ceil(df.vy / 5));
     for (let s = 0; s < steps; s++) {
       df.y += df.vy / steps;
       df.x += (df.vx || 0) / steps;
@@ -245,19 +242,12 @@ class FruitGame {
   }
 
   droppingCollision(df) {
-    // === 容器区：碰墙壁 + 碰固定水果（自然滚滑） ===
+    // 容器区：碰墙壁 + 碰固定水果（落在上面则侧滑走）
     if (df.phase === 'box') {
-      // 碰左右壁
-      if (df.x - df.radius < this.boxLeft + 5) {
-        df.x = this.boxLeft + 5 + df.radius;
-        df.vx = 0;
-      }
-      if (df.x + df.radius > this.boxRight - 5) {
-        df.x = this.boxRight - 5 - df.radius;
-        df.vx = 0;
-      }
+      if (df.x - df.radius < this.boxLeft + 5) { df.x = this.boxLeft + 5 + df.radius; df.vx = 0; }
+      if (df.x + df.radius > this.boxRight - 5) { df.x = this.boxRight - 5 - df.radius; df.vx = 0; }
 
-      // 碰固定水果：推开掉落水果 + 自然滑落
+      // 碰固定水果：落在上面 → 侧滑继续下落
       for (const f of this.topFruits) {
         if (f.removed) continue;
         const dx = df.x - f.x;
@@ -274,30 +264,27 @@ class FruitGame {
           df.x += nx * overlap;
           df.y += ny * overlap;
 
-          // 沿表面滑落：根据碰撞方向
-          if (Math.abs(nx) > 0.3) {
-            // 侧面碰撞：沿斜面滑落，给一个沿固定水果表面的水平滑速
-            const slideSpeed = Math.abs(df.vy) * Math.abs(nx) * 0.8;
-            df.vx = nx * slideSpeed;
+          // 根据碰撞方向：侧面碰 → 沿表面滑落；上方碰 → 小反弹
+          if (Math.abs(nx) > 0.4) {
+            // 侧面碰撞：沿斜面滑落，给水平滑速
+            df.vx = nx * Math.abs(df.vy) * 0.6;
             df.vy *= 0.4; // 减速但继续下落
           } else {
-            // 正下方碰撞（落在固定水果上面）：反弹
+            // 正上方碰撞（落在固定水果上面）：小反弹
             df.vy = -df.vy * BOUNCE_FACTOR;
           }
         }
       }
 
-      // 限制在容器内
       df.x = Math.max(this.boxLeft + 5 + df.radius, Math.min(this.boxRight - 5 - df.radius, df.x));
       df.y = Math.max(this.boxTop + 5 + df.radius, df.y);
 
-      // 到达容器底部 → 进入漏斗
       if (df.y + df.radius >= this.boxBottom) {
         df.phase = 'funnel';
       }
     }
 
-    // === 漏斗区：碰斜壁，自然滑入 ===
+    // 漏斗区
     if (df.phase === 'funnel') {
       const fp = Math.max(0, Math.min(1, (df.y - this.funnelTop) / this.funnelHeight));
       const leftWall = this.funnelTopLeft + (this.bucketLeft - this.funnelTopLeft) * fp;
@@ -305,14 +292,11 @@ class FruitGame {
 
       if (df.x - df.radius < leftWall + 4) {
         df.x = leftWall + 4 + df.radius;
-        // 漏斗斜面滑落：推向中心 + 继续下落
-        df.vx = 2 + Math.abs(df.vy) * 0.3;
-        df.vy *= 0.6; // 摩擦减速
+        df.vx = 3 + Math.abs(df.vx) * 0.3;
       }
       if (df.x + df.radius > rightWall - 4) {
         df.x = rightWall - 4 - df.radius;
-        df.vx = -(2 + Math.abs(df.vy) * 0.3);
-        df.vy *= 0.6;
+        df.vx = -(3 + Math.abs(df.vx) * 0.3);
       }
 
       if (df.y + df.radius >= this.bucketTop) {
@@ -322,12 +306,11 @@ class FruitGame {
       }
     }
 
-    // === 桶区 ===
+    // 桶区
     if (df.phase === 'bucket') {
       if (df.x - df.radius < this.bucketLeft + 4) { df.x = this.bucketLeft + 4 + df.radius; df.vx = 0; }
       if (df.x + df.radius > this.bucketRight - 4) { df.x = this.bucketRight - 4 - df.radius; df.vx = 0; }
 
-      // 碰桶底
       if (df.y + df.radius >= this.bucketBottom) {
         df.y = this.bucketBottom - df.radius;
         if (df.vy > 4) {
@@ -338,7 +321,6 @@ class FruitGame {
         }
       }
 
-      // 碰桶内其他水果
       for (const bf of this.bucketFruits) {
         if (!bf.settled) continue;
         const dx = bf.x - df.x;
@@ -466,7 +448,6 @@ class FruitGame {
   checkWin() {
     if (this.topFruits.every(f => f.removed) && this.bucketFruits.length === 0 && this.droppingFruits.length === 0 && !this.eliminating) {
       this.gameWon = true;
-      // save在gameLoop开头统一处理
     }
   }
 
@@ -478,7 +459,6 @@ class FruitGame {
         if (age < OVERFLOW_GRACE_MS) continue;
         if (bf.y - bf.radius < this.bucketTop + 30) {
           this.gameOver = true;
-          // save在gameLoop开头统一处理
           return;
         }
       }
@@ -643,7 +623,6 @@ class FruitGame {
   drawSingleFruit(f, alpha, scale) {
     const ctx = this.ctx;
     const r = (f.radius || FRUITS[f.type].radius) * scale;
-
     ctx.globalAlpha = alpha;
     ctx.font = `${Math.floor(r * 2)}px sans-serif`;
     ctx.textAlign = 'center';
