@@ -409,11 +409,11 @@ class FruitGame {
     if (this.mathShow && !this.mathRewardGiven) {
       const { width, height } = this.designSize;
       const cX = width / 2; const cY = height / 2 - 80;
-      const pW = 320; const pH = 280;
+      const pW = 380; const pH = 380;
 
       // 数字按钮 0-9（3列4行）
-      const numStartX = cX - 90; const numStartY = cY + 70;
-      const numW = 60; const numH = 45; const numGap = 5;
+      const numStartX = cX - 120; const numStartY = cY + 80;
+      const numW = 80; const numH = 65; const numGap = 8;
       for (let n = 0; n <= 9; n++) {
         const col = n === 0 ? 1 : (n - 1) % 3;
         const row = n === 0 ? 3 : Math.floor((n - 1) / 3);
@@ -559,41 +559,41 @@ class FruitGame {
   drawMathPopup(ctx) {
     const { width, height } = this.designSize;
     const cX = width / 2; const cY = height / 2 - 80;
-    const pW = 320; const pH = 280;
+    const pW = 380; const pH = 380;
 
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, width, height);
     drawRoundRect(ctx, cX - pW / 2, cY - pH / 2, pW, pH, 16, '#fff', '#7c3aed', 3);
-    drawText(ctx, '\ud83e\uddee \u7b54\u5bf9\u5f97\u9524\u5b50\uff01', cX, cY - 55, { fontSize: 20, color: '#7c3aed', bold: true });
-    drawText(ctx, this.mathProblem, cX, cY - 25, { fontSize: 28, color: '#1a1a1a', bold: true });
+    drawText(ctx, '\ud83e\uddee \u7b54\u5bf9\u5f97\u9524\u5b50\uff01', cX, cY - 70, { fontSize: 26, color: '#7c3aed', bold: true });
+    drawText(ctx, this.mathProblem, cX, cY - 30, { fontSize: 36, color: '#1a1a1a', bold: true });
 
     const timeLeft = Math.ceil(this.mathTimer);
-    drawText(ctx, `\u23f1 ${timeLeft}s`, cX - pW / 2 + 15, cY + pH / 2 - 15, { fontSize: 14, color: '#ef4444' });
+    drawText(ctx, `\u23f1 ${timeLeft}s`, cX - pW / 2 + 15, cY + pH / 2 - 15, { fontSize: 18, color: '#ef4444' });
 
     // 已输入的答案
-    drawRoundRect(ctx, cX - 80, cY - 5, 160, 36, 8, '#f3f4f6', '#d1d5db', 2);
-    drawText(ctx, this.mathInput || '\u8f93\u5165\u7b54\u6848...', cX, cY + 13, { fontSize: 20, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
+    drawRoundRect(ctx, cX - 100, cY + 5, 200, 48, 10, '#f3f4f6', '#d1d5db', 2);
+    drawText(ctx, this.mathInput || '\u8f93\u5165\u7b54\u6848...', cX, cY + 30, { fontSize: 26, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
 
     // 数字按钮 0-9
-    const numStartX = cX - 90; const numStartY = cY + 70;
-    const numW = 60; const numH = 45; const numGap = 5;
+    const numStartX = cX - 120; const numStartY = cY + 80;
+    const numW = 80; const numH = 65; const numGap = 8;
     const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     for (let n of nums) {
       const col = (n - 1) % 3; const row = Math.floor((n - 1) / 3);
       const nx = numStartX + col * (numW + numGap); const ny = numStartY + row * (numH + numGap);
-      drawRoundRect(ctx, nx, ny, numW, numH, 8, '#e5e7eb');
-      drawText(ctx, `${n}`, nx + numW / 2, ny + numH / 2, { fontSize: 22, color: '#1a1a1a', bold: true });
+      drawRoundRect(ctx, nx, ny, numW, numH, 10, '#e5e7eb');
+      drawText(ctx, `${n}`, nx + numW / 2, ny + numH / 2, { fontSize: 28, color: '#1a1a1a', bold: true });
     }
 
     // 0 / 清除 / 提交 按钮（第4行）
     const row4Y = numStartY + 3 * (numH + numGap);
-    drawRoundRect(ctx, numStartX + 1 * (numW + numGap), row4Y, numW, numH, 8, '#e5e7eb');
-    drawText(ctx, '0', numStartX + 1 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 22, color: '#1a1a1a', bold: true });
+    drawRoundRect(ctx, numStartX + 1 * (numW + numGap), row4Y, numW, numH, 10, '#e5e7eb');
+    drawText(ctx, '0', numStartX + 1 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 28, color: '#1a1a1a', bold: true });
 
-    drawRoundRect(ctx, numStartX, row4Y, numW, numH, 8, '#ef4444');
-    drawText(ctx, '\u2716', numStartX + numW / 2, row4Y + numH / 2, { fontSize: 22, color: '#fff' });
+    drawRoundRect(ctx, numStartX, row4Y, numW, numH, 10, '#ef4444');
+    drawText(ctx, '\u2716', numStartX + numW / 2, row4Y + numH / 2, { fontSize: 28, color: '#fff' });
 
-    drawRoundRect(ctx, numStartX + 2 * (numW + numGap), row4Y, numW, numH, 8, '#7c3aed');
-    drawText(ctx, '\u2713', numStartX + 2 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 22, color: '#fff' });
+    drawRoundRect(ctx, numStartX + 2 * (numW + numGap), row4Y, numW, numH, 10, '#7c3aed');
+    drawText(ctx, '\u2713', numStartX + 2 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 28, color: '#fff' });
   }
 
   destroy() {
