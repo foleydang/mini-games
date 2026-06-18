@@ -1,6 +1,7 @@
 // 水果消消乐 - 纯垂直自由落体 + 碰固定水果滑落 + 漏斗进桶 + 消除 + 锤子道具
 import { drawRoundRect, drawButton, drawText, drawGradientBg, drawCircle, RankData, Storage } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
+import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 const FRUITS = [
   { emoji: '🍎', radius: 30, color: '#ff4757' },
@@ -85,6 +86,7 @@ class FruitGame {
 
   init() {
     this.generateTopFruits();
+    audioManager.startBgMusic();
     this.draw();
     this.gameLoop();
   }
@@ -149,6 +151,7 @@ class FruitGame {
 
   clickFruit(fruit) {
     fruit.removed = true;
+    playSound(SoundType.DROP);
     const fruitDef = FRUITS[fruit.type];
     this.droppingFruits.push({
       x: fruit.x, y: fruit.y, vx: 0, vy: 0,
@@ -193,6 +196,7 @@ class FruitGame {
     if (input === this.mathAnswer) {
       this.mathCorrect = true;
       this.hammers++;
+      playSound(SoundType.HAMMER);
       this.mathRewardGiven = true;
 
       // 消除桶内最上面水果
@@ -220,6 +224,7 @@ class FruitGame {
   // ===== 游戏循环 =====
   gameLoop() {
     if (this.gameOver || this.gameWon) {
+      audioManager.stopBgMusic();
       if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.draw();
       return;
@@ -405,6 +410,7 @@ class FruitGame {
           if (dist < a.radius + b.radius + 8) {
             this.removing.push(a, b); this.eliminating = true; this.removeProgress = 0;
             this.combo++; const gain = 10 * this.combo; this.score += gain;
+            playSound(SoundType.CLEAR);
             this.scorePopups.push({ text: `+${gain}`, x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - 40, progress: 0 });
             found = true; break;
           }
@@ -417,6 +423,7 @@ class FruitGame {
   checkWin() {
     if (this.topFruits.every(f => f.removed) && this.bucketFruits.length === 0 && this.droppingFruits.length === 0 && !this.eliminating) {
       this.gameWon = true;
+      playSound(SoundType.LEVEL_UP);
     }
   }
 
@@ -426,7 +433,7 @@ class FruitGame {
       if (bf.settled && !this.removing.includes(bf)) {
         const age = now - (bf.settleTime || 0);
         if (age < OVERFLOW_GRACE_MS) continue;
-        if (bf.y - bf.radius < this.bucketTop + 30) { this.gameOver = true; return; }
+        if (bf.y - bf.radius < this.bucketTop + 30) { this.gameOver = true; playSound(SoundType.GAME_OVER); return; }
       }
     }
   }
@@ -438,13 +445,13 @@ class FruitGame {
       if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.onEnd(this.score); return;
     }
-    if (btn === 'soundBtn') { this.soundEnabled = !this.soundEnabled; this.draw(); return; }
+    if (btn === 'soundBtn') { audioManager.toggle(); this.draw(); return; }
 
     // 锤子按钮检测
     if (this.hammerButton &&
         pos.x >= this.hammerButton.x && pos.x <= this.hammerButton.x + this.hammerButton.w &&
         pos.y >= this.hammerButton.y && pos.y <= this.hammerButton.y + this.hammerButton.h) {
-      this.useHammer(); return;
+      this.useHammer(); playSound(SoundType.CLICK); return;
     }
 
     if (this.gameOver || this.gameWon) {
@@ -497,7 +504,7 @@ class FruitGame {
     drawText(ctx, `分数: ${this.score}`, width / 2, safeTop + 120, { fontSize: 26, color: '#92400e' });
 
     // 顶部按钮行（和其他游戏一样）
-    this.buttons = drawBottomButtons(ctx, this.designSize, '\u2190 \u8fd4\u56de', this.soundEnabled);
+    this.buttons = drawBottomButtons(ctx, this.designSize, '\u2190 \u8fd4\u56de', audioManager.enabled);
 
     this.drawContainer();
 
@@ -623,7 +630,7 @@ class FruitGame {
     drawText(ctx, '\u63d0\u4ea4', cX, cY + pH / 2 - 10, { fontSize: 16, color: '#fff', bold: true });
   }
 
-  destroy() { this.gameOver = true; }
+  destroy() { this.gameOver = true; audioManager.stopBgMusic(); }
 }
 
 export default FruitGame;
