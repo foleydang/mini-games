@@ -71,6 +71,7 @@ class FruitGame {
     this.removeProgress = 0;
     this.eliminating = false;
     this.scorePopups = [];
+    this.loopTimer = null;  // 游戏循环定时器ID，退出时需要清除
 
     this.topFruits = [];
     this.bucketFruits = [];
@@ -215,7 +216,9 @@ class FruitGame {
     if (this.gameOver || this.gameWon) {
       audioManager.stopBgMusic();
       if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
-      this.draw(); return;
+      this.draw();
+      this.loopTimer = null;  // 标记循环已结束
+      return;
     }
 
     if (this.mathShow && !this.mathRewardGiven) {
@@ -259,7 +262,7 @@ class FruitGame {
 
     this.checkWin(); this.checkOverflow();
     this.draw();
-    setTimeout(() => this.gameLoop(), 33);
+    this.loopTimer = setTimeout(() => this.gameLoop(), 33);
   }
 
   updateDropping(df) {
@@ -392,14 +395,14 @@ class FruitGame {
 
   onTouchStart(pos) {
     const btn = checkBottomButtons(pos, this.buttons);
-    if (btn === 'backBtn') { audioManager.stopBgMusic(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
+    if (btn === 'backBtn') { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
     if (btn === 'soundBtn') { audioManager.toggle(); this.draw(); return; }
 
     if (this.hammerButton && pos.x >= this.hammerButton.x && pos.x <= this.hammerButton.x + this.hammerButton.w && pos.y >= this.hammerButton.y && pos.y <= this.hammerButton.y + this.hammerButton.h) {
       this.useHammer(); return;
     }
 
-    if (this.gameOver || this.gameWon) { audioManager.stopBgMusic(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
+    if (this.gameOver || this.gameWon) { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
     if (this.eliminating) return;
 
     // 数学题弹窗：用数字按钮代替键盘输入
@@ -593,7 +596,11 @@ class FruitGame {
     drawText(ctx, '\u2713', numStartX + 2 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 22, color: '#fff' });
   }
 
-  destroy() { this.gameOver = true; audioManager.stopBgMusic(); }
+  destroy() {
+    this.gameOver = true;
+    if (this.loopTimer) { clearTimeout(this.loopTimer); this.loopTimer = null; }
+    audioManager.stopBgMusic();
+  }
 }
 
 export default FruitGame;
