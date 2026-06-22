@@ -100,10 +100,10 @@ export const Colors = {
       pattern: '#fce7f3'
     },
     sheep: {
-      primary: '#d97706',
-      secondary: '#fbbf24',
-      bg: '#fffbeb',
-      pattern: '#fef3c7'
+      primary: '#e85d04',
+      secondary: '#f97316',
+      bg: '#fff5eb',
+      pattern: '#ffe0b2'
     },
     fruit: {
       primary: '#10b981',
@@ -113,8 +113,8 @@ export const Colors = {
     }
   },
 
-  // 消消乐宝石色 - 更鲜明
-  // 消消乐宝石色 - 更鲜艳有层次感的设计
+  // 宝石消除宝石色 - 更鲜明
+  // 宝石消除宝石色 - 更鲜艳有层次感的设计
   gems: [
     '#ff4757', // 红宝石 - 鲜红
     '#2ed573', // 绿宝石 - 鲜绿
@@ -148,7 +148,7 @@ export const Colors = {
     return colors[value] || '#1f2937';
   },
 
-  // 俄罗斯方块色 - 更鲜明
+  // 方块大作战色 - 更鲜明
   tetris: ['#3b82f6', '#fbbf24', '#8b5cf6', '#10b981', '#f97316', '#ec4899', '#ef4444']
 };
 
@@ -262,7 +262,7 @@ export function drawGameIcon(ctx, x, y, radius, color, shape) {
 
   // 根据shape绘制不同图形
   switch(shape) {
-    case 'star':  // 六角星 - 消消乐
+    case 'star':  // 六角星 - 宝石消除
       drawStar(ctx, x, y, radius, color);
       break;
     case 'wave':  // 波浪 - 贪吃蛇
@@ -271,7 +271,7 @@ export function drawGameIcon(ctx, x, y, radius, color, shape) {
     case 'number':  // 数字 - 2048
       drawNumberIcon(ctx, x, y, radius, color);
       break;
-    case 'block':  // 方块 - 俄罗斯方块
+    case 'block':  // 方块 - 方块大作战
       drawBlockIcon(ctx, x, y, radius, color);
       break;
     case 'bird':  // 鸟形 - 飞鸟
@@ -344,7 +344,7 @@ function drawNumberIcon(ctx, x, y, radius, color) {
   drawText(ctx, '2K', x, y, { fontSize: radius * 0.9, color: '#fff', bold: true });
 }
 
-// 方块图标 - 俄罗斯方块
+// 方块图标 - 方块大作战
 function drawBlockIcon(ctx, x, y, radius, color) {
   const blockSize = radius * 0.45;
   const gap = 4;

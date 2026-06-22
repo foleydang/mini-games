@@ -1,9 +1,9 @@
-// 羊了个羊 - 多层堆叠消除游戏
+// 叠叠消 - 多层堆叠消除游戏
 import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { Levels } from '../common/config.js';
 
-const EMOJIS = ['🐑', '🐺', '🌿', '🏠', '🎵', '🌸', '💎', '🔥', '⭐', '❤️', '🍎', '🎯'];
+const EMOJIS = ['🍜', '🍕', '🍔', '🍟', '🧁', '🍩', '🍺', '🍵', '🍦', '🍫', '🥤', '🍗'];
 
 class SheepGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -52,7 +52,7 @@ class SheepGame {
 
     // 计算布局
     this.slotY = height - safeBottom - 130;
-    this.gridStartY = safeTop + 250 + 55;  // 给操作按钮留空间
+    this.gridStartY = safeTop + 280 + 55;  // 棋盘下移，给标题和按钮更多空间
 
     this.generateLevel(this.currentLevel);
     this.draw();
@@ -275,12 +275,12 @@ class SheepGame {
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    drawGradientBg(ctx, width, height, '#fff8e7', '#ffe0b2');
+    drawGradientBg(ctx, width, height, '#fff5eb', '#ffcba4');
 
     // 标题和关卡信息
     const levelName = Levels.sheep[this.currentLevel]?.name || '第' + (this.currentLevel + 1) + '关';
-    drawText(ctx, '羊了个羊', width / 2, safeTop + 80, { fontSize: 48, color: '#d97706', bold: true });
-    drawText(ctx, '关卡: ' + levelName + '  分数: ' + this.score, width / 2, safeTop + 140, { fontSize: 28, color: '#92400e' });
+    drawText(ctx, '叠叠消', width / 2, safeTop + 80, { fontSize: 48, color: '#e85d04', bold: true });
+    drawText(ctx, '关卡: ' + levelName + '  分数: ' + this.score, width / 2, safeTop + 140, { fontSize: 28, color: '#6c3410' });
 
     // 底部按钮（返回、分享、音效）
     this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
@@ -374,7 +374,7 @@ class SheepGame {
 
         // 牌背景
         if (clickable) {
-          drawRoundRect(ctx, drawX, drawY, cw, ch, 10, '#ffffff', '#d97706', 2);
+          drawRoundRect(ctx, drawX, drawY, cw, ch, 10, '#ffffff', '#e85d04', 2);
         } else {
           drawRoundRect(ctx, drawX, drawY, cw, ch, 10, '#e5e7eb', '#9ca3af', 1);
         }
@@ -402,18 +402,18 @@ class SheepGame {
     const slotBgY = this.slotY - 10;
     const slotBgWidth = 7 * this.slotWidth + 6 * 8 + 20;
     const slotBgHeight = this.slotHeight + 20;
-    drawRoundRect(ctx, slotStartX - 10, slotBgY, slotBgWidth, slotBgHeight, 16, '#1e3a5f', '#d97706', 2);
+    drawRoundRect(ctx, slotStartX - 10, slotBgY, slotBgWidth, slotBgHeight, 16, '#3d1f0a', '#e85d04', 2);
 
     // 7个格子
     for (let i = 0; i < 7; i++) {
       const sx = slotStartX + i * (this.slotWidth + 8);
       const sy = this.slotY;
-      drawRoundRect(ctx, sx, sy, this.slotWidth, this.slotHeight, 8, '#2d4a6f');
+      drawRoundRect(ctx, sx, sy, this.slotWidth, this.slotHeight, 8, '#5a3015');
 
       if (i < this.slot.length) {
         const item = this.slot[i];
         // 牌背景
-        drawRoundRect(ctx, sx + 4, sy + 4, this.slotWidth - 8, this.slotHeight - 8, 6, '#ffffff', '#d97706', 2);
+        drawRoundRect(ctx, sx + 4, sy + 4, this.slotWidth - 8, this.slotHeight - 8, 6, '#ffffff', '#e85d04', 2);
         // emoji
         ctx.font = `${Math.floor(this.slotWidth * 0.5)}px sans-serif`;
         ctx.textAlign = 'center';
