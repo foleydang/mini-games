@@ -1,4 +1,4 @@
-// 宝石消除游戏 - 带动画效果
+// 消消乐游戏 - 带动画效果
 import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
@@ -82,7 +82,7 @@ class Match3Game {
     drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
     
     // 标题和分数
-    drawText(ctx, '宝石消除', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
+    drawText(ctx, '消消乐', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
     drawText(ctx, '分数: ' + this.score + '  步数: ' + this.moves, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
     
     // 底部按钮

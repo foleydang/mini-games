@@ -1,5 +1,5 @@
 /**
- * 方块大作战 - 无限型游戏（里程碑成就系统）
+ * 俄罗斯方块 - 无限型游戏（里程碑成就系统）
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
@@ -236,7 +236,7 @@ export default class TetrisGame {
 
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
-    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('方块大作战', this.score); return; }
+    if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('俄罗斯方块', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     this.touchStartPos = pos;
   }
@@ -260,7 +260,7 @@ export default class TetrisGame {
     const { width, height, safeTop, safeBottom } = this.designSize;
     drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
 
-    drawText(this.ctx, '方块大作战', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
+    drawText(this.ctx, '俄罗斯方块', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });
 
     // 分数和里程碑 - 分行显示，避免重叠
     const milestone = this.getCurrentMilestone();

@@ -1,4 +1,4 @@
-// 水果大作战 - 纯垂直自由落体 + 碰固定水果滑落 + 漏斗进桶 + 消除 + 锤子道具
+// 水果消消乐 - 纯垂直自由落体 + 碰固定水果滑落 + 漏斗进桶 + 消除 + 锤子道具
 import { drawRoundRect, drawButton, drawText, drawGradientBg, drawCircle, RankData, Storage } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -471,7 +471,7 @@ class FruitGame {
     drawGradientBg(ctx, width, height, '#fef9c3', '#fde68a');
 
     // 标题（更紧凑）
-    drawText(ctx, '水果大作战', width / 2, safeTop + 40, { fontSize: 40, color: '#10b981', bold: true });
+    drawText(ctx, '水果消消乐', width / 2, safeTop + 40, { fontSize: 40, color: '#d97706', bold: true });
     drawText(ctx, `分数: ${this.score}`, width / 2, safeTop + 80, { fontSize: 22, color: '#92400e' });
 
     // 按钮行（标题下方）

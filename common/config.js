@@ -4,21 +4,21 @@
 
 // 游戏列表
 export const Games = [
-  { id: 'match3', name: '宝石消除', shortName: '消', desc: '三消宝石得高分', shape: 'star', type: 'levels' },
+  { id: 'match3', name: '消消乐', shortName: '消', desc: '三消宝石得高分', shape: 'star', type: 'levels' },
   { id: 'snake', name: '贪吃蛇', shortName: '蛇', desc: '灵活躲避快成长', shape: 'wave', type: 'endless' },
   { id: '2048', name: '2048', shortName: '2K', desc: '合并数字大挑战', shape: 'number', type: 'endless' },
-  { id: 'tetris', name: '方块大作战', shortName: '方', desc: '经典消除不陌生', shape: 'block', type: 'endless' },
+  { id: 'tetris', name: '俄罗斯方块', shortName: '方', desc: '经典消除不陌生', shape: 'block', type: 'endless' },
   { id: 'flappy', name: '飞鸟', shortName: '飞', desc: '穿越障碍看反应', shape: 'bird', type: 'endless' },
   { id: 'breakout', name: '打砖块', shortName: '打', desc: '击碎砖块真解压', shape: 'brick', type: 'levels' },
   { id: 'memory', name: '翻牌', shortName: '翻', desc: '记忆配对练脑子', shape: 'card', type: 'levels' },
   { id: 'bounce', name: '弹球', shortName: '弹', desc: '反弹跳跃得高分', shape: 'ball', type: 'endless' },
-  { id: 'sheep', name: '叠叠消', shortName: '叠', desc: '美食堆叠消除乐', shape: 'card', type: 'levels' },
-  { id: 'fruit', name: '水果大作战', shortName: '果', desc: '水果掉落消除乐', shape: 'fruit', type: 'levels' }
+  { id: 'sheep', name: '叠叠消', shortName: '叠', desc: '美食堆叠消消乐', shape: 'card', type: 'levels' },
+  { id: 'fruit', name: '水果消消乐', shortName: '果', desc: '水果掉落三消乐', shape: 'fruit', type: 'levels' }
 ];
 
 // 🎯 关卡型游戏配置（有明确过关目标）
 export const Levels = {
-  // 宝石消除：目标分数驱动，网格大小递增
+  // 消消乐：目标分数驱动，网格大小递增
   match3: [
     { cols: 6, rows: 8, colors: 4, moves: 28, target: 800, name: '入门' },
     { cols: 6, rows: 8, colors: 4, moves: 25, target: 1200, name: '简单' },
@@ -27,7 +27,7 @@ export const Levels = {
     { cols: 6, rows: 8, colors: 6, moves: 15, target: 3500, name: '专家' }
   ],
 
-  // 水果大作战：掉落速度递增，水果种类递增
+  // 水果消消乐：掉落速度递增，水果种类递增
   fruit: [
     { dropInterval: 1800, fruitCount: 4, name: '入门' },
     { dropInterval: 1400, fruitCount: 5, name: '简单' },
@@ -81,7 +81,7 @@ export const Milestones = {
     names: ['入门', '挑战', '大师', '传奇', '神级']
   },
 
-  // 方块大作战：消除行里程碑 + 速度递增
+  // 俄罗斯方块：消除行里程碑 + 速度递增
   tetris: {
     targets: [10, 30, 50, 100, 200],
     names: ['铜牌', '银牌', '金牌', '白金', '钻石'],
