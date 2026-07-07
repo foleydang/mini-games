@@ -826,9 +826,10 @@ class FruitGame {
       ctx.globalAlpha = leaf.a;
       ctx.translate(leaf.x, leaf.y);
       ctx.rotate(0.5);
+      ctx.scale(1, 0.5);
       ctx.fillStyle = '#8FBC8F';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 8 * leaf.s, 4 * leaf.s, 0, 0, Math.PI * 2);
+      ctx.arc(0, 0, 8 * leaf.s, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
