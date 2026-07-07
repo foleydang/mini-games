@@ -14,10 +14,10 @@ const FRUITS = [
   { emoji: '🫐', radius: 28, color: '#06b6d4' },
 ];
 
-const BOUNCE_FACTOR = 0.15;
-const BUCKET_WIDTH = 100;
-const BUCKET_HEIGHT = 140;
-const OVERFLOW_GRACE_MS = 3000;
+const BOUNCE_FACTOR = 0.2;
+const BUCKET_WIDTH = 140;
+const BUCKET_HEIGHT = 160;
+const OVERFLOW_GRACE_MS = 4000;
 
 class FruitGame {
   constructor(canvas, ctx, designSize, onEnd, level = 0) {
@@ -96,6 +96,8 @@ class FruitGame {
     this.topFruits = [];
     this.bucketFruits = [];
     this.droppingFruits = [];
+    this.particles = [];
+    this.screenShake = 0;
 
     this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
@@ -283,6 +285,18 @@ class FruitGame {
       if (this.scorePopups[i].progress >= 1) this.scorePopups.splice(i, 1);
     }
 
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.15;
+      p.life -= 0.03;
+      if (p.life <= 0) this.particles.splice(i, 1);
+    }
+
+    if (this.screenShake > 0) this.screenShake *= 0.85;
+    if (this.screenShake < 0.5) this.screenShake = 0;
+
     this.checkWin(); this.checkOverflow();
     this.draw();
     this.loopTimer = setTimeout(() => this.gameLoop(), 33);
@@ -391,11 +405,29 @@ class FruitGame {
             this.combo++; const gain = 10 * this.combo; this.score += gain;
             playSound(SoundType.CLEAR);
             this.scorePopups.push({ text: `+${gain}`, x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - 40, progress: 0 });
+            this.createParticles(a.x, a.y, FRUITS[a.type].color);
+            this.createParticles(b.x, b.y, FRUITS[b.type].color);
+            if (this.combo > 2) this.screenShake = 10;
             found = true; break;
           }
         }
         if (found) break;
       }
+    }
+  }
+
+  createParticles(x, y, color) {
+    for (let i = 0; i < 12; i++) {
+      const angle = (Math.PI * 2 * i) / 12;
+      const speed = 2 + Math.random() * 3;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 2,
+        color,
+        life: 1,
+        size: 3 + Math.random() * 3
+      });
     }
   }
 
@@ -487,7 +519,15 @@ class FruitGame {
     const ctx = this.ctx;
     const { width, height, safeTop, safeBottom } = this.designSize;
 
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Screen shake
+    ctx.save();
+    if (this.screenShake > 0) {
+      const shakeX = (Math.random() - 0.5) * this.screenShake;
+      const shakeY = (Math.random() - 0.5) * this.screenShake;
+      ctx.translate(shakeX, shakeY);
+    }
+
+    ctx.clearRect(-10, -10, this.canvas.width + 20, this.canvas.height + 20);
     drawGradientBg(ctx, width, height, '#fef9c3', '#fde68a');
 
     // 标题(更紧凑)
@@ -522,8 +562,20 @@ class FruitGame {
     // 锤子按钮(左下角)
     this.drawHammerButton(ctx);
 
+    // 粒子效果
+    for (const p of this.particles) {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
     // 数学题弹窗(数字按钮输入)
     if (this.mathShow && !this.mathRewardGiven) { this.drawMathPopup(ctx); }
+
+    ctx.restore(); // Restore from screen shake
 
     if (this.gameWon) {
       ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0, 0, width, height);
@@ -546,7 +598,13 @@ class FruitGame {
 
   drawContainer() {
     const ctx = this.ctx; const wallW = 10;
-    ctx.fillStyle = '#78350f';
+    
+    // Outer wall with gradient
+    const wallGradient = ctx.createLinearGradient(this.boxLeft - wallW, this.boxTop, this.boxRight + wallW, this.bucketBottom + wallW);
+    wallGradient.addColorStop(0, '#5c2d0a');
+    wallGradient.addColorStop(0.5, '#78350f');
+    wallGradient.addColorStop(1, '#5c2d0a');
+    ctx.fillStyle = wallGradient;
     ctx.beginPath();
     ctx.moveTo(this.boxLeft - wallW, this.boxTop);
     ctx.lineTo(this.boxLeft - wallW, this.funnelTop);
@@ -558,7 +616,11 @@ class FruitGame {
     ctx.lineTo(this.boxRight + wallW, this.boxTop);
     ctx.closePath(); ctx.fill();
 
-    ctx.fillStyle = '#fef3c7';
+    // Inner area with gradient
+    const innerGradient = ctx.createLinearGradient(0, this.boxTop, 0, this.bucketBottom);
+    innerGradient.addColorStop(0, '#fef9c3');
+    innerGradient.addColorStop(1, '#fde68a');
+    ctx.fillStyle = innerGradient;
     ctx.beginPath();
     ctx.moveTo(this.boxLeft + 4, this.boxTop + 4);
     ctx.lineTo(this.boxLeft + 4, this.funnelTop);
@@ -570,22 +632,39 @@ class FruitGame {
     ctx.lineTo(this.boxRight - 4, this.boxTop + 4);
     ctx.closePath(); ctx.fill();
 
-    ctx.strokeStyle = '#92400e'; ctx.lineWidth = 2;
+    // Funnel lines with highlight
+    ctx.strokeStyle = '#92400e'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(this.boxLeft + 4, this.funnelTop); ctx.lineTo(this.bucketLeft + 4, this.funnelBottom); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(this.boxRight - 4, this.funnelTop); ctx.lineTo(this.bucketRight - 4, this.funnelBottom); ctx.stroke();
+    
+    // Funnel highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(this.boxLeft + 8, this.funnelTop + 5); ctx.lineTo(this.bucketLeft + 8, this.funnelBottom - 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(this.boxRight - 8, this.funnelTop + 5); ctx.lineTo(this.bucketRight - 8, this.funnelBottom - 5); ctx.stroke();
 
+    // Danger line with glow
+    ctx.shadowColor = '#dc2626';
+    ctx.shadowBlur = 8;
     ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(this.bucketLeft + 8, this.bucketTop + 20); ctx.lineTo(this.bucketRight - 8, this.bucketTop + 20); ctx.stroke();
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
   }
 
   drawSingleFruit(f, alpha, scale) {
     const ctx = this.ctx;
     const r = (f.radius || FRUITS[f.type].radius) * scale;
+    const fruitDef = FRUITS[f.type];
     
     ctx.globalAlpha = alpha;
     
-    // 阴影效果
+    // Glow effect for bucket fruits
+    if (f.settled || f.phase === 'bucket') {
+      ctx.shadowColor = fruitDef.color;
+      ctx.shadowBlur = 12;
+    }
+    
+    // Drop shadow
     ctx.shadowColor = 'rgba(0,0,0,0.3)';
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 3;
@@ -593,7 +672,7 @@ class FruitGame {
     ctx.font = `${Math.floor(r * 2)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(f.emoji || FRUITS[f.type].emoji, f.x, f.y);
+    ctx.fillText(f.emoji || fruitDef.emoji, f.x, f.y);
     
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
