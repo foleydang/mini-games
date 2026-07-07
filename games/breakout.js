@@ -10,13 +10,15 @@ import { playSound, SoundType, audioManager } from '../common/audio.js';
 import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
 
 export default class BreakoutGame {
-  constructor(canvas, ctx, designSize, onEnd) {
+  constructor(canvas, ctx, designSize, onEnd, level = 0) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
 
-    this.level = Storage.load('breakout_level') || 0;
+    this.level = level;
+    this.levelName = ['入门', '简单', '普通', '困难', '专家'][level] || '入门';
+    
     this.ball = { x: 0, y: 0, vx: 0, vy: 0 };
     this.paddle = { x: 0, width: 130, height: 18 };
     this.bricks = [];
@@ -24,9 +26,8 @@ export default class BreakoutGame {
     this.bestScore = Storage.load('breakout_best') || 0;
     this.gameOver = false;
     this.ballSpeed = 15;
-    this.brickRows = 3;
-    this.brickCols = 5;
-    this.levelName = '入门';
+    this.brickRows = 3 + level;
+    this.brickCols = 5 + level;
     this.theme = Colors.themes.breakout;
 
     this.backButton = getBackButton(designSize);

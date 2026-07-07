@@ -3,16 +3,25 @@ import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, R
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
 class Match3Game {
-  constructor(canvas, ctx, designSize, onEnd) {
+  constructor(canvas, ctx, designSize, onEnd, level = 0) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'match3';
+    this.currentLevel = level;
     
-    // 棋盘配置
-    this.rows = 10;
-    this.cols = 7;
+    // 棋盘配置 - 根据关卡调整
+    const levelConfigs = [
+      { rows: 8, cols: 6, colors: 4, moves: 28 },
+      { rows: 8, cols: 6, colors: 4, moves: 25 },
+      { rows: 9, cols: 7, colors: 5, moves: 22 },
+      { rows: 10, cols: 7, colors: 5, moves: 18 },
+      { rows: 10, cols: 8, colors: 6, moves: 15 }
+    ];
+    const cfg = levelConfigs[level] || levelConfigs[0];
+    this.rows = cfg.rows;
+    this.cols = cfg.cols;
     this.grid = [];
     this.selected = null;
     this.score = 0;

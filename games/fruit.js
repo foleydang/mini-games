@@ -22,20 +22,27 @@ const OVERFLOW_GRACE_MS = 3000;
 const MAX_VY = 10;
 
 class FruitGame {
-  constructor(canvas, ctx, designSize, onEnd) {
+  constructor(canvas, ctx, designSize, onEnd, level = 0) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'fruit';
-
+    this.level = level;
+    
+    // 动画相关
+    this.animationFrame = 0;
+    this.transitionAnimation = null;
+    this.scaleAnimation = 1;
+    this.opacityAnimation = 1;
+    
     this.score = 0;
     this.gameOver = false;
     this.gameWon = false;
     this.scoreSaved = false;
     this.combo = 0;
 
-    // 道具：锤子
+    // 道具:锤子
     this.hammers = 0;
     this.mathProblem = null;
     this.mathAnswer = null;
@@ -47,7 +54,7 @@ class FruitGame {
 
     const { width, height, safeTop, safeBottom } = designSize;
 
-    // 按钮行在 safeTop + 180，棋盘必须从 safeTop + 250 开始，留出按钮空间
+    // 按钮行在 safeTop + 180,棋盘必须从 safeTop + 250 开始,留出按钮空间
     this.btnY = safeTop + 180;
     this.bucketLeft = (width - BUCKET_WIDTH) / 2;
     this.bucketRight = this.bucketLeft + BUCKET_WIDTH;
@@ -71,7 +78,7 @@ class FruitGame {
     this.removeProgress = 0;
     this.eliminating = false;
     this.scorePopups = [];
-    this.loopTimer = null;  // 游戏循环定时器ID，退出时需要清除
+    this.loopTimer = null;  // 游戏循环定时器ID,退出时需要清除
 
     this.topFruits = [];
     this.bucketFruits = [];
@@ -157,7 +164,7 @@ class FruitGame {
     });
   }
 
-  // ===== 道具：锤子 =====
+  // ===== 道具:锤子 =====
   useHammer() {
     if (this.bucketFruits.length === 0) return;
     playSound(SoundType.CLICK);
@@ -165,7 +172,7 @@ class FruitGame {
   }
 
   generateMathProblem() {
-    // 只用加法和乘法，避免产生负数（键盘没有负号）
+    // 只用加法和乘法,避免产生负数(键盘没有负号)
     const ops = ['+', '\u00d7'];
     const op = ops[Math.floor(Math.random() * ops.length)];
     let a, b, answer;
@@ -408,7 +415,7 @@ class FruitGame {
     if (this.gameOver || this.gameWon) { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
     if (this.eliminating) return;
 
-    // 数学题弹窗：用数字按钮代替键盘输入
+    // 数学题弹窗:用数字按钮代替键盘输入
     if (this.mathShow && !this.mathRewardGiven) {
       const { width, height } = this.designSize;
       const cX = width / 2; const cY = height / 2;
@@ -420,7 +427,7 @@ class FruitGame {
       const numStartX = cX - kbWidth / 2;
       const numStartY = kbStartY;
 
-      // 数字按钮 0-9（3列4行）
+      // 数字按钮 0-9(3列4行)
       for (let n = 0; n <= 9; n++) {
         const col = n === 0 ? 1 : (n - 1) % 3;
         const row = n === 0 ? 3 : Math.floor((n - 1) / 3);
@@ -470,11 +477,11 @@ class FruitGame {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     drawGradientBg(ctx, width, height, '#fef9c3', '#fde68a');
 
-    // 标题（更紧凑）
+    // 标题(更紧凑)
     drawText(ctx, '水果消消乐', width / 2, safeTop + 40, { fontSize: 40, color: '#d97706', bold: true });
     drawText(ctx, `分数: ${this.score}`, width / 2, safeTop + 80, { fontSize: 22, color: '#92400e' });
 
-    // 按钮行（标题下方）
+    // 按钮行(标题下方)
     this.buttons = drawBottomButtons(ctx, this.designSize, '\u2190 \u8fd4\u56de', audioManager.enabled);
 
     this.drawContainer();
@@ -493,10 +500,10 @@ class FruitGame {
       ctx.globalAlpha = 1;
     }
 
-    // 锤子按钮（左下角）
+    // 锤子按钮(左下角)
     this.drawHammerButton(ctx);
 
-    // 数学题弹窗（数字按钮输入）
+    // 数学题弹窗(数字按钮输入)
     if (this.mathShow && !this.mathRewardGiven) { this.drawMathPopup(ctx); }
 
     if (this.gameWon) {
@@ -572,7 +579,7 @@ class FruitGame {
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, width, height);
     drawRoundRect(ctx, cX - pW / 2, cardTop, pW, pH, 16, '#fff', '#7c3aed', 3);
 
-    // 标题（卡片内顶部）
+    // 标题(卡片内顶部)
     drawText(ctx, '\ud83e\uddee \u7b54\u5bf9\u5f97\u9524\u5b50\uff01', cX, cardTop + 30, { fontSize: 26, color: '#7c3aed', bold: true });
     // 题目
     drawText(ctx, this.mathProblem, cX, cardTop + 65, { fontSize: 36, color: '#1a1a1a', bold: true });
@@ -584,7 +591,7 @@ class FruitGame {
     drawRoundRect(ctx, cX - 100, cardTop + 90, 200, 48, 10, '#f3f4f6', '#d1d5db', 2);
     drawText(ctx, this.mathInput || '\u8f93\u5165\u7b54\u6848...', cX, cardTop + 115, { fontSize: 26, color: this.mathInput ? '#1a1a1a' : '#9ca3af' });
 
-    // 数字按钮 0-9（居中在卡片内）
+    // 数字按钮 0-9(居中在卡片内)
     const numW = 65; const numH = 52; const numGap = 8;
     const kbWidth = 3 * numW + 2 * numGap;
     const numStartX = cX - kbWidth / 2;
@@ -597,7 +604,7 @@ class FruitGame {
       drawText(ctx, `${n}`, nx + numW / 2, ny + numH / 2, { fontSize: 24, color: '#1a1a1a', bold: true });
     }
 
-    // 0 / 清除 / 提交 按钮（第4行）
+    // 0 / 清除 / 提交 按钮(第4行)
     const row4Y = numStartY + 3 * (numH + numGap);
     drawRoundRect(ctx, numStartX + 1 * (numW + numGap), row4Y, numW, numH, 10, '#e5e7eb');
     drawText(ctx, '0', numStartX + 1 * (numW + numGap) + numW / 2, row4Y + numH / 2, { fontSize: 24, color: '#1a1a1a', bold: true });

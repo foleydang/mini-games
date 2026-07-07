@@ -1,5 +1,5 @@
 /**
- * 主游戏入口
+ * 主游戏入口 - 铃铛快乐屋
  */
 import {
   getDesignSize, Colors, drawGradientBg, drawGameCardBg, drawButton,
@@ -7,9 +7,12 @@ import {
   getTouchPos, Storage, RankData, shareGame, drawCircle, drawRoundRect,
   drawGameIcon, GameSettings, drawToggle
 } from './common/utils.js';
-import { Games } from './common/config.js';
+import { Games, Levels } from './common/config.js';
 import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
 import { syncUserToServer } from './common/utils.js';
+import { ModernThemes, drawModernButton, drawModernCard, drawModernNavbar, drawModernTag, drawModernProgress } from './common/modern-ui.js';
+import LevelSelector from './common/level-selector.js';
+import { themeManager } from './common/theme-manager.js';
 import Match3Game from './games/match3.js';
 import SnakeGame from './games/snake.js';
 import Game2048 from './games/2048.js';
@@ -30,22 +33,31 @@ class MainGame {
     this.canvas.width = this.designSize.width;
     this.canvas.height = this.designSize.height;
 
+    // 状态管理
     this.currentGame = null;
     this.cards = [];
     this.showingRank = false;
     this.showingSettings = false;
+    this.showingLevelSelect = false;
     this.currentRankGame = null;
+    this.currentLevelSelectGame = null;
     this.rankData = [];
     this.settings = GameSettings.get();
     this.particles = [];
     this.animFrame = 0;
-
+    
+    // 现代化UI组件
+    this.levelSelector = null;
+    
+    // 用户数据
     this.avatarCache = {};  // 头像图片缓存
     this.showingProfile = false;  // 显示个人设置页
     this.myProfile = this.loadProfile();  // 用户个人设置
     this.profileAvatars = [];  // 预设头像列表
     this.selectedAvatarIndex = 0;
     this.editingNickname = false;
+    
+    // 初始化
     this.initCards();
     this.initParticles();
     this.bindEvents();
@@ -83,7 +95,7 @@ class MainGame {
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    const cardHeight = 100;
+    const cardHeight = 120;
 
     const startX = paddingX;
     const startY = safeTop + 320;
@@ -91,12 +103,9 @@ class MainGame {
     Games.forEach((game, index) => {
       const col = index % cols;
       const row = Math.floor(index / cols);
-      const theme = Colors.themes[game.id] || {
-        primary: '#8b5cf6',
-        secondary: '#c4b5fd',
-        bg: '#f5f3ff',
-        pattern: '#ede9fe'
-      };
+      
+      // 使用现代化主题
+      const theme = ModernThemes.gameThemes[game.id] || ModernThemes.gameThemes.match3;
 
       const cardX = startX + col * (cardWidth + cardGapH);
       const cardY = startY + row * (cardHeight + cardGapV);
@@ -113,11 +122,17 @@ class MainGame {
           y: cardY + cardHeight + 5,
           width: cardWidth - 40,
           height: 36
+        },
+        playBtn: {
+          x: cardX + 20,
+          y: cardY + cardHeight + 50,
+          width: cardWidth - 40,
+          height: 36
         }
       });
     });
 
-    // 设置按钮位置（在 render 中动态设置）
+    // 设置按钮位置
     this.settingsBtn = {
       x: width - 120,
       y: safeTop + 165,
@@ -138,6 +153,15 @@ class MainGame {
   bindEvents() {
     wx.onTouchStart((e) => {
       const pos = getTouchPos(e.touches[0], this.designSize);
+      if (this.showingLevelSelect && this.levelSelector) {
+        this.levelSelector.onTouchStart(pos);
+        if (this.levelSelector.shouldBack) {
+          this.showingLevelSelect = false;
+          this.levelSelector = null;
+          this.startAnimation();
+        }
+        return;
+      }
       if (this.showingProfile) {
         this.handleProfileTouch(pos);
       } else if (this.showingSettings) {
@@ -168,7 +192,7 @@ class MainGame {
 
   startAnimation() {
     const animate = () => {
-      if (this.currentGame || this.showingRank || this.showingSettings || this.showingProfile) return;
+      if (this.currentGame || this.showingRank || this.showingSettings || this.showingProfile || this.showingLevelSelect) return;
       this.animFrame++;
       updateParticles(this.particles);
       this.render();
@@ -177,8 +201,33 @@ class MainGame {
     animate();
   }
 
-  startGame(gameId) {
+  showLevelSelect(gameId) {
+    this.showingLevelSelect = true;
+    this.currentLevelSelectGame = gameId;
+    this.levelSelector = new LevelSelector(
+      gameId,
+      this.designSize,
+      (level) => this.startGameWithLevel(gameId, level),
+      () => {
+        this.showingLevelSelect = false;
+        this.levelSelector = null;
+        this.startAnimation();
+      }
+    );
+    // 立即渲染关卡选择器
+    const animate = () => {
+      if (!this.showingLevelSelect) return;
+      this.levelSelector.draw(this.ctx);
+      requestAnimationFrame(animate);
+    };
+    animate();
+  }
+
+  startGameWithLevel(gameId, level) {
+    this.showingLevelSelect = false;
+    this.levelSelector = null;
     this.currentRankGame = gameId;
+    this.currentLevel = level;
     const gameClasses = {
       match3: Match3Game,
       snake: SnakeGame,
@@ -193,12 +242,38 @@ class MainGame {
     };
     const GameClass = gameClasses[gameId];
     if (!GameClass) return;
-    this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score));
+    // 关卡型游戏传 level 参数，无限型不传
+    const gameConfig = Games.find(g => g.id === gameId);
+    if (gameConfig && gameConfig.type === 'levels') {
+      this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score), level);
+    } else {
+      this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score));
+    }
   }
+
+  startGame(gameId) {
+    this.currentRankGame = gameId;
+    this.startGameWithLevel(gameId, 0);
 
   endGame(score) {
     this.currentGame = null;
     RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
+    
+    // 关卡型游戏：检查是否过关，推进关卡进度
+    if (this.currentLevel !== undefined && this.currentRankGame) {
+      const gameConfig = Games.find(g => g.id === this.currentRankGame);
+      if (gameConfig && gameConfig.type === 'levels') {
+        // 简单判定：分数 > 0 视为过关（各游戏可自定义过关条件）
+        if (score > 0) {
+          const savedLevel = Storage.load(`${this.currentRankGame}_level`) || 0;
+          if (this.currentLevel >= savedLevel) {
+            Storage.save(`${this.currentRankGame}_level`, this.currentLevel + 1);
+          }
+        }
+        this.currentLevel = undefined;
+      }
+    }
+    
     this.startAnimation();
   }
 
@@ -226,6 +301,50 @@ class MainGame {
       this.renderSettings();
       return;
     }
+    
+    // 检查主题切换按钮
+    if (this.showingSettings) {
+      const { width, safeTop } = this.designSize;
+      const cardY = safeTop + 240;
+      const themes = themeManager.getAllThemes();
+      const buttonWidth = 80;
+      const buttonHeight = 40;
+      const buttonSpacing = 15;
+      const totalWidth = themes.length * buttonWidth + (themes.length - 1) * buttonSpacing;
+      const startX = (width - totalWidth) / 2;
+      
+      // 检查主题按钮点击
+      themes.forEach((theme, index) => {
+        const x = startX + index * (buttonWidth + buttonSpacing);
+        const themeBtn = { x, y: cardY + 110, width: buttonWidth, height: buttonHeight };
+        if (this.hitTest(pos, themeBtn)) {
+          themeManager.setTheme(theme.id);
+          this.currentTheme = themeManager.getCurrentTheme();
+          this.showingSettings = false;
+          return;
+        }
+      });
+      
+      // 检查游戏主题按钮点击
+      const gameCardY = cardY + 220;
+      const gameThemes = themeManager.getAllGameThemes();
+      const gameButtonWidth = 70;
+      const gameButtonHeight = 35;
+      const gameButtonSpacing = 10;
+      const gameTotalWidth = Math.min(gameThemes.length, 4) * gameButtonWidth + (Math.min(gameThemes.length, 4) - 1) * gameButtonSpacing;
+      const gameStartX = (width - gameTotalWidth) / 2;
+      
+      gameThemes.slice(0, 4).forEach((theme, index) => {
+        const x = gameStartX + index * (gameButtonWidth + gameButtonSpacing);
+        const gameThemeBtn = { x, y: gameCardY + 110, width: gameButtonWidth, height: gameButtonHeight };
+        if (this.hitTest(pos, gameThemeBtn)) {
+          themeManager.setGameTheme(theme.id);
+          this.currentGameTheme = themeManager.getCurrentGameTheme();
+          this.showingSettings = false;
+          return;
+        }
+      });
+    }
 
     // 检查每个卡片
     for (const card of this.cards) {
@@ -240,7 +359,12 @@ class MainGame {
       // 再检查卡片（启动游戏）
       if (pos.x >= card.x && pos.x <= card.x + card.width &&
           pos.y >= card.y && pos.y <= card.y + card.height) {
-        this.startGame(card.game.id);
+        // 关卡型游戏显示关卡选择
+        if (card.game.type === 'levels') {
+          this.showLevelSelect(card.game.id);
+        } else {
+          this.startGame(card.game.id);
+        }
         return;
       }
     }
@@ -349,6 +473,8 @@ class MainGame {
 
   drawBg(width, height) {
     const ctx = this.ctx;
+    
+    // 使用现代化渐变背景
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, '#fdf4ff');
     gradient.addColorStop(0.5, '#fae8ff');
@@ -356,6 +482,7 @@ class MainGame {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
     
+    // 添加装饰粒子
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#c4b5fd';
     ctx.beginPath();
@@ -365,14 +492,26 @@ class MainGame {
     ctx.beginPath();
     ctx.arc(width * 0.8, height * 0.6, 120, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.arc(width * 0.5, height * 0.8, 80, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
+    
+    // 如果正在显示关卡选择器
+    if (this.showingLevelSelect && this.levelSelector) {
+      this.levelSelector.draw(this.ctx);
+      return;
+    }
+    
     this.drawBg(width, height);
     drawParticles(this.ctx, this.particles);
 
+    // 现代化标题
     drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 150, { fontSize: 52, color: '#7c3aed', bold: true });
     drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 195, { fontSize: 28, color: '#a78bfa' });
 
@@ -380,7 +519,10 @@ class MainGame {
     // 我的按钮（上方）
     const myBtnX = width - 120;
     const myBtnY = safeTop + 110;
-    drawButton(this.ctx, myBtnX, myBtnY, 90, 45, '我的', '#10b981', { fontSize: 24, radius: 12 });
+    drawModernButton(this.ctx, myBtnX, myBtnY, 90, 45, '我的', ModernThemes.primary, {
+      fontSize: 24,
+      icon: '👤'
+    });
     this.myButton = { x: myBtnX, y: myBtnY, width: 90, height: 45 };
     
     // 设置按钮（下方）
@@ -388,11 +530,96 @@ class MainGame {
     this.settingsBtn.y = safeTop + 165;
     this.settingsBtn.width = 90;
     this.settingsBtn.height = 45;
-    drawButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', '#8b5cf6', { fontSize: 24, radius: 12 });
+    drawModernButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', ModernThemes.primary, {
+      fontSize: 24,
+      icon: '⚙️'
+    });
 
-    this.cards.forEach((card, index) => this.drawGameCard(card, index));
+    this.cards.forEach((card, index) => this.drawModernGameCard(card, index));
 
     drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, { fontSize: 22, color: '#c4b5fd' });
+  }
+
+  // 现代化游戏卡片
+  drawModernGameCard(card, index) {
+    const { game, x, y, width, height, theme, rankBtn } = card;
+    const ctx = this.ctx;
+
+    // 卡片阴影 + 渐变背景
+    ctx.save();
+    ctx.shadowColor = `rgba(0, 0, 0, 0.12)`;
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+
+    // 渐变卡片底色
+    const cardGradient = ctx.createLinearGradient(x, y, x, y + height);
+    cardGradient.addColorStop(0, theme.surface || '#ffffff');
+    cardGradient.addColorStop(1, theme.bg || '#faf5ff');
+    ctx.fillStyle = cardGradient;
+    drawRoundRect(ctx, x, y, width, height, 20);
+    ctx.fill();
+
+    // 左侧彩色装饰条
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    const barGradient = ctx.createLinearGradient(x, y, x, y + height);
+    barGradient.addColorStop(0, theme.primary);
+    barGradient.addColorStop(1, theme.secondary || theme.primary);
+    ctx.fillStyle = barGradient;
+    drawRoundRect(ctx, x, y, 8, height, 4);
+    ctx.fill();
+
+    // 卡片边框
+    ctx.strokeStyle = theme.primary + '33';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, x, y, width, height, 20);
+    ctx.stroke();
+    ctx.restore();
+
+    // 游戏图标圆形背景
+    const iconX = x + 55;
+    const iconY = y + height / 2;
+    const iconRadius = 28;
+
+    ctx.save();
+    ctx.shadowColor = theme.primary + '66';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    const iconGradient = ctx.createRadialGradient(iconX - 8, iconY - 8, 2, iconX, iconY, iconRadius);
+    iconGradient.addColorStop(0, theme.secondary || theme.primary);
+    iconGradient.addColorStop(1, theme.primary);
+    ctx.fillStyle = iconGradient;
+    ctx.beginPath();
+    ctx.arc(iconX, iconY, iconRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 图标
+    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, '#fff', game.shape);
+
+    // 游戏名称
+    drawText(ctx, game.name, x + 100, y + 38, { fontSize: 30, color: '#1e293b', bold: true, align: 'left' });
+    // 描述
+    drawText(ctx, game.desc, x + 100, y + 72, { fontSize: 20, color: '#64748b', align: 'left' });
+
+    // 关卡类型标签
+    const tagText = game.type === 'levels' ? '关卡' : '无限';
+    const tagColor = game.type === 'levels' ? '#8b5cf6' : '#10b981';
+    ctx.font = 'bold 18px "PingFang SC", sans-serif';
+    const tagWidth = ctx.measureText(tagText).width + 24;
+    drawRoundRect(ctx, x + width - tagWidth - 15, y + 15, tagWidth, 30, 15, tagColor + '22');
+    ctx.fillStyle = tagColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tagText, x + width - tagWidth / 2 - 15, y + 30);
+
+    // 排行榜按钮
+    drawModernButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '🏆 排行', theme, {
+      fontSize: 22,
+      radius: 14,
+      shadow: false,
+      gradient: true
+    });
   }
 renderProfile() {
     const { width, height, safeTop, safeBottom } = this.designSize;
@@ -546,6 +773,78 @@ renderProfile() {
     ctx.shadowColor = 'rgba(139, 92, 246, 0.15)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = 4;
+    
+    // 主题选择卡片
+    drawRoundRect(ctx, 40, cardY, width - 80, 200, 20);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    
+    // 主题标题
+    drawText(ctx, '🎨 主题设置', width / 2, cardY + 40, { fontSize: 28, color: '#7c3aed', bold: true });
+    
+    // 当前主题
+    const currentTheme = themeManager.getCurrentTheme();
+    drawText(ctx, `当前主题: ${themeManager.currentTheme === 'default' ? '默认' : themeManager.currentTheme}`, width / 2, cardY + 80, { fontSize: 20, color: '#64748b' });
+    
+    // 主题切换按钮
+    const themes = themeManager.getAllThemes();
+    const buttonWidth = 80;
+    const buttonHeight = 40;
+    const buttonSpacing = 15;
+    const totalWidth = themes.length * buttonWidth + (themes.length - 1) * buttonSpacing;
+    const startX = (width - totalWidth) / 2;
+    
+    themes.forEach((theme, index) => {
+      const x = startX + index * (buttonWidth + buttonSpacing);
+      const isActive = theme.id === themeManager.currentTheme;
+      
+      drawModernButton(ctx, x, cardY + 110, buttonWidth, buttonHeight, theme.icon, isActive ? currentTheme : '#e5e7eb', {
+        fontSize: 20,
+        radius: 12,
+        shadow: isActive,
+        gradient: false
+      });
+      
+      // 主题名称
+      drawText(ctx, theme.name, x + buttonWidth/2, cardY + 165, { fontSize: 14, color: isActive ? currentTheme : '#64748b', align: 'center' });
+    });
+    
+    // 游戏主题选择
+    const gameCardY = cardY + 220;
+    drawRoundRect(ctx, 40, gameCardY, width - 80, 200, 20);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    
+    // 游戏主题标题
+    drawText(ctx, '🎮 游戏主题', width / 2, gameCardY + 40, { fontSize: 28, color: '#7c3aed', bold: true });
+    
+    // 当前游戏主题
+    const currentGameTheme = themeManager.getCurrentGameTheme();
+    drawText(ctx, `当前游戏主题: ${currentGameTheme.themeName}`, width / 2, gameCardY + 80, { fontSize: 20, color: '#64748b' });
+    
+    // 游戏主题切换按钮
+    const gameThemes = themeManager.getAllGameThemes();
+    const gameButtonWidth = 70;
+    const gameButtonHeight = 35;
+    const gameButtonSpacing = 10;
+    const gameTotalWidth = Math.min(gameThemes.length, 4) * gameButtonWidth + (Math.min(gameThemes.length, 4) - 1) * gameButtonSpacing;
+    const gameStartX = (width - gameTotalWidth) / 2;
+    
+    gameThemes.slice(0, 4).forEach((theme, index) => {
+      const x = gameStartX + index * (gameButtonWidth + gameButtonSpacing);
+      const isActive = theme.id === themeManager.currentGameTheme;
+      
+      drawModernButton(ctx, x, gameCardY + 110, gameButtonWidth, gameButtonHeight, theme.icon, isActive ? currentGameTheme.primary : '#e5e7eb', {
+        fontSize: 18,
+        radius: 10,
+        shadow: isActive,
+        gradient: false
+      });
+      
+      // 游戏主题名称
+      drawText(ctx, theme.name, x + gameButtonWidth/2, gameCardY + 160, { fontSize: 12, color: isActive ? currentGameTheme.primary : '#64748b', align: 'center' });
+    });
+    ctx.shadowOffsetY = 4;
     drawRoundRect(ctx, 30, cardY, width - 60, 200, 20, '#ffffff', '#8b5cf6', 2);
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
@@ -622,6 +921,10 @@ renderProfile() {
     const { game, x, y, width, height, theme, rankBtn } = card;
     const ctx = this.ctx;
 
+    // 获取游戏进度
+    const currentLevel = Storage.load(`${game.id}_level`) || 0;
+    const levelInfo = Levels[game.id] ? Levels[game.id][currentLevel] : null;
+
     ctx.save();
     ctx.shadowColor = 'rgba(139, 92, 246, 0.15)';
     ctx.shadowBlur = 10;
@@ -644,6 +947,56 @@ renderProfile() {
 
     drawText(ctx, game.name, x + width * 0.55, centerY - 10, { fontSize: 30, color: '#1f2937', bold: true });
     drawText(ctx, game.desc, x + width * 0.55, centerY + 20, { fontSize: 20, color: '#6b7280' });
+
+    // 游戏类型标签
+    const levelType = game.type === 'levels' ? '关卡' : '无限';
+    const typeColor = game.type === 'levels' ? theme.primary : '#10b981';
+    drawModernTag(ctx, x + width - 100, y + 20, levelType, theme, {
+      fontSize: 16, fontWeight: 'bold', backgroundColor: typeColor + '22', textColor: typeColor
+    });
+
+    // 进度信息
+    if (game.type === 'levels' && Levels[game.id]) {
+      const totalLevels = Levels[game.id].length;
+      const progress = currentLevel / totalLevels;
+      
+      // 进度条背景
+      const progressY = y + height - 35;
+      const progressWidth = width - 40;
+      const progressX = x + 20;
+      
+      drawRoundRect(ctx, progressX, progressY, progressWidth, 8, 4);
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fill();
+      
+      // 进度条填充
+      const fillWidth = progressWidth * progress;
+      const progressGradient = ctx.createLinearGradient(progressX, progressY, progressX + fillWidth, progressY);
+      progressGradient.addColorStop(0, theme.primary);
+      progressGradient.addColorStop(1, theme.secondary || theme.primary);
+      ctx.fillStyle = progressGradient;
+      drawRoundRect(ctx, progressX, progressY, fillWidth, 8, 4);
+      ctx.fill();
+      
+      // 进度文字
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px "PingFang SC", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`第${currentLevel + 1}关`, progressX, progressY + 4);
+      
+      ctx.textAlign = 'right';
+      ctx.fillText(`${Math.round(progress * 100)}%`, progressX + progressWidth, progressY + 4);
+    }
+    
+    // 当前关卡信息
+    if (game.type === 'levels' && levelInfo) {
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(levelInfo.name, x + width * 0.55, centerY + 45);
+    }
 
     drawButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '排行榜', theme.secondary, { fontSize: 24, radius: 12 });
   }

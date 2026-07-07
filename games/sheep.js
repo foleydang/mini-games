@@ -6,7 +6,7 @@ import { Levels } from '../common/config.js';
 const EMOJIS = ['🍜', '🍕', '🍔', '🍟', '🧁', '🍩', '🍺', '🍵', '🍦', '🍫', '🥤', '🍗'];
 
 class SheepGame {
-  constructor(canvas, ctx, designSize, onEnd) {
+  constructor(canvas, ctx, designSize, onEnd, level = 0) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
@@ -30,7 +30,7 @@ class SheepGame {
     this.soundEnabled = true;
 
     // 当前关卡
-    this.currentLevel = 0;
+    this.currentLevel = level;
     this.score = 0;
 
     // 牌布局参数
@@ -43,6 +43,7 @@ class SheepGame {
     this.gridStartY = 0;
 
     this.init();
+  }
   }
 
   init() {

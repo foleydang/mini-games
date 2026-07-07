@@ -3,17 +3,17 @@ import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 
 export default class MemoryGame {
-  constructor(canvas, ctx, designSize, onEnd) {
+  constructor(canvas, ctx, designSize, onEnd, level = 0) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'memory';
+    this.currentLevel = level;
     
     this.cards = [];
     this.flippedCards = [];
     this.matchedPairs = 0;
-    this.totalPairs = 8;
     this.moves = 0;
     this.gameOver = false;
     this.checkingMatch = false;
@@ -24,10 +24,24 @@ export default class MemoryGame {
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
     
+    // 根据关卡配置
+    const levelConfigs = [
+      { cols: 4, rows: 3, pairs: 6 },
+      { cols: 4, rows: 4, pairs: 8 },
+      { cols: 5, rows: 4, pairs: 10 },
+      { cols: 6, rows: 4, pairs: 12 },
+      { cols: 6, rows: 5, pairs: 15 }
+    ];
+    const cfg = levelConfigs[level] || levelConfigs[0];
+    this.cols = cfg.cols;
+    this.rows = cfg.rows;
+    this.totalPairs = cfg.pairs;
+    
     this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F7DC6F', '#BB8FCE'];
     this.symbols = ['★', '♦', '♣', '♠', '♥', '●', '▲', '■'];
     
     this.initGame();
+  }
   }
 
   initGame() {
