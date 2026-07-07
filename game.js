@@ -49,6 +49,10 @@ class MainGame {
     // 现代化UI组件
     this.levelSelector = null;
     
+    // 主题系统
+    this.currentTheme = themeManager.getCurrentTheme();
+    this.currentGameTheme = themeManager.getCurrentGameTheme();
+    
     // 用户数据
     this.avatarCache = {};  // 头像图片缓存
     this.showingProfile = false;  // 显示个人设置页
@@ -314,7 +318,8 @@ class MainGame {
       const startX = (width - totalWidth) / 2;
       
       // 检查主题按钮点击
-      themes.forEach((theme, index) => {
+      for (const theme of themes) {
+        const index = themes.indexOf(theme);
         const x = startX + index * (buttonWidth + buttonSpacing);
         const themeBtn = { x, y: cardY + 110, width: buttonWidth, height: buttonHeight };
         if (this.hitTest(pos, themeBtn)) {
@@ -323,7 +328,7 @@ class MainGame {
           this.showingSettings = false;
           return;
         }
-      });
+      }
       
       // 检查游戏主题按钮点击
       const gameCardY = cardY + 220;
@@ -334,7 +339,8 @@ class MainGame {
       const gameTotalWidth = Math.min(gameThemes.length, 4) * gameButtonWidth + (Math.min(gameThemes.length, 4) - 1) * gameButtonSpacing;
       const gameStartX = (width - gameTotalWidth) / 2;
       
-      gameThemes.slice(0, 4).forEach((theme, index) => {
+      for (const theme of gameThemes.slice(0, 4)) {
+        const index = gameThemes.indexOf(theme);
         const x = gameStartX + index * (gameButtonWidth + gameButtonSpacing);
         const gameThemeBtn = { x, y: gameCardY + 110, width: gameButtonWidth, height: gameButtonHeight };
         if (this.hitTest(pos, gameThemeBtn)) {
@@ -343,7 +349,7 @@ class MainGame {
           this.showingSettings = false;
           return;
         }
-      });
+      }
     }
 
     // 检查每个卡片

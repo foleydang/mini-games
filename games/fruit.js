@@ -14,12 +14,10 @@ const FRUITS = [
   { emoji: '🫐', radius: 28, color: '#06b6d4' },
 ];
 
-const GRAVITY = 0.3;
 const BOUNCE_FACTOR = 0.15;
 const BUCKET_WIDTH = 100;
 const BUCKET_HEIGHT = 140;
 const OVERFLOW_GRACE_MS = 3000;
-const MAX_VY = 10;
 
 class FruitGame {
   constructor(canvas, ctx, designSize, onEnd, level = 0) {
@@ -29,21 +27,36 @@ class FruitGame {
     this.onEnd = onEnd;
     this.gameId = 'fruit';
     this.level = level;
-    
+
     // 动画相关
     this.animationFrame = 0;
     this.transitionAnimation = null;
     this.scaleAnimation = 1;
     this.opacityAnimation = 1;
+
+    // 根据关卡配置
+    const levelConfigs = [
+      { maxFruits: 5, dropSpeed: 2, hammerCount: 1, gravity: 0.2, maxVy: 8 },
+      { maxFruits: 6, dropSpeed: 2.5, hammerCount: 1, gravity: 0.25, maxVy: 9 },
+      { maxFruits: 7, dropSpeed: 3, hammerCount: 2, gravity: 0.3, maxVy: 10 },
+      { maxFruits: 8, dropSpeed: 3.5, hammerCount: 2, gravity: 0.35, maxVy: 11 },
+      { maxFruits: 9, dropSpeed: 4, hammerCount: 3, gravity: 0.4, maxVy: 12 }
+    ];
+    const cfg = levelConfigs[level] || levelConfigs[0];
+    this.maxFruits = cfg.maxFruits;
+    this.dropSpeed = cfg.dropSpeed;
+    this.hammerCount = cfg.hammerCount;
+    this.gravity = cfg.gravity;
+    this.maxVy = cfg.maxVy;
     
     this.score = 0;
     this.gameOver = false;
     this.gameWon = false;
     this.scoreSaved = false;
     this.combo = 0;
-
+    
     // 道具:锤子
-    this.hammers = 0;
+    this.hammers = this.hammerCount;
     this.mathProblem = null;
     this.mathAnswer = null;
     this.mathInput = '';
@@ -112,7 +125,7 @@ class FruitGame {
     const areaH = this.boxBottom - this.boxTop - padding * 2;
     const radius = FRUITS[0].radius;
 
-    for (let i = 0; i < types.length; i++) {
+    for (let i = 0; i < Math.min(types.length, this.maxFruits); i++) {
       const type = types[i];
       const fruitDef = FRUITS[type];
       const x = this.boxLeft + padding + radius + Math.random() * (areaW - radius * 2);
@@ -240,7 +253,7 @@ class FruitGame {
 
     for (const bf of this.bucketFruits) {
       if (bf.settled) continue;
-      bf.vy = Math.min(bf.vy + GRAVITY, MAX_VY);
+      bf.vy = Math.min(bf.vy + this.gravity, this.maxVy);
       bf.y += bf.vy; bf.x += (bf.vx || 0);
       if (bf.x - bf.radius < this.bucketLeft + 4) { bf.x = this.bucketLeft + 4 + bf.radius; bf.vx = 0; }
       if (bf.x + bf.radius > this.bucketRight - 4) { bf.x = this.bucketRight - 4 - bf.radius; bf.vx = 0; }
@@ -276,7 +289,7 @@ class FruitGame {
   }
 
   updateDropping(df) {
-    df.vy = Math.min(df.vy + GRAVITY, MAX_VY);
+    df.vy = Math.min(df.vy + this.gravity, this.maxVy);
     const steps = Math.max(1, Math.ceil(df.vy / 5));
     for (let s = 0; s < steps; s++) {
       df.y += df.vy / steps; df.x += (df.vx || 0) / steps;
