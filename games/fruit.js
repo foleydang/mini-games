@@ -55,7 +55,9 @@ class FruitGame {
     this.bucketHalfWidth = this.fruitRadius + 6;
     this.bucketLeft = this.bucketCenterX - this.bucketHalfWidth;
     this.bucketRight = this.bucketCenterX + this.bucketHalfWidth;
-    this.bucketTop = safeTop + 320;
+    // 桶最多装4个水果
+    this.bucketCapacity = 4;
+    this.bucketTop = height - safeBottom - 40 - (this.fruitRadius * 2 * this.bucketCapacity + 10);
     this.bucketBottom = height - safeBottom - 40;
     this.bucketHeight = this.bucketBottom - this.bucketTop;
 
@@ -508,11 +510,15 @@ class FruitGame {
 
     // 暖色背景
     const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-    bgGradient.addColorStop(0, '#fff5e6');
-    bgGradient.addColorStop(0.5, '#ffe8cc');
-    bgGradient.addColorStop(1, '#ffd699');
+    bgGradient.addColorStop(0, '#fef9e7');
+    bgGradient.addColorStop(0.4, '#fdebd0');
+    bgGradient.addColorStop(0.7, '#fad7a1');
+    bgGradient.addColorStop(1, '#e8c87a');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, width, height);
+
+    // 氛围装饰
+    this.drawDecorations(ctx, width, height);
 
     // 标题
     ctx.shadowColor = 'rgba(0,0,0,0.15)';
@@ -580,6 +586,108 @@ class FruitGame {
     if (this.gameWon || this.gameOver) {
       this.drawEndPopup(ctx, width, height, this.gameWon);
     }
+  }
+
+  drawDecorations(ctx, width, height) {
+    // 左侧装饰树
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    // 树干
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(35, 120, 20, 100);
+    // 树冠
+    ctx.fillStyle = '#6B8E23';
+    ctx.beginPath();
+    ctx.arc(45, 110, 50, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7BA428';
+    ctx.beginPath();
+    ctx.arc(35, 90, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8FBC8F';
+    ctx.beginPath();
+    ctx.arc(55, 95, 35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 右侧装饰树
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(width - 55, 130, 20, 90);
+    ctx.fillStyle = '#6B8E23';
+    ctx.beginPath();
+    ctx.arc(width - 45, 120, 45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7BA428';
+    ctx.beginPath();
+    ctx.arc(width - 35, 100, 35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 飘落的叶子
+    const leafPositions = [
+      { x: 60, y: 180, s: 0.8, a: 0.12 },
+      { x: 80, y: 250, s: 0.6, a: 0.1 },
+      { x: width - 70, y: 200, s: 0.7, a: 0.12 },
+      { x: width - 90, y: 280, s: 0.5, a: 0.08 },
+      { x: 100, y: 320, s: 0.4, a: 0.06 },
+      { x: width - 100, y: 350, s: 0.5, a: 0.07 },
+    ];
+    for (const leaf of leafPositions) {
+      ctx.save();
+      ctx.globalAlpha = leaf.a;
+      ctx.translate(leaf.x, leaf.y);
+      ctx.rotate(0.5);
+      ctx.fillStyle = '#8FBC8F';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8 * leaf.s, 4 * leaf.s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 地上的小花
+    const flowerPositions = [
+      { x: 50, y: height - 20, c: '#f8bbd0', s: 1 },
+      { x: 120, y: height - 15, c: '#fff9c4', s: 0.8 },
+      { x: width - 60, y: height - 25, c: '#bbdefb', s: 0.9 },
+      { x: width - 130, y: height - 18, c: '#f8bbd0', s: 0.7 },
+      { x: 200, y: height - 22, c: '#e1bee7', s: 0.7 },
+      { x: width - 200, y: height - 20, c: '#fff9c4', s: 0.8 },
+    ];
+    for (const flower of flowerPositions) {
+      ctx.globalAlpha = 0.2;
+      for (let i = 0; i < 5; i++) {
+        const angle = (Math.PI * 2 * i) / 5;
+        const px = flower.x + Math.cos(angle) * 6 * flower.s;
+        const py = flower.y + Math.sin(angle) * 6 * flower.s;
+        ctx.fillStyle = flower.c;
+        ctx.beginPath();
+        ctx.arc(px, py, 3 * flower.s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#fff9c4';
+      ctx.beginPath();
+      ctx.arc(flower.x, flower.y, 2.5 * flower.s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 天空装饰 - 云朵
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#fff';
+    const clouds = [
+      { x: 80, y: 50, s: 1 },
+      { x: 200, y: 35, s: 0.7 },
+      { x: width - 100, y: 55, s: 0.9 },
+      { x: width - 220, y: 40, s: 0.6 },
+    ];
+    for (const cloud of clouds) {
+      ctx.beginPath();
+      ctx.arc(cloud.x, cloud.y, 25 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x + 20 * cloud.s, cloud.y - 10 * cloud.s, 18 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x + 40 * cloud.s, cloud.y, 22 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x + 20 * cloud.s, cloud.y + 5 * cloud.s, 20 * cloud.s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   drawSlopes(ctx) {
