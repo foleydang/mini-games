@@ -1,5 +1,5 @@
 // 水果消消乐 - 窄桶 + 双斜坡 + 物理碰撞
-import { drawText, Storage, RankData, Colors, drawButton } from '../common/utils.js';
+import { drawText, Storage, RankData, Colors } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, checkBottomButtons, drawHint } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 
@@ -993,16 +993,19 @@ class FruitGame {
     const shareBtn = this.shareButton;
     const soundBtn = this.soundButton;
 
-    drawButton(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height,
-               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
-
-    drawButton(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height,
-               '分享', Colors.success, { fontSize: 32, radius: 16 });
-
-    drawButton(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
-               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+    this.drawCustomBtn(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height, '← 返回', Colors.danger);
+    this.drawCustomBtn(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height, '分享', Colors.success);
+    this.drawCustomBtn(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
+      audioManager.enabled ? '🔊' : '🔇', Colors.info);
 
     return { backBtn, shareBtn, soundBtn };
+  }
+
+  drawCustomBtn(ctx, x, y, w, h, text, color) {
+    ctx.fillStyle = color;
+    this.roundRect(ctx, x, y, w, h, 16);
+    ctx.fill();
+    drawText(ctx, text, x + w / 2, y + h / 2, { fontSize: 32, color: '#fff', bold: true });
   }
 
   drawHammerIcon(ctx, cx, cy) {
