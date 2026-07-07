@@ -134,7 +134,8 @@ export const ModernThemes = {
       textSecondary: '#fed7aa'
     }
   }
-};e7'],
+},
+  'snake': {
       snakeColor: '#059669',
       foodColor: '#ef4444'
     },

@@ -258,6 +258,7 @@ class MainGame {
   startGame(gameId) {
     this.currentRankGame = gameId;
     this.startGameWithLevel(gameId, 0);
+  }
 
   endGame(score) {
     this.currentGame = null;

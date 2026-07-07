@@ -188,6 +188,7 @@ export class LevelSelector {
 
     // 关卡卡片
     this.cards.forEach(card => this.drawCard(ctx, card));
+  }
 
   drawBottomButtons(ctx, width, height, safeBottom) {
     const buttonY = height - safeBottom - 80;
