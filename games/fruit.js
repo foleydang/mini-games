@@ -71,6 +71,18 @@ class FruitGame {
     this.particles = [];
     this.scorePopups = [];
     this.confirmBtn = null;
+    this.quizBtn = null;
+    this.quizBtn2 = null;
+
+    // 锤子系统
+    this.hammerCount = 3;
+    this.hammerActive = false;
+    this.showQuiz = false;
+    this.quizData = null;
+    this.quizResult = null;
+    this.quizResultTimer = 0;
+    this.quizPool = []; // 题库
+    this.initQuizPool();
 
     this.backButton = getBackButton(designSize);
     this.buttons = null;
@@ -81,6 +93,60 @@ class FruitGame {
     this.lastTime = performance.now();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  initQuizPool() {
+    this.quizPool = [
+      { q: '什么东西越洗越脏？', a: '水', b: '毛巾', ans: 'a' },
+      { q: '什么门永远关不上？', a: '球门', b: '玻璃门', ans: 'a' },
+      { q: '什么布剪不断？', a: '瀑布', b: '丝绸', ans: 'a' },
+      { q: '什么东西越热越爱出来？', a: '汗', b: '太阳', ans: 'a' },
+      { q: '什么球不能踢？', a: '眼球', b: '足球', ans: 'a' },
+      { q: '什么东西越晒越湿？', a: '冰', b: '衣服', ans: 'a' },
+      { q: '什么马不能骑？', a: '河马', b: '木马', ans: 'a' },
+      { q: '什么蛋不能吃？', a: '脸蛋', b: '鸡蛋', ans: 'a' },
+      { q: '什么鸡没有翅膀？', a: '田鸡', b: '火鸡', ans: 'a' },
+      { q: '什么东西越生气越大？', a: '气球', b: '肚子', ans: 'a' },
+      { q: '什么书不能看？', a: '秘书', b: '小说', ans: 'a' },
+      { q: '什么花不能摘？', a: '火花', b: '玫瑰', ans: 'a' },
+      { q: '什么东西往上升永远不降？', a: '年龄', b: '气球', ans: 'a' },
+      { q: '什么牛不吃草？', a: '蜗牛', b: '水牛', ans: 'a' },
+      { q: '什么车最长？', a: '堵车', b: '火车', ans: 'a' },
+      { q: '什么路最窄？', a: '冤家路窄', b: '小路', ans: 'a' },
+      { q: '什么东西越大越丑？', a: '谎话', b: '大象', ans: 'a' },
+      { q: '什么鱼不能吃？', a: '木鱼', b: '金鱼', ans: 'a' },
+      { q: '什么杯不能喝？', a: '世界杯', b: '玻璃杯', ans: 'a' },
+      { q: '什么床不能睡？', a: '河床', b: '木床', ans: 'a' },
+      { q: '什么东西有头无脚？', a: '钉子', b: '蛇', ans: 'a' },
+      { q: '什么牙不会掉？', a: '月牙', b: '假牙', ans: 'a' },
+      { q: '什么鸟不会飞？', a: '鸵鸟', b: '风筝', ans: 'a' },
+      { q: '什么东西越擦越小？', a: '橡皮', b: '铅笔', ans: 'a' },
+      { q: '什么灯不能亮？', a: '拉登', b: '路灯', ans: 'a' },
+      { q: '什么鬼不吓人？', a: '机灵鬼', b: '吸血鬼', ans: 'a' },
+      { q: '什么猫不抓老鼠？', a: '熊猫', b: '野猫', ans: 'a' },
+      { q: '什么东西越多越看不见？', a: '黑暗', b: '星星', ans: 'a' },
+      { q: '什么腿不能走路？', a: '火腿', b: '桌子腿', ans: 'a' },
+      { q: '什么水不能喝？', a: '薪水', b: '海水', ans: 'a' },
+    ];
+    this.shuffleArray(this.quizPool);
+  }
+
+  getRandomQuiz() {
+    if (this.quizPool.length === 0) this.initQuizPool();
+    const q = this.quizPool.pop();
+    // 随机决定哪个选项是a哪个是b
+    if (Math.random() > 0.5) {
+      return { q: q.q, optA: q.a, optB: q.b, correct: 'A' };
+    } else {
+      return { q: q.q, optA: q.b, optB: q.a, correct: 'B' };
+    }
+  }
+
+  shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
   }
 
   generateTopFruits() {
@@ -460,6 +526,35 @@ class FruitGame {
   }
 
   onTouchStart(pos) {
+    // 答题弹窗点击
+    if (this.showQuiz) {
+      if (this.quizResult && this.quizResult === 'correct') {
+        // 正确后关闭
+        this.showQuiz = false;
+        this.quizData = null;
+        this.quizResult = null;
+        return;
+      }
+      if (this.quizResult && this.quizResult === 'wrong') {
+        // 错误后关闭（不获得锤子）
+        this.showQuiz = false;
+        this.quizData = null;
+        this.quizResult = null;
+        return;
+      }
+      if (this.quizBtn && pos.x >= this.quizBtn.x && pos.x <= this.quizBtn.x + this.quizBtn.w &&
+          pos.y >= this.quizBtn.y && pos.y <= this.quizBtn.y + this.quizBtn.h) {
+        this.onQuizAnswer('A');
+        return;
+      }
+      if (this.quizBtn2 && pos.x >= this.quizBtn2.x && pos.x <= this.quizBtn2.x + this.quizBtn2.w &&
+          pos.y >= this.quizBtn2.y && pos.y <= this.quizBtn2.y + this.quizBtn2.h) {
+        this.onQuizAnswer('B');
+        return;
+      }
+      return;
+    }
+
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
       this.gameOver = true;
@@ -475,12 +570,73 @@ class FruitGame {
         this.onEnd({ score: this.score, passed: this.gameWon });
         return;
       }
-      // 点击确认按钮
       if (this.confirmBtn && pos.x >= this.confirmBtn.x && pos.x <= this.confirmBtn.x + this.confirmBtn.w &&
           pos.y >= this.confirmBtn.y && pos.y <= this.confirmBtn.y + this.confirmBtn.h) {
         if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
         this.onEnd({ score: this.score, passed: this.gameWon });
         return;
+      }
+      return;
+    }
+
+    // 锤子栏按钮
+    if (this.hammerBarBtns) {
+      const { getQuiz, useHammer } = this.hammerBarBtns;
+      if (this.hammerCount < 3 && getQuiz && pos.x >= getQuiz.x && pos.x <= getQuiz.x + getQuiz.w &&
+          pos.y >= getQuiz.y && pos.y <= getQuiz.y + getQuiz.h) {
+        this.showQuiz = true;
+        this.quizData = this.getRandomQuiz();
+        this.quizResult = null;
+        return;
+      }
+      if (this.hammerCount > 0 && useHammer && pos.x >= useHammer.x && pos.x <= useHammer.x + useHammer.w &&
+          pos.y >= useHammer.y && pos.y <= useHammer.y + useHammer.h) {
+        this.hammerActive = !this.hammerActive;
+        return;
+      }
+    }
+
+    // 锤子模式：点击水果消除
+    if (this.hammerActive && this.hammerCount > 0) {
+      // 点击桶内水果
+      for (const f of this.fruits) {
+        if (!f.settled) continue;
+        const dx = pos.x - f.x;
+        const dy = pos.y - f.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= f.radius + 20) {
+          this.hammerCount--;
+          this.hammerActive = false;
+          this.combo = 0;
+          this.remainingFruits--;
+          playSound(SoundType.CLEAR);
+          this.createParticles(f.x, f.y, f.color);
+          this.scorePopups.push({ text: '🔨', x: f.x, y: f.y - 30, progress: 0 });
+          this.fruits = this.fruits.filter(f2 => f2 !== f);
+          // 上方水果落下来
+          for (const ff of this.fruits) {
+            if (ff.settled && ff.inBucket && ff.y < f.y) {
+              ff.settled = false;
+              ff.vy = 1;
+            }
+          }
+          return;
+        }
+      }
+      // 点击未放置的水果
+      for (const f of this.topFruits) {
+        if (f.removed) continue;
+        const dx = pos.x - f.x;
+        const dy = pos.y - f.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= f.radius + 20) {
+          this.hammerCount--;
+          this.hammerActive = false;
+          this.remainingFruits--;
+          playSound(SoundType.CLEAR);
+          this.createParticles(f.x, f.y, f.color);
+          this.scorePopups.push({ text: '🔨', x: f.x, y: f.y - 30, progress: 0 });
+          f.removed = true;
+          return;
+        }
       }
       return;
     }
@@ -503,6 +659,18 @@ class FruitGame {
 
   onTouchMove(pos) {}
   onTouchEnd(pos) {}
+
+  onQuizAnswer(choice) {
+    if (!this.quizData) return;
+    if (choice === this.quizData.correct) {
+      this.quizResult = 'correct';
+      this.hammerCount = Math.min(this.hammerCount + 1, 3);
+      playSound(SoundType.LEVEL_UP);
+    } else {
+      this.quizResult = 'wrong';
+      playSound(SoundType.GAME_OVER);
+    }
+  }
 
   draw() {
     const ctx = this.ctx;
@@ -537,6 +705,9 @@ class FruitGame {
     if (this.combo > 1) {
       drawText(ctx, `🔥 连击 x${this.combo}`, width / 2, safeTop + 115, { fontSize: 22, color: '#d84315', bold: true });
     }
+
+    // 锤子栏
+    this.drawHammerBar(ctx, width, height);
 
     this.buttons = this.drawBackButton(ctx);
 
@@ -585,6 +756,11 @@ class FruitGame {
     // 游戏结束弹窗
     if (this.gameWon || this.gameOver) {
       this.drawEndPopup(ctx, width, height, this.gameWon);
+    }
+
+    // 答题弹窗（最顶层）
+    if (this.showQuiz) {
+      this.drawQuizPopup(ctx, width, height);
     }
   }
 
@@ -794,6 +970,169 @@ class FruitGame {
 
     drawText(ctx, '← 返回', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 18, color: '#e65100', bold: true });
     return { backBtn: { x: btnX, y: btnY, width: btnW, height: btnH } };
+  }
+
+  drawHammerBar(ctx, width, height) {
+    const barY = height - 80;
+    const barH = 50;
+    const barW = width - 40;
+    const barX = 20;
+
+    // 背景条
+    ctx.fillStyle = 'rgba(139,69,19,0.15)';
+    this.roundRect(ctx, barX, barY, barW, barH, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(139,69,19,0.3)';
+    ctx.lineWidth = 1.5;
+    this.roundRect(ctx, barX, barY, barW, barH, 12);
+    ctx.stroke();
+
+    // 锤子按钮
+    for (let i = 0; i < 3; i++) {
+      const hx = barX + 40 + i * 80;
+      const hy = barY + 25;
+      ctx.font = '32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (i < this.hammerCount) {
+        ctx.fillText('🔨', hx, hy);
+      } else {
+        ctx.globalAlpha = 0.3;
+        ctx.fillText('🔨', hx, hy);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // 获取按钮
+    const getBtn = barX + 100;
+    const getBtnW = 160;
+    const getBtnH = 36;
+    const getBtnY = barY + 7;
+
+    if (this.hammerCount < 3) {
+      ctx.fillStyle = '#ff9800';
+      ctx.strokeStyle = '#e65100';
+      ctx.lineWidth = 2;
+      this.roundRect(ctx, getBtn, getBtnY, getBtnW, getBtnH, 10);
+      ctx.fill();
+      ctx.stroke();
+      drawText(ctx, '🎯 答题获取锤子', getBtn + getBtnW / 2, getBtnY + getBtnH / 2, { fontSize: 18, color: '#fff', bold: true });
+    }
+
+    // 使用锤子按钮
+    const useBtn = getBtn + getBtnW + 20;
+    const useBtnW = 120;
+    if (this.hammerCount > 0) {
+      ctx.fillStyle = this.hammerActive ? '#ef4444' : '#4caf50';
+      ctx.strokeStyle = this.hammerActive ? '#b91c1c' : '#2e7d32';
+      ctx.lineWidth = 2;
+      this.roundRect(ctx, useBtn, getBtnY, useBtnW, getBtnH, 10);
+      ctx.fill();
+      ctx.stroke();
+      drawText(ctx, this.hammerActive ? '🔨 取消' : '🔨 使用', useBtn + useBtnW / 2, getBtnY + getBtnH / 2, { fontSize: 18, color: '#fff', bold: true });
+    }
+
+    this.hammerBarBtns = {
+      getQuiz: { x: getBtn, y: getBtnY, w: getBtnW, h: getBtnH },
+      useHammer: { x: useBtn, y: getBtnY, w: useBtnW, h: getBtnH },
+    };
+  }
+
+  drawQuizPopup(ctx, width, height) {
+    if (!this.quizData) return;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, width, height);
+
+    const cardW = 380;
+    const cardH = 380;
+    const cardX = (width - cardW) / 2;
+    const cardY = (height - cardH) / 2;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 8;
+
+    const cardGradient = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
+    cardGradient.addColorStop(0, '#fff8e1');
+    cardGradient.addColorStop(1, '#ffe0b2');
+    ctx.fillStyle = cardGradient;
+    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    ctx.strokeStyle = '#ff9800';
+    ctx.lineWidth = 3;
+    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
+    ctx.stroke();
+
+    drawText(ctx, '🧠 脑筋急转弯', width / 2, cardY + 45, { fontSize: 32, color: '#e65100', bold: true });
+    drawText(ctx, '答对获得 1 把锤子！', width / 2, cardY + 80, { fontSize: 22, color: '#bf360c' });
+
+    // 问题文本（自动换行）
+    const maxLineW = cardW - 60;
+    const lineH = 28;
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const words = this.quizData.q.split('');
+    let line = '';
+    let lines = [];
+    for (const ch of words) {
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxLineW && line.length > 0) {
+        lines.push(line);
+        line = ch;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+
+    const textStartY = cardY + 130;
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], width / 2, textStartY + i * lineH);
+    }
+
+    // 选项按钮
+    const btnW = 150;
+    const btnH = 50;
+    const btnGap = 20;
+    const btnY = cardY + cardH - 110;
+
+    // A选项
+    const btnAX = width / 2 - btnW - btnGap / 2;
+    ctx.fillStyle = '#4caf50';
+    ctx.strokeStyle = '#2e7d32';
+    ctx.lineWidth = 2;
+    this.roundRect(ctx, btnAX, btnY, btnW, btnH, 12);
+    ctx.fill();
+    ctx.stroke();
+    drawText(ctx, `A: ${this.quizData.optA}`, btnAX + btnW / 2, btnY + btnH / 2, { fontSize: 20, color: '#fff', bold: true });
+
+    // B选项
+    const btnBX = width / 2 + btnGap / 2;
+    ctx.fillStyle = '#2196f3';
+    ctx.strokeStyle = '#1565c0';
+    ctx.lineWidth = 2;
+    this.roundRect(ctx, btnBX, btnY, btnW, btnH, 12);
+    ctx.fill();
+    ctx.stroke();
+    drawText(ctx, `B: ${this.quizData.optB}`, btnBX + btnW / 2, btnY + btnH / 2, { fontSize: 20, color: '#fff', bold: true });
+
+    this.quizBtn = { x: btnAX, y: btnY, w: btnW, h: btnH };
+    this.quizBtn2 = { x: btnBX, y: btnY, w: btnW, h: btnH };
+
+    // 结果提示
+    if (this.quizResult) {
+      const resultY = btnY + btnH + 20;
+      const isCorrect = this.quizResult === 'correct';
+      drawText(ctx, isCorrect ? '✅ 正确！获得 1 把锤子' : '❌ 错误！再试试', width / 2, resultY, { fontSize: 22, color: isCorrect ? '#2e7d32' : '#e53935', bold: true });
+    }
   }
 
   drawEndPopup(ctx, width, height, isWin) {
