@@ -7,7 +7,7 @@ import { Colors, drawRoundRect, drawText, Storage } from './utils.js';
 import { ModernThemes, drawModernButton, drawModernProgress, drawModernTag } from './modern-ui.js';
 import { Games, Levels } from './config.js';
 
-export class LevelSelector {
+export default class LevelSelector {
   constructor(gameId, designSize, onLevelSelect, onBack) {
     this.gameId = gameId;
     this.designSize = designSize;
