@@ -47,11 +47,8 @@ export const Levels = {
 
   // 叠叠消：牌数和图案种类递增
   sheep: [
-    { layers: 2, rows: 3, cols: 4, emojiCount: 4, name: '入门' },
-    { layers: 3, rows: 4, cols: 5, emojiCount: 6, name: '简单' },
-    { layers: 3, rows: 5, cols: 5, emojiCount: 8, name: '普通' },
-    { layers: 4, rows: 5, cols: 6, emojiCount: 10, name: '困难' },
-    { layers: 4, rows: 6, cols: 6, emojiCount: 12, name: '专家' }
+    { layers: 2, rows: 3, cols: 4, emojiCount: 4, name: '新手村' },
+    { layers: 4, rows: 5, cols: 6, emojiCount: 8, name: '地狱模式' }
   ],
 
   // 翻牌：牌数递增

@@ -492,7 +492,13 @@ class FruitGame {
 
     // 标题(更紧凑)
     drawText(ctx, '水果消消乐', width / 2, safeTop + 40, { fontSize: 40, color: '#d97706', bold: true });
-    drawText(ctx, `分数: ${this.score}`, width / 2, safeTop + 80, { fontSize: 22, color: '#92400e' });
+    
+    // 分数和连击显示
+    let scoreText = `分数: ${this.score}`;
+    if (this.combo > 1) {
+      scoreText += `  🔥 连击x${this.combo}`;
+    }
+    drawText(ctx, scoreText, width / 2, safeTop + 80, { fontSize: 22, color: '#92400e', bold: this.combo > 1 });
 
     // 按钮行(标题下方)
     this.buttons = drawBottomButtons(ctx, this.designSize, '\u2190 \u8fd4\u56de', audioManager.enabled);
@@ -520,15 +526,21 @@ class FruitGame {
     if (this.mathShow && !this.mathRewardGiven) { this.drawMathPopup(ctx); }
 
     if (this.gameWon) {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '\ud83c\udf89 \u901a\u5173\uff01', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, `\u5f97\u5206: ${this.score}`, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
-      drawHint(ctx, this.designSize, '\u70b9\u51fb\u8fd4\u56de');
+      ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0, 0, width, height);
+      drawText(ctx, '🎉 通关！', width / 2, height / 2 - 70, { fontSize: 56, color: '#fbbf24', bold: true });
+      drawText(ctx, `得分: ${this.score}`, width / 2, height / 2 - 10, { fontSize: 36, color: '#fff' });
+      if (this.combo > 2) {
+        drawText(ctx, `最高连击: ${this.combo}x 🔥`, width / 2, height / 2 + 40, { fontSize: 28, color: '#fbbf24' });
+      }
+      drawHint(ctx, this.designSize, '点击返回');
     } else if (this.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '\u5931\u8d25\u4e86 \ud83d\ude22', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, `\u5f97\u5206: ${this.score}`, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
-      drawHint(ctx, this.designSize, '\u70b9\u51fb\u8fd4\u56de');
+      ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0, 0, width, height);
+      drawText(ctx, '失败了 😢', width / 2, height / 2 - 70, { fontSize: 56, color: '#ef4444', bold: true });
+      drawText(ctx, `得分: ${this.score}`, width / 2, height / 2 - 10, { fontSize: 36, color: '#fff' });
+      if (this.combo > 1) {
+        drawText(ctx, `最高连击: ${this.combo}x`, width / 2, height / 2 + 40, { fontSize: 28, color: '#fbbf24' });
+      }
+      drawHint(ctx, this.designSize, '点击返回');
     }
   }
 
@@ -568,10 +580,24 @@ class FruitGame {
   }
 
   drawSingleFruit(f, alpha, scale) {
-    const ctx = this.ctx; const r = (f.radius || FRUITS[f.type].radius) * scale;
-    ctx.globalAlpha = alpha; ctx.font = `${Math.floor(r * 2)}px sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(f.emoji || FRUITS[f.type].emoji, f.x, f.y); ctx.globalAlpha = 1;
+    const ctx = this.ctx;
+    const r = (f.radius || FRUITS[f.type].radius) * scale;
+    
+    ctx.globalAlpha = alpha;
+    
+    // 阴影效果
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    
+    ctx.font = `${Math.floor(r * 2)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(f.emoji || FRUITS[f.type].emoji, f.x, f.y);
+    
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.globalAlpha = 1;
   }
 
   drawHammerButton(ctx) {
