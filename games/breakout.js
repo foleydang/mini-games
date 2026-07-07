@@ -130,7 +130,7 @@ export default class BreakoutGame {
         if (res.confirm) {
           if (won && hasNext) { this.level++; Storage.save('breakout_level', this.level); }
           this.destroy(); this.initGame(); this.startLoop();
-        } else { this.destroy(); this.onEnd(this.score); }
+        } else { this.destroy(); this.onEnd({ score: this.score, passed: false }); }
       }
     });
   }
@@ -138,7 +138,7 @@ export default class BreakoutGame {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
-    if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
+    if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd({ score: this.score, passed: false }); return; }
     if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('打砖块', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     this.movePaddle(pos);

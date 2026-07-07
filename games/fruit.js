@@ -418,14 +418,14 @@ class FruitGame {
 
   onTouchStart(pos) {
     const btn = checkBottomButtons(pos, this.buttons);
-    if (btn === 'backBtn') { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
+    if (btn === 'backBtn') { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd({ score: this.score, passed: false }); return; }
     if (btn === 'soundBtn') { audioManager.toggle(); this.draw(); return; }
 
     if (this.hammerButton && pos.x >= this.hammerButton.x && pos.x <= this.hammerButton.x + this.hammerButton.w && pos.y >= this.hammerButton.y && pos.y <= this.hammerButton.y + this.hammerButton.h) {
       this.useHammer(); return;
     }
 
-    if (this.gameOver || this.gameWon) { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd(this.score); return; }
+    if (this.gameOver || this.gameWon) { this.destroy(); if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; } this.onEnd({ score: this.score, passed: this.gameWon }); return; }
     if (this.eliminating) return;
 
     // 数学题弹窗:用数字按钮代替键盘输入

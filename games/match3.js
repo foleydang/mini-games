@@ -13,11 +13,11 @@ class Match3Game {
     
     // 棋盘配置 - 根据关卡调整
     const levelConfigs = [
-      { rows: 8, cols: 6, colors: 4, moves: 28 },
-      { rows: 8, cols: 6, colors: 4, moves: 25 },
-      { rows: 9, cols: 7, colors: 5, moves: 22 },
-      { rows: 10, cols: 7, colors: 5, moves: 18 },
-      { rows: 10, cols: 8, colors: 6, moves: 15 }
+      { rows: 8, cols: 6, colors: 4, moves: 28, target: 800 },
+      { rows: 8, cols: 6, colors: 4, moves: 25, target: 1200 },
+      { rows: 9, cols: 7, colors: 5, moves: 22, target: 1800 },
+      { rows: 10, cols: 7, colors: 5, moves: 18, target: 2500 },
+      { rows: 10, cols: 8, colors: 6, moves: 15, target: 3500 }
     ];
     const cfg = levelConfigs[level] || levelConfigs[0];
     this.rows = cfg.rows;
@@ -25,7 +25,8 @@ class Match3Game {
     this.grid = [];
     this.selected = null;
     this.score = 0;
-    this.moves = 35;
+    this.moves = cfg.moves;
+    this.target = cfg.target;
     this.cellSize = 85;
     this.animating = false;
     this.gameOver = false;
@@ -92,7 +93,7 @@ class Match3Game {
     
     // 标题和分数
     drawText(ctx, '消消乐', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
-    drawText(ctx, '分数: ' + this.score + '  步数: ' + this.moves, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
+    drawText(ctx, `分数: ${this.score}/${this.target}  步数: ${this.moves}`, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
     
     // 底部按钮
     this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
@@ -266,7 +267,7 @@ class Match3Game {
   onTouchStart(pos) {
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
-      this.onEnd(this.score);
+      this.onEnd({ score: this.score, passed: false });
       return;
     }
     if (btn === 'soundBtn') {
@@ -276,7 +277,7 @@ class Match3Game {
     }
     
     if (this.moves <= 0 && !this.animating) {
-      this.onEnd(this.score);
+      this.onEnd({ score: this.score, passed: this.score >= this.target });
       return;
     }
     

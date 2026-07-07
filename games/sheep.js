@@ -428,7 +428,7 @@ class SheepGame {
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
       RankData.save(this.gameId, this.score);
-      this.onEnd(this.score);
+      this.onEnd({ score: this.score, passed: false });
       return;
     }
     if (btn === 'soundBtn') {
@@ -439,7 +439,7 @@ class SheepGame {
 
     if (this.gameOver || this.gameWon) {
       RankData.save(this.gameId, this.score);
-      this.onEnd(this.score);
+      this.onEnd({ score: this.score, passed: this.gameWon });
       return;
     }
 

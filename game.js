@@ -159,7 +159,7 @@ class MainGame {
       const pos = getTouchPos(e.touches[0], this.designSize);
       if (this.showingLevelSelect && this.levelSelector) {
         this.levelSelector.onTouchStart(pos);
-        if (this.levelSelector.shouldBack) {
+        if (this.levelSelector && this.levelSelector.shouldBack) {
           this.showingLevelSelect = false;
           this.levelSelector = null;
           this.startAnimation();
@@ -260,16 +260,19 @@ class MainGame {
     this.startGameWithLevel(gameId, 0);
   }
 
-  endGame(score) {
+  endGame(result) {
+    // 支持 { score, passed } 对象或纯数字 score
+    const score = typeof result === 'object' ? result.score : result;
+    const passed = typeof result === 'object' ? result.passed : (score > 0);
+    
     this.currentGame = null;
     RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
     
-    // 关卡型游戏：检查是否过关，推进关卡进度
+    // 关卡型游戏：只有关卡通过才解锁下一关
     if (this.currentLevel !== undefined && this.currentRankGame) {
       const gameConfig = Games.find(g => g.id === this.currentRankGame);
       if (gameConfig && gameConfig.type === 'levels') {
-        // 简单判定：分数 > 0 视为过关（各游戏可自定义过关条件）
-        if (score > 0) {
+        if (passed) {
           const savedLevel = Storage.load(`${this.currentRankGame}_level`) || 0;
           if (this.currentLevel >= savedLevel) {
             Storage.save(`${this.currentRankGame}_level`, this.currentLevel + 1);
