@@ -71,6 +71,7 @@ class FruitGame {
     this.droppingFruits = [];
     this.particles = [];
     this.scorePopups = [];
+    this.confirmBtn = null;
 
     this.backButton = getBackButton(designSize);
     this.buttons = null;
@@ -166,9 +167,8 @@ class FruitGame {
   animate(currentTime) {
     if (this.gameOver || this.gameWon) {
       audioManager.stopBgMusic();
-      if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.draw();
-      return;
+      return; // 停止循环，不再调用 RankData.save()
     }
 
     const dt = Math.min((currentTime - this.lastTime) / 16.67, 2);
@@ -452,9 +452,20 @@ class FruitGame {
       return;
     }
 
+    // 已结束只处理按钮点击
     if (this.gameOver || this.gameWon) {
-      if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
-      this.onEnd({ score: this.score, passed: this.gameWon });
+      if (btn === 'backBtn') {
+        if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
+        this.onEnd({ score: this.score, passed: this.gameWon });
+        return;
+      }
+      // 点击确认按钮
+      if (this.confirmBtn && pos.x >= this.confirmBtn.x && pos.x <= this.confirmBtn.x + this.confirmBtn.w &&
+          pos.y >= this.confirmBtn.y && pos.y <= this.confirmBtn.y + this.confirmBtn.h) {
+        if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
+        this.onEnd({ score: this.score, passed: this.gameWon });
+        return;
+      }
       return;
     }
 
@@ -579,26 +590,74 @@ class FruitGame {
     }
     ctx.globalAlpha = 1;
 
-    // 游戏结束
-    if (this.gameWon) {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '🎉 通关！', width / 2, height / 2 - 80, { fontSize: 60, color: '#fbbf24', bold: true });
-      drawText(ctx, `得分: ${this.score}`, width / 2, height / 2 - 10, { fontSize: 38, color: '#fff' });
-      if (this.maxCombo > 2) {
-        drawText(ctx, `最高连击: ${this.maxCombo}x 🔥`, width / 2, height / 2 + 50, { fontSize: 30, color: '#fbbf24' });
-      }
-      drawHint(ctx, this.designSize, '点击返回');
-    } else if (this.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '失败了 😢', width / 2, height / 2 - 80, { fontSize: 60, color: '#ef4444', bold: true });
-      drawText(ctx, `得分: ${this.score}`, width / 2, height / 2 - 10, { fontSize: 38, color: '#fff' });
-      if (this.maxCombo > 1) {
-        drawText(ctx, `最高连击: ${this.maxCombo}x`, width / 2, height / 2 + 50, { fontSize: 30, color: '#fbbf24' });
-      }
-      drawHint(ctx, this.designSize, '点击返回');
+    // 游戏结束弹窗
+    if (this.gameWon || this.gameOver) {
+      this.drawEndPopup(ctx, width, height, this.gameWon);
     }
+  }
+
+  drawEndPopup(ctx, width, height, isWin) {
+    // 半透明遮罩
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, width, height);
+
+    // 弹窗卡片
+    const cardW = 360;
+    const cardH = 340;
+    const cardX = (width - cardW) / 2;
+    const cardY = (height - cardH) / 2;
+
+    // 卡片阴影
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 8;
+
+    // 卡片背景
+    const cardGradient = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
+    cardGradient.addColorStop(0, '#fff8e1');
+    cardGradient.addColorStop(1, '#ffe0b2');
+    ctx.fillStyle = cardGradient;
+    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // 卡片边框
+    ctx.strokeStyle = isWin ? '#f59e0b' : '#ef4444';
+    ctx.lineWidth = 3;
+    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
+    ctx.stroke();
+
+    // 标题
+    const title = isWin ? '🎉 通关！' : '😢 失败了';
+    const titleColor = isWin ? '#f59e0b' : '#ef4444';
+    drawText(ctx, title, width / 2, cardY + 60, { fontSize: 48, color: titleColor, bold: true });
+
+    // 得分
+    drawText(ctx, `得分: ${this.score}`, width / 2, cardY + 120, { fontSize: 32, color: '#1a1a1a', bold: true });
+
+    // 连击
+    if (this.maxCombo > 1) {
+      drawText(ctx, `最高连击: ${this.maxCombo}x 🔥`, width / 2, cardY + 160, { fontSize: 26, color: '#d84315' });
+    }
+
+    // 确认按钮
+    const btnW = 200;
+    const btnH = 50;
+    const btnX = (width - btnW) / 2;
+    const btnY = cardY + cardH - 80;
+
+    const btnGradient = ctx.createLinearGradient(0, btnY, 0, btnY + btnH);
+    btnGradient.addColorStop(0, isWin ? '#f59e0b' : '#ef4444');
+    btnGradient.addColorStop(1, isWin ? '#d97706' : '#dc2626');
+    ctx.fillStyle = btnGradient;
+    this.roundRect(ctx, btnX, btnY, btnW, btnH, 14);
+    ctx.fill();
+
+    drawText(ctx, '确 定', width / 2, btnY + btnH / 2, { fontSize: 24, color: '#fff', bold: true });
+
+    this.confirmBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
   }
 
   drawBackButton(ctx) {
