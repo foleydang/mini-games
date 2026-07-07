@@ -29,11 +29,11 @@ export const Levels = {
 
   // 水果消消乐：掉落速度递增，水果种类递增
   fruit: [
-    { dropInterval: 1800, fruitCount: 4, name: '入门' },
-    { dropInterval: 1400, fruitCount: 5, name: '简单' },
-    { dropInterval: 1100, fruitCount: 6, name: '普通' },
-    { dropInterval: 800, fruitCount: 7, name: '困难' },
-    { dropInterval: 500, fruitCount: 8, name: '专家' }
+    { target: 300, types: 4, name: '入门' },
+    { target: 500, types: 5, name: '简单' },
+    { target: 800, types: 6, name: '普通' },
+    { target: 1200, types: 7, name: '困难' },
+    { target: 1800, types: 8, name: '专家' }
   ],
 
   // 打砖块：砖块数量递增
