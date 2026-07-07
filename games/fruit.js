@@ -61,8 +61,8 @@ class FruitGame {
     this.bucketTop = this.bucketBottom - this.fruitRadius * 2 * this.bucketCapacity;
     this.bucketHeight = this.bucketBottom - this.bucketTop;
 
-    // 斜坡 - 非常平缓（~5度），从屏幕边缘到桶口，垂直落差仅14px
-    this.slopeTopY = this.bucketTop - 14;
+    // 斜坡 - 平缓（~10度），从屏幕边缘到桶口，垂直落差30px
+    this.slopeTopY = this.bucketTop - 30;
     this.slopeLeftStartX = 0;
     this.slopeRightStartX = width;
 
@@ -326,9 +326,9 @@ class FruitGame {
         // 斜坡滑动：检测水果是否在斜坡上，施加向桶方向的力
         if (f.y > this.slopeTopY - f.radius && f.y < this.bucketTop + f.radius) {
           if (f.x < this.bucketCenterX) {
-            f.vx += 0.08 * dt; // 左斜坡向右滑
+            f.vx += 0.15 * dt; // 左斜坡向右滑
           } else {
-            f.vx -= 0.08 * dt; // 右斜坡向左滑
+            f.vx -= 0.15 * dt; // 右斜坡向左滑
           }
         }
         
@@ -607,17 +607,21 @@ class FruitGame {
 
     // 锤子栏按钮
     if (this.hammerBarBtns) {
-      const { getQuiz, useHammer } = this.hammerBarBtns;
-      if (this.hammerCount < 3 && getQuiz && pos.x >= getQuiz.x && pos.x <= getQuiz.x + getQuiz.w &&
-          pos.y >= getQuiz.y && pos.y <= getQuiz.y + getQuiz.h) {
-        this.showQuiz = true;
-        this.quizData = this.getRandomQuiz();
-        this.quizResult = null;
-        return;
-      }
-      if (this.hammerCount > 0 && useHammer && pos.x >= useHammer.x && pos.x <= useHammer.x + useHammer.w &&
-          pos.y >= useHammer.y && pos.y <= useHammer.y + useHammer.h) {
-        this.hammerActive = !this.hammerActive;
+      const { hammerBtn } = this.hammerBarBtns;
+      if (hammerBtn && pos.x >= hammerBtn.x && pos.x <= hammerBtn.x + hammerBtn.w &&
+          pos.y >= hammerBtn.y && pos.y <= hammerBtn.y + hammerBtn.h) {
+        if (this.hammerActive) {
+          // 使用中 → 取消
+          this.hammerActive = false;
+        } else if (this.hammerCount > 0) {
+          // 有锤子 → 激活锤子模式
+          this.hammerActive = true;
+        } else {
+          // 没锤子 → 弹出答题
+          this.showQuiz = true;
+          this.quizData = this.getRandomQuiz();
+          this.quizResult = null;
+        }
         return;
       }
     }
@@ -992,68 +996,67 @@ class FruitGame {
   }
 
   drawHammerBar(ctx, width, height) {
-    const barY = height - 80;
-    const barH = 50;
-    const barW = width - 40;
-    const barX = 20;
+    const barY = height - 70;
+    const barH = 44;
+    const barW = Math.min(width - 40, 300);
+    const barX = (width - barW) / 2;
 
     // 背景条
-    ctx.fillStyle = 'rgba(139,69,19,0.15)';
+    ctx.fillStyle = 'rgba(139,69,19,0.12)';
     this.roundRect(ctx, barX, barY, barW, barH, 12);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(139,69,19,0.3)';
+    ctx.strokeStyle = 'rgba(139,69,19,0.25)';
     ctx.lineWidth = 1.5;
     this.roundRect(ctx, barX, barY, barW, barH, 12);
     ctx.stroke();
 
-    // 锤子按钮
+    // 锤子图标（最多3个）
     for (let i = 0; i < 3; i++) {
-      const hx = barX + 40 + i * 80;
-      const hy = barY + 25;
-      ctx.font = '32px sans-serif';
+      const hx = barX + 30 + i * 40;
+      const hy = barY + barH / 2;
+      ctx.font = '28px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (i < this.hammerCount) {
         ctx.fillText('🔨', hx, hy);
       } else {
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.25;
         ctx.fillText('🔨', hx, hy);
         ctx.globalAlpha = 1;
       }
     }
 
-    // 获取按钮
-    const getBtn = barX + 100;
-    const getBtnW = 160;
-    const getBtnH = 36;
-    const getBtnY = barY + 7;
+    // 数量显示
+    drawText(ctx, `x${this.hammerCount}`, barX + 145, barY + barH / 2, { fontSize: 20, color: '#5c2d0a', bold: true });
 
-    if (this.hammerCount < 3) {
+    // 右侧按钮
+    const btnX = barX + 180;
+    const btnW = barW - 190;
+    const btnH = 32;
+    const btnY = barY + (barH - btnH) / 2;
+
+    if (this.hammerActive) {
+      // 使用中状态
+      ctx.fillStyle = '#ef4444';
+      this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+      ctx.fill();
+      drawText(ctx, '🔨 取消', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 16, color: '#fff', bold: true });
+    } else if (this.hammerCount > 0) {
+      // 有锤子 - 使用按钮
+      ctx.fillStyle = '#4caf50';
+      this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+      ctx.fill();
+      drawText(ctx, '使用', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 16, color: '#fff', bold: true });
+    } else {
+      // 没锤子 - 答题按钮
       ctx.fillStyle = '#ff9800';
-      ctx.strokeStyle = '#e65100';
-      ctx.lineWidth = 2;
-      this.roundRect(ctx, getBtn, getBtnY, getBtnW, getBtnH, 10);
+      this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
       ctx.fill();
-      ctx.stroke();
-      drawText(ctx, '🎯 答题获取锤子', getBtn + getBtnW / 2, getBtnY + getBtnH / 2, { fontSize: 18, color: '#fff', bold: true });
-    }
-
-    // 使用锤子按钮
-    const useBtn = getBtn + getBtnW + 20;
-    const useBtnW = 120;
-    if (this.hammerCount > 0) {
-      ctx.fillStyle = this.hammerActive ? '#ef4444' : '#4caf50';
-      ctx.strokeStyle = this.hammerActive ? '#b91c1c' : '#2e7d32';
-      ctx.lineWidth = 2;
-      this.roundRect(ctx, useBtn, getBtnY, useBtnW, getBtnH, 10);
-      ctx.fill();
-      ctx.stroke();
-      drawText(ctx, this.hammerActive ? '🔨 取消' : '🔨 使用', useBtn + useBtnW / 2, getBtnY + getBtnH / 2, { fontSize: 18, color: '#fff', bold: true });
+      drawText(ctx, '🎯 答题', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 16, color: '#fff', bold: true });
     }
 
     this.hammerBarBtns = {
-      getQuiz: { x: getBtn, y: getBtnY, w: getBtnW, h: getBtnH },
-      useHammer: { x: useBtn, y: getBtnY, w: useBtnW, h: getBtnH },
+      hammerBtn: { x: btnX, y: btnY, w: btnW, h: btnH },
     };
   }
 
