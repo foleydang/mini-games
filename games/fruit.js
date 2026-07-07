@@ -55,16 +55,16 @@ class FruitGame {
     this.bucketHalfWidth = this.fruitRadius + 6;
     this.bucketLeft = this.bucketCenterX - this.bucketHalfWidth;
     this.bucketRight = this.bucketCenterX + this.bucketHalfWidth;
-    // 桶最多装4个水果
+    // 桶高度：刚好4个水果（8倍半径），第4个水果顶部与桶口齐平
     this.bucketCapacity = 4;
-    this.bucketTop = height - safeBottom - 40 - (this.fruitRadius * 2 * this.bucketCapacity + 10);
     this.bucketBottom = height - safeBottom - 40;
+    this.bucketTop = this.bucketBottom - this.fruitRadius * 2 * this.bucketCapacity;
     this.bucketHeight = this.bucketBottom - this.bucketTop;
 
-    // 斜坡 - 从两侧顶部到桶口
-    this.slopeTopY = safeTop + 180;
-    this.slopeLeftStartX = 30;
-    this.slopeRightStartX = width - 30;
+    // 斜坡 - 非常平缓（~5度），从屏幕边缘到桶口，垂直落差仅14px
+    this.slopeTopY = this.bucketTop - 14;
+    this.slopeLeftStartX = 0;
+    this.slopeRightStartX = width;
 
     this.fruits = []; // 所有水果统一在一个数组
     this.topFruits = []; // 待点击的水果
@@ -179,21 +179,20 @@ class FruitGame {
       const type = types[i];
       const isLeft = i % 2 === 0;
       let placed = false;
+
+      // 放置区域：斜坡上方（safeTop+130 到 slopeTopY-10），左右分区
+      const { safeTop } = this.designSize;
+      const areaTop = safeTop + 130;
+      const areaBottom = this.slopeTopY - 10;
       
       for (let attempt = 0; attempt < 50; attempt++) {
         let x, y;
         if (isLeft) {
-          // 左斜坡区域
-          x = this.slopeLeftStartX + padding + this.fruitRadius + 
-              Math.random() * (this.bucketLeft - this.slopeLeftStartX - padding * 2 - this.fruitRadius * 2);
-          y = this.slopeTopY + padding + this.fruitRadius + 
-              Math.random() * (this.bucketTop - this.slopeTopY - padding * 2 - this.fruitRadius * 2);
+          x = 20 + this.fruitRadius + Math.random() * (this.bucketLeft - 40 - this.fruitRadius * 2);
+          y = areaTop + Math.random() * (areaBottom - areaTop);
         } else {
-          // 右斜坡区域
-          x = this.bucketRight + padding + this.fruitRadius + 
-              Math.random() * (this.slopeRightStartX - this.bucketRight - padding * 2 - this.fruitRadius * 2);
-          y = this.slopeTopY + padding + this.fruitRadius + 
-              Math.random() * (this.bucketTop - this.slopeTopY - padding * 2 - this.fruitRadius * 2);
+          x = this.bucketRight + 20 + this.fruitRadius + Math.random() * (this.designSize.width - this.bucketRight - 40 - this.fruitRadius * 2);
+          y = areaTop + Math.random() * (areaBottom - areaTop);
         }
         
         let overlap = false;
@@ -213,10 +212,9 @@ class FruitGame {
       }
       
       if (!placed) {
-        const x = isLeft ? 
-          this.slopeLeftStartX + padding + this.fruitRadius + Math.random() * (this.bucketLeft - this.slopeLeftStartX - this.fruitRadius * 2) :
-          this.bucketRight + padding + this.fruitRadius + Math.random() * (this.slopeRightStartX - this.bucketRight - this.fruitRadius * 2);
-        const y = this.slopeTopY + padding + this.fruitRadius + Math.random() * (this.bucketTop - this.slopeTopY - this.fruitRadius * 2);
+        const x = isLeft ? 20 + this.fruitRadius + Math.random() * (this.bucketLeft - 40 - this.fruitRadius * 2)
+          : this.bucketRight + 20 + this.fruitRadius + Math.random() * (this.designSize.width - this.bucketRight - 40 - this.fruitRadius * 2);
+        const y = areaTop + Math.random() * (areaBottom - areaTop);
         this.topFruits.push({ x, y, type, emoji: FRUITS[type].emoji, color: FRUITS[type].color, radius: this.fruitRadius, removed: false });
       }
     }
@@ -280,13 +278,14 @@ class FruitGame {
       f.y += f.vy * dt;
       f.x += (f.vx || 0) * dt;
       
-      // 判断是否在桶内
-      const inBucketX = f.x > this.bucketLeft && f.x < this.bucketRight && f.y > this.bucketTop;
+      // 判断是否在桶内（X范围内且Y在桶口以下）
+      const inBucketX = f.x > this.bucketLeft && f.x < this.bucketRight;
+      const inBucketY = f.y > this.bucketTop;
       
-      if (inBucketX) {
+      if (inBucketX && inBucketY) {
         // 桶内 - 水平约束，只允许垂直运动
         f.inBucket = true;
-        f.vx *= 0.5; // 快速减速水平速度
+        f.vx *= 0.5;
         f.x = Math.max(this.bucketLeft + f.radius, Math.min(this.bucketRight - f.radius, f.x));
         
         // 桶底
@@ -295,55 +294,53 @@ class FruitGame {
           if (Math.abs(f.vy) > 2) {
             f.vy = -f.vy * BOUNCE;
           } else {
-            f.vy = 0;
-            f.vx = 0;
+            f.vy = 0; f.vx = 0;
             f.settled = true;
             this.checkElimination();
           }
         }
         
         // 检查是否停在其他水果上
-        for (const other of this.fruits) {
-          if (other === f || !other.settled) continue;
-          const dy = other.y - f.y;
-          const dist = Math.abs(f.y - other.y);
-          if (dist < f.radius + other.radius + 4 && dy > 0 && Math.abs(f.x - other.x) < f.radius + other.radius) {
-            f.y = other.y - f.radius - other.radius;
-            if (Math.abs(f.vy) > 2) {
-              f.vy = -f.vy * BOUNCE;
-            } else {
-              f.vy = 0;
-              f.vx = 0;
-              f.settled = true;
-              this.checkElimination();
-            }
-          }
-        }
+        this.trySettleOnOther(f);
+      } else if (inBucketX && !inBucketY) {
+        // 在桶正上方但还没进入桶口
+        f.inBucket = false;
+        f.vx *= 0.5;
+        f.x = Math.max(this.bucketLeft + f.radius, Math.min(this.bucketRight - f.radius, f.x));
+        // 尝试停在桶口的水果上
+        this.trySettleOnOther(f);
       } else {
         // 斜坡区域
         f.vx *= SLOPE_FRICTION;
         
-        // 左斜坡碰撞
+        // 斜坡碰撞
         this.collideSlope(f, 
           this.slopeLeftStartX, this.slopeTopY, 
           this.bucketLeft, this.bucketTop, 1);
-        
-        // 右斜坡碰撞
         this.collideSlope(f, 
           this.slopeRightStartX, this.slopeTopY, 
           this.bucketRight, this.bucketTop, -1);
         
+        // 斜坡滑动：检测水果是否在斜坡上，施加向桶方向的力
+        if (f.y > this.slopeTopY - f.radius && f.y < this.bucketTop + f.radius) {
+          if (f.x < this.bucketCenterX) {
+            f.vx += 0.08 * dt; // 左斜坡向右滑
+          } else {
+            f.vx -= 0.08 * dt; // 右斜坡向左滑
+          }
+        }
+        
         // 边界
-        if (f.x - f.radius < 10) {
-          f.x = 10 + f.radius;
+        if (f.x - f.radius < 5) {
+          f.x = 5 + f.radius;
           f.vx = Math.abs(f.vx) * 0.5;
         }
-        if (f.x + f.radius > this.designSize.width - 10) {
-          f.x = this.designSize.width - 10 - f.radius;
+        if (f.x + f.radius > this.designSize.width - 5) {
+          f.x = this.designSize.width - 5 - f.radius;
           f.vx = -Math.abs(f.vx) * 0.5;
         }
         
-        // 掉出底部（不应该发生）
+        // 掉出底部
         if (f.y > this.bucketBottom + 50) {
           f.y = this.bucketBottom;
           f.settled = true;
@@ -400,6 +397,26 @@ class FruitGame {
       if (vn < 0) {
         fruit.vx -= (1 + BOUNCE) * vn * nx;
         fruit.vy -= (1 + BOUNCE) * vn * ny;
+      }
+    }
+  }
+
+  trySettleOnOther(f) {
+    for (const other of this.fruits) {
+      if (other === f || !other.settled) continue;
+      const dy = other.y - f.y;
+      const dist = Math.abs(f.y - other.y);
+      if (dist < f.radius + other.radius + 4 && dy > 0 && Math.abs(f.x - other.x) < f.radius + other.radius) {
+        f.y = other.y - f.radius - other.radius;
+        f.inBucket = true; // 即使物理上在桶口上方，也算在桶堆里
+        if (Math.abs(f.vy) > 2) {
+          f.vy = -f.vy * BOUNCE;
+        } else {
+          f.vy = 0; f.vx = 0;
+          f.settled = true;
+          this.checkElimination();
+        }
+        break;
       }
     }
   }
@@ -516,12 +533,11 @@ class FruitGame {
   }
 
   checkOverflow() {
-    for (const f of this.fruits) {
-      if (f.settled && f.y - f.radius < this.bucketTop + 20) {
-        this.gameOver = true;
-        playSound(SoundType.GAME_OVER);
-        return;
-      }
+    // 基于计数：超过4个已稳定水果且无法消除 → 失败
+    const settledCount = this.fruits.filter(f => f.settled).length;
+    if (settledCount > 4) {
+      this.gameOver = true;
+      playSound(SoundType.GAME_OVER);
     }
   }
 
@@ -867,43 +883,37 @@ class FruitGame {
   }
 
   drawSlopes(ctx) {
-    // 左斜坡
-    const leftGradient = ctx.createLinearGradient(this.slopeLeftStartX, this.slopeTopY, this.bucketLeft, this.bucketTop);
-    leftGradient.addColorStop(0, '#d4a574');
-    leftGradient.addColorStop(1, '#8b5a2b');
-    
-    ctx.fillStyle = leftGradient;
+    const thick = 12;
+
+    // 左斜坡：从屏幕左边缘到桶口，~5度
+    ctx.fillStyle = '#d4a574';
     ctx.beginPath();
-    ctx.moveTo(this.slopeLeftStartX, this.slopeTopY);
-    ctx.lineTo(this.slopeLeftStartX + 40, this.slopeTopY);
-    ctx.lineTo(this.bucketLeft + 8, this.bucketTop);
-    ctx.lineTo(this.bucketLeft, this.bucketTop);
+    ctx.moveTo(this.slopeLeftStartX, this.slopeTopY - thick);
+    ctx.lineTo(this.slopeLeftStartX, this.slopeTopY + thick);
+    ctx.lineTo(this.bucketLeft, this.bucketTop + thick);
+    ctx.lineTo(this.bucketLeft, this.bucketTop - thick);
     ctx.closePath();
     ctx.fill();
     
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#8b5a2b';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.slopeLeftStartX, this.slopeTopY);
     ctx.lineTo(this.bucketLeft, this.bucketTop);
     ctx.stroke();
 
     // 右斜坡
-    const rightGradient = ctx.createLinearGradient(this.slopeRightStartX, this.slopeTopY, this.bucketRight, this.bucketTop);
-    rightGradient.addColorStop(0, '#d4a574');
-    rightGradient.addColorStop(1, '#8b5a2b');
-    
-    ctx.fillStyle = rightGradient;
+    ctx.fillStyle = '#d4a574';
     ctx.beginPath();
-    ctx.moveTo(this.slopeRightStartX, this.slopeTopY);
-    ctx.lineTo(this.slopeRightStartX - 40, this.slopeTopY);
-    ctx.lineTo(this.bucketRight - 8, this.bucketTop);
-    ctx.lineTo(this.bucketRight, this.bucketTop);
+    ctx.moveTo(this.slopeRightStartX, this.slopeTopY - thick);
+    ctx.lineTo(this.slopeRightStartX, this.slopeTopY + thick);
+    ctx.lineTo(this.bucketRight, this.bucketTop + thick);
+    ctx.lineTo(this.bucketRight, this.bucketTop - thick);
     ctx.closePath();
     ctx.fill();
-    
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 3;
+
+    ctx.strokeStyle = '#8b5a2b';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.slopeRightStartX, this.slopeTopY);
     ctx.lineTo(this.bucketRight, this.bucketTop);
