@@ -576,7 +576,6 @@ class FruitGame {
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
       this.gameOver = true;
-      if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
       this.onEnd({ score: this.score, passed: false });
       return;
     }
@@ -588,7 +587,6 @@ class FruitGame {
     // 已结束只处理按钮点击
     if (this.gameOver || this.gameWon) {
       if (btn === 'backBtn') {
-        if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
         this.onEnd({ score: this.score, passed: this.gameWon });
         return;
       }
@@ -598,7 +596,10 @@ class FruitGame {
       }
       if (this.confirmBtn && pos.x >= this.confirmBtn.x && pos.x <= this.confirmBtn.x + this.confirmBtn.w &&
           pos.y >= this.confirmBtn.y && pos.y <= this.confirmBtn.y + this.confirmBtn.h) {
-        if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
+        if (!this.scoreSaved) {
+          this.scoreSaved = true;
+          setTimeout(() => { try { RankData.save(this.gameId, this.score); } catch (e) {} }, 100);
+        }
         this.onEnd({ score: this.score, passed: this.gameWon });
         return;
       }
