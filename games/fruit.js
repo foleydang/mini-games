@@ -1,6 +1,6 @@
 // 水果消消乐 - 窄桶 + 双斜坡 + 物理碰撞
-import { drawText, Storage, RankData } from '../common/utils.js';
-import { getBackButton, checkBottomButtons, drawHint } from '../common/ui.js';
+import { drawText, Storage, RankData, Colors, drawButton } from '../common/utils.js';
+import { getBackButton, getShareButton, getSoundButton, checkBottomButtons, drawHint } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 const FRUITS = [
@@ -85,6 +85,8 @@ class FruitGame {
     this.initQuizPool();
 
     this.backButton = getBackButton(designSize);
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
     this.buttons = null;
 
     this.generateTopFruits();
@@ -578,12 +580,20 @@ class FruitGame {
       this.onEnd({ score: this.score, passed: false });
       return;
     }
+    if (btn === 'soundBtn') {
+      audioManager.toggle();
+      return;
+    }
 
     // 已结束只处理按钮点击
     if (this.gameOver || this.gameWon) {
       if (btn === 'backBtn') {
         if (!this.scoreSaved) { RankData.save(this.gameId, this.score); this.scoreSaved = true; }
         this.onEnd({ score: this.score, passed: this.gameWon });
+        return;
+      }
+      if (btn === 'soundBtn') {
+        audioManager.toggle();
         return;
       }
       if (this.confirmBtn && pos.x >= this.confirmBtn.x && pos.x <= this.confirmBtn.x + this.confirmBtn.w &&
@@ -725,7 +735,8 @@ class FruitGame {
     // 锤子栏
     this.drawHammerBar(ctx, width, height);
 
-    this.buttons = this.drawBackButton(ctx);
+    // 标准按钮栏
+    this.buttons = this.drawButtons(ctx, safeTop);
 
     // 绘制场景
     this.drawSlopes(ctx);
@@ -963,23 +974,21 @@ class FruitGame {
     ctx.setLineDash([]);
   }
 
-  drawBackButton(ctx) {
-    const { width, safeTop } = this.designSize;
-    const btnX = width - 110;
-    const btnY = safeTop + 18;
-    const btnW = 90;
-    const btnH = 38;
+  drawButtons(ctx, safeTop) {
+    const backBtn = this.backButton;
+    const shareBtn = this.shareButton;
+    const soundBtn = this.soundButton;
 
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.strokeStyle = 'rgba(230,81,0,0.3)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
-    ctx.fill();
-    ctx.stroke();
+    drawButton(ctx, backBtn.x, backBtn.y, backBtn.width, backBtn.height,
+               '← 返回', Colors.danger, { fontSize: 32, radius: 16 });
 
-    drawText(ctx, '← 返回', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 18, color: '#e65100', bold: true });
-    return { backBtn: { x: btnX, y: btnY, width: btnW, height: btnH } };
+    drawButton(ctx, shareBtn.x, shareBtn.y, shareBtn.width, shareBtn.height,
+               '分享', Colors.success, { fontSize: 32, radius: 16 });
+
+    drawButton(ctx, soundBtn.x, soundBtn.y, soundBtn.width, soundBtn.height,
+               audioManager.enabled ? '🔊' : '🔇', Colors.info, { fontSize: 32, radius: 16 });
+
+    return { backBtn, shareBtn, soundBtn };
   }
 
   drawHammerBar(ctx, width, height) {
