@@ -1,4 +1,4 @@
-// 水果消消乐 - 斜坡引导 + 底部格子槽 + 物理碰撞
+// 水果消消乐 - 窄桶 + 双斜坡 + 物理碰撞
 import { drawText, Storage, RankData } from '../common/utils.js';
 import { getBackButton, checkBottomButtons, drawHint } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -14,9 +14,11 @@ const FRUITS = [
   { emoji: '🫐', color: '#48dbfb' },
 ];
 
-const GRAVITY = 0.22;
+const GRAVITY = 0.18;
 const MAX_VY = 10;
-const SLOT_COUNT = 7;
+const BOUNCE = 0.25;
+const FRICTION = 0.97;
+const SLOPE_FRICTION = 0.92;
 
 class FruitGame {
   constructor(canvas, ctx, designSize, onEnd, level = 0) {
@@ -46,29 +48,24 @@ class FruitGame {
     this.gameWon = false;
     this.scoreSaved = false;
 
-    const { width, height, safeTop, safeBottom } = this.designSize;
+    const { width, height, safeTop, safeBottom } = designSize;
 
-    // 布局
-    this.containerLeft = 40;
-    this.containerRight = width - 40;
-    this.containerTop = safeTop + 170;
-    this.containerBottom = height - safeBottom - 30;
+    // 窄桶 - 只有一列水果宽
+    this.bucketCenterX = width / 2;
+    this.bucketHalfWidth = this.fruitRadius + 6;
+    this.bucketLeft = this.bucketCenterX - this.bucketHalfWidth;
+    this.bucketRight = this.bucketCenterX + this.bucketHalfWidth;
+    this.bucketTop = safeTop + 320;
+    this.bucketBottom = height - safeBottom - 40;
+    this.bucketHeight = this.bucketBottom - this.bucketTop;
 
-    // 斜坡区域
-    this.slopeTop = this.containerTop;
-    this.slopeBottom = this.containerBottom - 120;
-    this.slopeHeight = this.slopeBottom - this.slopeTop;
+    // 斜坡 - 从两侧顶部到桶口
+    this.slopeTopY = safeTop + 180;
+    this.slopeLeftStartX = 30;
+    this.slopeRightStartX = width - 30;
 
-    // 底部格子槽
-    this.slotY = this.containerBottom - 60;
-    this.slotSize = this.fruitRadius * 2 + 10;
-    const totalWidth = SLOT_COUNT * this.slotSize + (SLOT_COUNT - 1) * 6;
-    this.slotStartX = (width - totalWidth) / 2;
-    this.slots = new Array(SLOT_COUNT).fill(null);
-
-    this.topFruits = [];
-    this.bucketFruits = [];
-    this.droppingFruits = [];
+    this.fruits = []; // 所有水果统一在一个数组
+    this.topFruits = []; // 待点击的水果
     this.particles = [];
     this.scorePopups = [];
     this.confirmBtn = null;
@@ -87,35 +84,49 @@ class FruitGame {
   generateTopFruits() {
     this.topFruits = [];
     
+    // 保证每种偶数个
     const types = [];
-    const fruitsPerType = Math.ceil(this.maxFruits / this.maxTypes);
-    const evenPerType = fruitsPerType % 2 === 0 ? fruitsPerType : fruitsPerType + 1;
+    const perType = Math.ceil(this.maxFruits / this.maxTypes);
+    const evenPer = perType % 2 === 0 ? perType : perType + 1;
     
     for (let t = 0; t < this.maxTypes; t++) {
-      for (let i = 0; i < evenPerType; i++) types.push(t);
+      for (let i = 0; i < evenPer; i++) types.push(t);
     }
     
     const total = Math.min(types.length, this.maxFruits);
-    const evenTotal = total % 2 === 0 ? total : total - 1;
-    types.length = evenTotal;
+    types.length = total % 2 === 0 ? total : total - 1;
 
+    // 打乱
     for (let i = types.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [types[i], types[j]] = [types[j], types[i]];
     }
 
-    const padding = 12;
+    // 随机放置在斜坡区域（左斜坡 + 右斜坡）
+    const { width } = this.designSize;
+    const padding = 15;
     const minGap = 8;
     
     for (let i = 0; i < types.length; i++) {
       const type = types[i];
+      const isLeft = i % 2 === 0;
       let placed = false;
       
       for (let attempt = 0; attempt < 50; attempt++) {
-        const x = this.containerLeft + padding + this.fruitRadius + 
-                  Math.random() * (this.containerRight - this.containerLeft - padding * 2 - this.fruitRadius * 2);
-        const y = this.slopeTop + padding + this.fruitRadius + 
-                  Math.random() * (this.slopeHeight - padding * 2 - this.fruitRadius * 2);
+        let x, y;
+        if (isLeft) {
+          // 左斜坡区域
+          x = this.slopeLeftStartX + padding + this.fruitRadius + 
+              Math.random() * (this.bucketLeft - this.slopeLeftStartX - padding * 2 - this.fruitRadius * 2);
+          y = this.slopeTopY + padding + this.fruitRadius + 
+              Math.random() * (this.bucketTop - this.slopeTopY - padding * 2 - this.fruitRadius * 2);
+        } else {
+          // 右斜坡区域
+          x = this.bucketRight + padding + this.fruitRadius + 
+              Math.random() * (this.slopeRightStartX - this.bucketRight - padding * 2 - this.fruitRadius * 2);
+          y = this.slopeTopY + padding + this.fruitRadius + 
+              Math.random() * (this.bucketTop - this.slopeTopY - padding * 2 - this.fruitRadius * 2);
+        }
         
         let overlap = false;
         for (const other of this.topFruits) {
@@ -134,11 +145,11 @@ class FruitGame {
       }
       
       if (!placed) {
-        this.topFruits.push({
-          x: this.containerLeft + padding + this.fruitRadius + Math.random() * (this.containerRight - this.containerLeft - padding * 2 - this.fruitRadius * 2),
-          y: this.slopeTop + padding + this.fruitRadius + Math.random() * (this.slopeHeight - padding * 2 - this.fruitRadius * 2),
-          type, emoji: FRUITS[type].emoji, color: FRUITS[type].color, radius: this.fruitRadius, removed: false
-        });
+        const x = isLeft ? 
+          this.slopeLeftStartX + padding + this.fruitRadius + Math.random() * (this.bucketLeft - this.slopeLeftStartX - this.fruitRadius * 2) :
+          this.bucketRight + padding + this.fruitRadius + Math.random() * (this.slopeRightStartX - this.bucketRight - this.fruitRadius * 2);
+        const y = this.slopeTopY + padding + this.fruitRadius + Math.random() * (this.bucketTop - this.slopeTopY - this.fruitRadius * 2);
+        this.topFruits.push({ x, y, type, emoji: FRUITS[type].emoji, color: FRUITS[type].color, radius: this.fruitRadius, removed: false });
       }
     }
     
@@ -151,15 +162,17 @@ class FruitGame {
     fruit.removed = true;
     playSound(SoundType.DROP);
     
-    this.droppingFruits.push({
+    this.fruits.push({
       x: fruit.x,
       y: fruit.y,
-      vx: (Math.random() - 0.5) * 2,
+      vx: (Math.random() - 0.5) * 1.5,
       vy: 0,
       type: fruit.type,
       emoji: fruit.emoji,
       color: fruit.color,
       radius: fruit.radius,
+      settled: false,
+      inBucket: false,
       trail: []
     });
   }
@@ -168,7 +181,7 @@ class FruitGame {
     if (this.gameOver || this.gameWon) {
       audioManager.stopBgMusic();
       this.draw();
-      return; // 停止循环，不再调用 RankData.save()
+      return;
     }
 
     const dt = Math.min((currentTime - this.lastTime) / 16.67, 2);
@@ -179,98 +192,95 @@ class FruitGame {
   }
 
   update(dt) {
-    // 掉落水果互相碰撞
-    for (let i = 0; i < this.droppingFruits.length; i++) {
-      for (let j = i + 1; j < this.droppingFruits.length; j++) {
-        this.resolveCollision(this.droppingFruits[i], this.droppingFruits[j]);
+    // 水果互相碰撞
+    for (let i = 0; i < this.fruits.length; i++) {
+      for (let j = i + 1; j < this.fruits.length; j++) {
+        this.resolveCollision(this.fruits[i], this.fruits[j]);
       }
     }
 
-    // 更新掉落水果
-    for (let i = this.droppingFruits.length - 1; i >= 0; i--) {
-      const df = this.droppingFruits[i];
+    // 更新每个水果
+    for (const f of this.fruits) {
+      if (f.settled) continue;
       
-      df.trail.push({ x: df.x, y: df.y });
-      if (df.trail.length > 5) df.trail.shift();
+      // 轨迹
+      f.trail.push({ x: f.x, y: f.y });
+      if (f.trail.length > 4) f.trail.shift();
 
-      df.vy = Math.min(df.vy + GRAVITY * dt, MAX_VY);
-      df.y += df.vy * dt;
-      df.x += (df.vx || 0) * dt;
-      df.vx = (df.vx || 0) * 0.96;
-
-      // 边界
-      if (df.x - df.radius < this.containerLeft + 6) {
-        df.x = this.containerLeft + 6 + df.radius;
-        df.vx = Math.abs(df.vx) * 0.4;
-      }
-      if (df.x + df.radius > this.containerRight - 6) {
-        df.x = this.containerRight - 6 - df.radius;
-        df.vx = -Math.abs(df.vx) * 0.4;
-      }
-
-      // 斜面碰撞（V型斜坡引导水果进入格子）
-      if (df.y + df.radius >= this.slopeBottom) {
-        const slotIndex = this.findNearestSlot(df.x);
-        const slotCx = this.getSlotX(slotIndex);
+      // 重力
+      f.vy = Math.min(f.vy + GRAVITY * dt, MAX_VY);
+      f.y += f.vy * dt;
+      f.x += (f.vx || 0) * dt;
+      
+      // 判断是否在桶内
+      const inBucketX = f.x > this.bucketLeft && f.x < this.bucketRight && f.y > this.bucketTop;
+      
+      if (inBucketX) {
+        // 桶内 - 水平约束，只允许垂直运动
+        f.inBucket = true;
+        f.vx *= 0.5; // 快速减速水平速度
+        f.x = Math.max(this.bucketLeft + f.radius, Math.min(this.bucketRight - f.radius, f.x));
         
-        // 往目标格子方向推
-        const dir = slotCx > df.x ? 1 : -1;
-        const dist = Math.abs(slotCx - df.x);
-        
-        if (dist > this.slotSize / 2) {
-          // 还没到格子范围，应用斜坡力
-          df.vx += dir * 3 * dt;
-          df.vy = Math.min(df.vy, 4);
-        } else {
-          // 在格子范围内，直接落入
-          if (Math.abs(df.vy) < 3) {
-            this.finishIntoSlot(df, i, slotIndex);
-            continue;
+        // 桶底
+        if (f.y + f.radius >= this.bucketBottom) {
+          f.y = this.bucketBottom - f.radius;
+          if (Math.abs(f.vy) > 2) {
+            f.vy = -f.vy * BOUNCE;
           } else {
-            df.vy = -df.vy * 0.15;
-            df.vx = dir * 1.5;
+            f.vy = 0;
+            f.vx = 0;
+            f.settled = true;
+            this.checkElimination();
           }
         }
         
-        // 防止掉出底部
-        if (df.y + df.radius > this.slotY + 30) {
-          df.y = this.slotY + 30 - df.radius;
-        }
-      }
-
-      // 与已落格水果碰撞
-      for (const sf of this.slots) {
-        if (!sf) continue;
-        const dx = sf.x - df.x;
-        const dy = sf.y - df.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = df.radius + sf.radius;
-        
-        if (dist < minDist && dist > 0) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          df.x -= nx * (minDist - dist) * 0.5;
-          df.y -= ny * (minDist - dist) * 0.5;
-          if (Math.abs(df.vy) > 2) {
-            df.vy = -df.vy * 0.25;
-            df.vx = nx * Math.abs(df.vy) * 0.4;
-          } else {
-            // 推入相邻格子
-            const slotIndex = this.findNearestSlot(df.x);
-            this.finishIntoSlot(df, i, slotIndex);
-            break;
+        // 检查是否停在其他水果上
+        for (const other of this.fruits) {
+          if (other === f || !other.settled) continue;
+          const dy = other.y - f.y;
+          const dist = Math.abs(f.y - other.y);
+          if (dist < f.radius + other.radius + 4 && dy > 0 && Math.abs(f.x - other.x) < f.radius + other.radius) {
+            f.y = other.y - f.radius - other.radius;
+            if (Math.abs(f.vy) > 2) {
+              f.vy = -f.vy * BOUNCE;
+            } else {
+              f.vy = 0;
+              f.vx = 0;
+              f.settled = true;
+              this.checkElimination();
+            }
           }
         }
+      } else {
+        // 斜坡区域
+        f.vx *= SLOPE_FRICTION;
+        
+        // 左斜坡碰撞
+        this.collideSlope(f, 
+          this.slopeLeftStartX, this.slopeTopY, 
+          this.bucketLeft, this.bucketTop, 1);
+        
+        // 右斜坡碰撞
+        this.collideSlope(f, 
+          this.slopeRightStartX, this.slopeTopY, 
+          this.bucketRight, this.bucketTop, -1);
+        
+        // 边界
+        if (f.x - f.radius < 10) {
+          f.x = 10 + f.radius;
+          f.vx = Math.abs(f.vx) * 0.5;
+        }
+        if (f.x + f.radius > this.designSize.width - 10) {
+          f.x = this.designSize.width - 10 - f.radius;
+          f.vx = -Math.abs(f.vx) * 0.5;
+        }
+        
+        // 掉出底部（不应该发生）
+        if (f.y > this.bucketBottom + 50) {
+          f.y = this.bucketBottom;
+          f.settled = true;
+        }
       }
-    }
-
-    // 更新已落格水果（重力下如果有空隙）
-    for (let i = 0; i < this.slots.length; i++) {
-      const sf = this.slots[i];
-      if (!sf) continue;
-      // 格子里的水果保持静止
-      sf.x = this.getSlotX(i);
-      sf.y = this.slotY;
     }
 
     // 更新粒子
@@ -293,101 +303,93 @@ class FruitGame {
     this.checkOverflow();
   }
 
+  collideSlope(fruit, x1, y1, x2, y2, normalDir) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return;
+    
+    let t = ((fruit.x - x1) * dx + (fruit.y - y1) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    
+    const closestX = x1 + t * dx;
+    const closestY = y1 + t * dy;
+    
+    const distX = fruit.x - closestX;
+    const distY = fruit.y - closestY;
+    const dist = Math.sqrt(distX * distX + distY * distY);
+    
+    if (dist < fruit.radius && dist > 0) {
+      const nx = distX / dist;
+      const ny = distY / dist;
+      const overlap = fruit.radius - dist;
+      
+      fruit.x += nx * overlap;
+      fruit.y += ny * overlap;
+      
+      // 反弹
+      const vn = fruit.vx * nx + fruit.vy * ny;
+      if (vn < 0) {
+        fruit.vx -= (1 + BOUNCE) * vn * nx;
+        fruit.vy -= (1 + BOUNCE) * vn * ny;
+      }
+    }
+  }
+
   resolveCollision(a, b) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const minDist = a.radius + b.radius + 4;
+    const minDist = a.radius + b.radius;
     
-    if (dist < minDist && dist > 0) {
+    if (dist < minDist && dist > 0.1) {
       const nx = dx / dist;
       const ny = dy / dist;
       const overlap = minDist - dist;
+      
+      // 分离
       a.x -= nx * overlap * 0.5;
       a.y -= ny * overlap * 0.5;
       b.x += nx * overlap * 0.5;
       b.y += ny * overlap * 0.5;
       
-      // 交换部分速度
-      const relVx = b.vx - a.vx;
-      const relVy = b.vy - a.vy;
-      const relV = relVx * nx + relVy * ny;
-      if (relV < 0) {
-        const impulse = relV * 0.5;
-        a.vx += nx * impulse;
-        a.vy += ny * impulse;
-        b.vx -= nx * impulse;
-        b.vy -= ny * impulse;
+      // 速度交换
+      const dvx = b.vx - a.vx;
+      const dvy = b.vy - a.vy;
+      const dvDotN = dvx * nx + dvy * ny;
+      
+      if (dvDotN < 0) {
+        const impulse = dvDotN * 0.5;
+        a.vx += impulse * nx;
+        a.vy += impulse * ny;
+        b.vx -= impulse * nx;
+        b.vy -= impulse * ny;
+      }
+      
+      // 如果一个已稳定，让另一个弹开
+      if (a.settled && !b.settled) {
+        b.vy = -Math.abs(b.vy) * 0.3;
+      } else if (b.settled && !a.settled) {
+        a.vy = -Math.abs(a.vy) * 0.3;
       }
     }
   }
 
-  getSlotX(index) {
-    return this.slotStartX + index * (this.slotSize + 6) + this.slotSize / 2;
-  }
-
-  findNearestSlot(x) {
-    let best = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < SLOT_COUNT; i++) {
-      const sx = this.getSlotX(i);
-      const dist = Math.abs(sx - x);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = i;
-      }
-    }
-    return best;
-  }
-
-  finishIntoSlot(df, dropIndex, slotIndex) {
-    // 找最近的空格子
-    let targetSlot = slotIndex;
-    if (this.slots[slotIndex]) {
-      // 如果目标格子满了，找相邻空格子
-      let found = false;
-      for (let offset = 1; offset < SLOT_COUNT; offset++) {
-        if (slotIndex - offset >= 0 && !this.slots[slotIndex - offset]) {
-          targetSlot = slotIndex - offset;
-          found = true;
-          break;
-        }
-        if (slotIndex + offset < SLOT_COUNT && !this.slots[slotIndex + offset]) {
-          targetSlot = slotIndex + offset;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // 所有格子都满了
-        this.gameOver = true;
-        playSound(SoundType.GAME_OVER);
-        return;
-      }
-    }
-
-    this.slots[targetSlot] = {
-      x: this.getSlotX(targetSlot),
-      y: this.slotY,
-      type: df.type,
-      emoji: df.emoji,
-      color: df.color,
-      radius: df.radius,
-      slotIndex: targetSlot
-    };
-    this.droppingFruits.splice(dropIndex, 1);
-    this.checkSlotElimination();
-  }
-
-  checkSlotElimination() {
+  checkElimination() {
     let found = true;
     while (found) {
       found = false;
-      for (let i = 0; i < this.slots.length - 1; i++) {
-        const a = this.slots[i];
-        const b = this.slots[i + 1];
-        if (a && b && a.type === b.type) {
-          // 消除相邻相同水果
+      // 从底部往上检查相邻水果
+      const bucketFruits = this.fruits
+        .filter(f => f.settled && f.inBucket)
+        .sort((a, b) => b.y - a.y); // 按Y从大到小（底部在上）
+      
+      for (let i = 0; i < bucketFruits.length - 1; i++) {
+        const a = bucketFruits[i];
+        const b = bucketFruits[i + 1];
+        
+        if (a.type === b.type) {
+          // 消除
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
           const gain = 10 * this.combo;
@@ -399,13 +401,22 @@ class FruitGame {
           this.createParticles(b.x, b.y, b.color);
           this.scorePopups.push({
             text: `+${gain}`,
-            x: (a.x + b.x) / 2,
-            y: this.slotY - 30,
+            x: this.bucketCenterX,
+            y: Math.min(a.y, b.y) - 30,
             progress: 0
           });
           
-          this.slots[i] = null;
-          this.slots[i + 1] = null;
+          // 移除
+          this.fruits = this.fruits.filter(f => f !== a && f !== b);
+          
+          // 让上方的水果落下
+          for (const f of this.fruits) {
+            if (f.settled && f.inBucket && f.y < Math.max(a.y, b.y)) {
+              f.settled = false;
+              f.vy = 1;
+            }
+          }
+          
           found = true;
           break;
         }
@@ -427,19 +438,22 @@ class FruitGame {
   }
 
   checkWin() {
-    const hasTopFruits = this.topFruits.some(f => !f.removed);
-    const hasSlots = this.slots.some(s => s !== null);
-    if (!hasTopFruits && !hasSlots && this.droppingFruits.length === 0) {
+    const hasTop = this.topFruits.some(f => !f.removed);
+    const hasFalling = this.fruits.some(f => !f.settled);
+    const hasBucket = this.fruits.some(f => f.settled);
+    if (!hasTop && !hasFalling && !hasBucket) {
       this.gameWon = true;
       playSound(SoundType.LEVEL_UP);
     }
   }
 
   checkOverflow() {
-    // 格子满了且有水果在掉落中
-    if (this.slots.every(s => s !== null) && this.droppingFruits.length > 0) {
-      this.gameOver = true;
-      playSound(SoundType.GAME_OVER);
+    for (const f of this.fruits) {
+      if (f.settled && f.y - f.radius < this.bucketTop + 20) {
+        this.gameOver = true;
+        playSound(SoundType.GAME_OVER);
+        return;
+      }
     }
   }
 
@@ -511,8 +525,7 @@ class FruitGame {
     // 信息行
     drawText(ctx, `分数: ${this.score}`, width / 2 - 80, safeTop + 85, { fontSize: 24, color: '#bf360c', bold: true });
     
-    const remaining = this.topFruits.filter(f => !f.removed).length + 
-                      this.slots.filter(s => s).length + this.droppingFruits.length;
+    const remaining = this.topFruits.filter(f => !f.removed).length + this.fruits.length;
     drawText(ctx, `剩余: ${remaining}`, width / 2 + 80, safeTop + 85, { fontSize: 24, color: '#bf360c', bold: true });
     
     if (this.combo > 1) {
@@ -521,31 +534,9 @@ class FruitGame {
 
     this.buttons = this.drawBackButton(ctx);
 
-    // 斜坡区域 - 淡淡的参考线
-    ctx.strokeStyle = 'rgba(230,81,0,0.15)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 8]);
-    ctx.beginPath();
-    ctx.moveTo(this.containerLeft, this.slopeBottom);
-    ctx.lineTo((this.containerLeft + this.slotStartX) / 2, this.slopeTop + this.slopeHeight * 0.3);
-    ctx.lineTo(this.slotStartX, this.slopeBottom);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(this.containerRight, this.slopeBottom);
-    ctx.lineTo((this.containerRight + this.slotStartX + SLOT_COUNT * (this.slotSize + 6)) / 2, this.slopeTop + this.slopeHeight * 0.3);
-    ctx.lineTo(this.slotStartX + SLOT_COUNT * (this.slotSize + 6), this.slopeBottom);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // 顶部水果区域虚线边框
-    ctx.strokeStyle = 'rgba(230,81,0,0.2)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    this.roundRect(ctx, this.containerLeft, this.slopeTop, this.containerRight - this.containerLeft, this.slopeHeight, 16);
-    ctx.stroke();
-
-    // 底部格子槽
-    this.drawSlotBar(ctx);
+    // 绘制场景
+    this.drawSlopes(ctx);
+    this.drawBucket(ctx);
 
     // 顶部水果
     for (const f of this.topFruits) {
@@ -554,23 +545,18 @@ class FruitGame {
     }
 
     // 掉落水果（带轨迹）
-    for (const df of this.droppingFruits) {
-      for (let i = 0; i < df.trail.length; i++) {
-        const t = df.trail[i];
-        ctx.globalAlpha = (i + 1) / df.trail.length * 0.2;
-        ctx.font = `${Math.floor(df.radius * 1.5)}px sans-serif`;
+    for (const f of this.fruits) {
+      // 轨迹
+      for (let i = 0; i < f.trail.length; i++) {
+        const t = f.trail[i];
+        ctx.globalAlpha = (i + 1) / f.trail.length * 0.2;
+        ctx.font = `${Math.floor(f.radius * 1.5)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(df.emoji, t.x, t.y);
+        ctx.fillText(f.emoji, t.x, t.y);
       }
       ctx.globalAlpha = 1;
-      this.drawFruit(df, 1, 1);
-    }
-
-    // 格子里的水果
-    for (const sf of this.slots) {
-      if (!sf) continue;
-      this.drawFruit(sf, 1, 1);
+      this.drawFruit(f, 1, 1);
     }
 
     // 粒子
@@ -596,68 +582,91 @@ class FruitGame {
     }
   }
 
-  drawEndPopup(ctx, width, height, isWin) {
-    // 半透明遮罩
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, width, height);
-
-    // 弹窗卡片
-    const cardW = 360;
-    const cardH = 340;
-    const cardX = (width - cardW) / 2;
-    const cardY = (height - cardH) / 2;
-
-    // 卡片阴影
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetY = 8;
-
-    // 卡片背景
-    const cardGradient = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
-    cardGradient.addColorStop(0, '#fff8e1');
-    cardGradient.addColorStop(1, '#ffe0b2');
-    ctx.fillStyle = cardGradient;
-    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
+  drawSlopes(ctx) {
+    // 左斜坡
+    const leftGradient = ctx.createLinearGradient(this.slopeLeftStartX, this.slopeTopY, this.bucketLeft, this.bucketTop);
+    leftGradient.addColorStop(0, '#d4a574');
+    leftGradient.addColorStop(1, '#8b5a2b');
+    
+    ctx.fillStyle = leftGradient;
+    ctx.beginPath();
+    ctx.moveTo(this.slopeLeftStartX, this.slopeTopY);
+    ctx.lineTo(this.slopeLeftStartX + 40, this.slopeTopY);
+    ctx.lineTo(this.bucketLeft + 8, this.bucketTop);
+    ctx.lineTo(this.bucketLeft, this.bucketTop);
+    ctx.closePath();
     ctx.fill();
+    
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(this.slopeLeftStartX, this.slopeTopY);
+    ctx.lineTo(this.bucketLeft, this.bucketTop);
+    ctx.stroke();
 
+    // 右斜坡
+    const rightGradient = ctx.createLinearGradient(this.slopeRightStartX, this.slopeTopY, this.bucketRight, this.bucketTop);
+    rightGradient.addColorStop(0, '#d4a574');
+    rightGradient.addColorStop(1, '#8b5a2b');
+    
+    ctx.fillStyle = rightGradient;
+    ctx.beginPath();
+    ctx.moveTo(this.slopeRightStartX, this.slopeTopY);
+    ctx.lineTo(this.slopeRightStartX - 40, this.slopeTopY);
+    ctx.lineTo(this.bucketRight - 8, this.bucketTop);
+    ctx.lineTo(this.bucketRight, this.bucketTop);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(this.slopeRightStartX, this.slopeTopY);
+    ctx.lineTo(this.bucketRight, this.bucketTop);
+    ctx.stroke();
+  }
+
+  drawBucket(ctx) {
+    // 桶壁阴影
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 6;
+    
+    // 左桶壁
+    ctx.fillStyle = '#5c2d0a';
+    ctx.fillRect(this.bucketLeft - 8, this.bucketTop, 8, this.bucketHeight);
+    
+    // 右桶壁
+    ctx.fillRect(this.bucketRight, this.bucketTop, 8, this.bucketHeight);
+    
+    // 桶底
+    ctx.fillRect(this.bucketLeft - 8, this.bucketBottom, this.bucketHalfWidth * 2 + 16, 8);
+    
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // 卡片边框
-    ctx.strokeStyle = isWin ? '#f59e0b' : '#ef4444';
-    ctx.lineWidth = 3;
-    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
+    // 桶内壁高光
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.bucketLeft, this.bucketTop);
+    ctx.lineTo(this.bucketLeft, this.bucketBottom);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(this.bucketRight, this.bucketTop);
+    ctx.lineTo(this.bucketRight, this.bucketBottom);
     ctx.stroke();
 
-    // 标题
-    const title = isWin ? '🎉 通关！' : '😢 失败了';
-    const titleColor = isWin ? '#f59e0b' : '#ef4444';
-    drawText(ctx, title, width / 2, cardY + 60, { fontSize: 48, color: titleColor, bold: true });
-
-    // 得分
-    drawText(ctx, `得分: ${this.score}`, width / 2, cardY + 120, { fontSize: 32, color: '#1a1a1a', bold: true });
-
-    // 连击
-    if (this.maxCombo > 1) {
-      drawText(ctx, `最高连击: ${this.maxCombo}x 🔥`, width / 2, cardY + 160, { fontSize: 26, color: '#d84315' });
-    }
-
-    // 确认按钮
-    const btnW = 200;
-    const btnH = 50;
-    const btnX = (width - btnW) / 2;
-    const btnY = cardY + cardH - 80;
-
-    const btnGradient = ctx.createLinearGradient(0, btnY, 0, btnY + btnH);
-    btnGradient.addColorStop(0, isWin ? '#f59e0b' : '#ef4444');
-    btnGradient.addColorStop(1, isWin ? '#d97706' : '#dc2626');
-    ctx.fillStyle = btnGradient;
-    this.roundRect(ctx, btnX, btnY, btnW, btnH, 14);
-    ctx.fill();
-
-    drawText(ctx, '确 定', width / 2, btnY + btnH / 2, { fontSize: 24, color: '#fff', bold: true });
-
-    this.confirmBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    // 桶口标记
+    ctx.strokeStyle = 'rgba(230,81,0,0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(this.bucketLeft - 8, this.bucketTop);
+    ctx.lineTo(this.bucketRight + 8, this.bucketTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   drawBackButton(ctx) {
@@ -679,46 +688,57 @@ class FruitGame {
     return { backBtn: { x: btnX, y: btnY, width: btnW, height: btnH } };
   }
 
-  drawSlotBar(ctx) {
-    const totalWidth = SLOT_COUNT * this.slotSize + (SLOT_COUNT - 1) * 6;
-    const barX = this.slotStartX - 10;
-    const barY = this.slotY - this.slotSize / 2 - 10;
-    const barW = totalWidth + 20;
-    const barH = this.slotSize + 20;
+  drawEndPopup(ctx, width, height, isWin) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, width, height);
 
-    // 槽背景
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 6;
-    ctx.fillStyle = '#5c2d0a';
-    ctx.beginPath();
-    this.roundRect(ctx, barX, barY, barW, barH, 16);
+    const cardW = 360;
+    const cardH = 340;
+    const cardX = (width - cardW) / 2;
+    const cardY = (height - cardH) / 2;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 8;
+
+    const cardGradient = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
+    cardGradient.addColorStop(0, '#fff8e1');
+    cardGradient.addColorStop(1, '#ffe0b2');
+    ctx.fillStyle = cardGradient;
+    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
     ctx.fill();
+
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // 边框
-    ctx.strokeStyle = '#e65100';
+    ctx.strokeStyle = isWin ? '#f59e0b' : '#ef4444';
     ctx.lineWidth = 3;
-    ctx.beginPath();
-    this.roundRect(ctx, barX, barY, barW, barH, 16);
+    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
     ctx.stroke();
 
-    // 每个格子
-    for (let i = 0; i < SLOT_COUNT; i++) {
-      const sx = this.slotStartX + i * (this.slotSize + 6);
-      const sy = this.slotY - this.slotSize / 2;
-      
-      ctx.fillStyle = this.slots[i] ? 'rgba(255,255,255,0.15)' : '#3d1f0a';
-      ctx.beginPath();
-      this.roundRect(ctx, sx, sy, this.slotSize, this.slotSize, 10);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      this.roundRect(ctx, sx, sy, this.slotSize, this.slotSize, 10);
-      ctx.stroke();
+    const title = isWin ? '🎉 通关！' : '😢 失败了';
+    const titleColor = isWin ? '#f59e0b' : '#ef4444';
+    drawText(ctx, title, width / 2, cardY + 60, { fontSize: 48, color: titleColor, bold: true });
+    drawText(ctx, `得分: ${this.score}`, width / 2, cardY + 120, { fontSize: 32, color: '#1a1a1a', bold: true });
+    
+    if (this.maxCombo > 1) {
+      drawText(ctx, `最高连击: ${this.maxCombo}x 🔥`, width / 2, cardY + 160, { fontSize: 26, color: '#d84315' });
     }
+
+    const btnW = 200;
+    const btnH = 50;
+    const btnX = (width - btnW) / 2;
+    const btnY = cardY + cardH - 80;
+
+    const btnGradient = ctx.createLinearGradient(0, btnY, 0, btnY + btnH);
+    btnGradient.addColorStop(0, isWin ? '#f59e0b' : '#ef4444');
+    btnGradient.addColorStop(1, isWin ? '#d97706' : '#dc2626');
+    ctx.fillStyle = btnGradient;
+    this.roundRect(ctx, btnX, btnY, btnW, btnH, 14);
+    ctx.fill();
+
+    drawText(ctx, '确 定', width / 2, btnY + btnH / 2, { fontSize: 24, color: '#fff', bold: true });
+    this.confirmBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
   }
 
   drawFruit(fruit, alpha, scale) {
