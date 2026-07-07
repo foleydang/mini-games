@@ -50,18 +50,18 @@ class FruitGame {
 
     const { width, height, safeTop, safeBottom } = designSize;
 
-    // 窄桶 - 只有一列水果宽
+    // 窄桶 - 只有一列水果宽，厚壁装饰
     this.bucketCenterX = width / 2;
     this.bucketHalfWidth = this.fruitRadius + 6;
     this.bucketLeft = this.bucketCenterX - this.bucketHalfWidth;
     this.bucketRight = this.bucketCenterX + this.bucketHalfWidth;
-    // 桶高度：刚好4个水果（8倍半径），第4个水果顶部与桶口齐平
-    this.bucketCapacity = 4;
-    this.bucketBottom = height - safeBottom - 40;
+    this.bucketWallThick = 14;
+    // 桶底部贴着屏幕最下方
+    this.bucketBottom = height - safeBottom;
     this.bucketTop = this.bucketBottom - this.fruitRadius * 2 * this.bucketCapacity;
     this.bucketHeight = this.bucketBottom - this.bucketTop;
 
-    // 斜坡 - 平缓（~10度），从屏幕边缘到桶口，垂直落差30px
+    // 斜坡 - 平缓（~10度），从屏幕边缘到桶口
     this.slopeTopY = this.bucketTop - 30;
     this.slopeLeftStartX = 0;
     this.slopeRightStartX = width;
@@ -605,19 +605,16 @@ class FruitGame {
       return;
     }
 
-    // 锤子栏按钮
-    if (this.hammerBarBtns) {
-      const { hammerBtn } = this.hammerBarBtns;
-      if (hammerBtn && pos.x >= hammerBtn.x && pos.x <= hammerBtn.x + hammerBtn.w &&
-          pos.y >= hammerBtn.y && pos.y <= hammerBtn.y + hammerBtn.h) {
+    // 锤子图标按钮
+    if (this.hammerIconBtn) {
+      const hb = this.hammerIconBtn;
+      if (pos.x >= hb.x && pos.x <= hb.x + hb.w &&
+          pos.y >= hb.y && pos.y <= hb.y + hb.h) {
         if (this.hammerActive) {
-          // 使用中 → 取消
           this.hammerActive = false;
         } else if (this.hammerCount > 0) {
-          // 有锤子 → 激活锤子模式
           this.hammerActive = true;
         } else {
-          // 没锤子 → 弹出答题
           this.showQuiz = true;
           this.quizData = this.getRandomQuiz();
           this.quizResult = null;
@@ -722,8 +719,8 @@ class FruitGame {
       drawText(ctx, `🔥 连击 x${this.combo}`, width / 2, safeTop + 115, { fontSize: 22, color: '#d84315', bold: true });
     }
 
-    // 锤子栏
-    this.drawHammerBar(ctx, width, height);
+    // 锤子图标（桶左边）
+    this.drawHammerIcon(ctx, this.bucketLeft - this.bucketWallThick - 30, this.bucketTop + 60);
 
     // 标准按钮栏
     this.buttons = this.drawButtons(ctx, safeTop);
@@ -922,46 +919,72 @@ class FruitGame {
   }
 
   drawBucket(ctx) {
+    const thick = this.bucketWallThick;
+    const outerL = this.bucketLeft - thick;
+    const outerR = this.bucketRight + thick;
+
     // 桶壁阴影
-    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 6;
-    
-    // 左桶壁
-    ctx.fillStyle = '#5c2d0a';
-    ctx.fillRect(this.bucketLeft - 8, this.bucketTop, 8, this.bucketHeight);
-    
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+
+    // 左桶壁 - 木纹色
+    const wallGradient = ctx.createLinearGradient(outerL, 0, this.bucketLeft, 0);
+    wallGradient.addColorStop(0, '#4a2008');
+    wallGradient.addColorStop(0.5, '#7a3d15');
+    wallGradient.addColorStop(1, '#5c2d0a');
+    ctx.fillStyle = wallGradient;
+    ctx.fillRect(outerL, this.bucketTop, thick, this.bucketHeight);
+
     // 右桶壁
-    ctx.fillRect(this.bucketRight, this.bucketTop, 8, this.bucketHeight);
-    
+    const wallGradientR = ctx.createLinearGradient(this.bucketRight, 0, outerR, 0);
+    wallGradientR.addColorStop(0, '#5c2d0a');
+    wallGradientR.addColorStop(0.5, '#7a3d15');
+    wallGradientR.addColorStop(1, '#4a2008');
+    ctx.fillStyle = wallGradientR;
+    ctx.fillRect(this.bucketRight, this.bucketTop, thick, this.bucketHeight);
+
     // 桶底
-    ctx.fillRect(this.bucketLeft - 8, this.bucketBottom, this.bucketHalfWidth * 2 + 16, 8);
-    
+    const bottomGradient = ctx.createLinearGradient(0, this.bucketBottom, 0, this.bucketBottom + thick);
+    bottomGradient.addColorStop(0, '#7a3d15');
+    bottomGradient.addColorStop(1, '#3a1805');
+    ctx.fillStyle = bottomGradient;
+    ctx.fillRect(outerL, this.bucketBottom, this.bucketHalfWidth * 2 + thick * 2, thick);
+
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
+    // 桶壁装饰铆钉
+    ctx.fillStyle = '#d4a574';
+    for (let i = 0; i < 3; i++) {
+      const ry = this.bucketTop + 30 + i * (this.bucketHeight / 3);
+      ctx.beginPath();
+      ctx.arc(this.bucketLeft - thick / 2, ry, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(this.bucketRight + thick / 2, ry, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // 桶内壁高光
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.bucketLeft, this.bucketTop);
     ctx.lineTo(this.bucketLeft, this.bucketBottom);
     ctx.stroke();
-    
     ctx.beginPath();
     ctx.moveTo(this.bucketRight, this.bucketTop);
     ctx.lineTo(this.bucketRight, this.bucketBottom);
     ctx.stroke();
 
-    // 桶口标记
-    ctx.strokeStyle = 'rgba(230,81,0,0.4)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
+    // 桶口框
+    ctx.strokeStyle = '#8b5a2b';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(this.bucketLeft - 8, this.bucketTop);
-    ctx.lineTo(this.bucketRight + 8, this.bucketTop);
+    ctx.moveTo(outerL, this.bucketTop);
+    ctx.lineTo(outerR, this.bucketTop);
     ctx.stroke();
-    ctx.setLineDash([]);
   }
 
   drawButtons(ctx, safeTop) {
@@ -981,69 +1004,34 @@ class FruitGame {
     return { backBtn, shareBtn, soundBtn };
   }
 
-  drawHammerBar(ctx, width, height) {
-    const barY = height - 70;
-    const barH = 44;
-    const barW = Math.min(width - 40, 300);
-    const barX = (width - barW) / 2;
-
-    // 背景条
-    ctx.fillStyle = 'rgba(139,69,19,0.12)';
-    this.roundRect(ctx, barX, barY, barW, barH, 12);
+  drawHammerIcon(ctx, cx, cy) {
+    // 锤子按钮
+    const r = 22;
+    ctx.fillStyle = this.hammerActive ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.85)';
+    ctx.strokeStyle = this.hammerActive ? '#b91c1c' : '#8b5a2b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(139,69,19,0.25)';
-    ctx.lineWidth = 1.5;
-    this.roundRect(ctx, barX, barY, barW, barH, 12);
     ctx.stroke();
 
-    // 锤子图标（最多3个）
-    for (let i = 0; i < 3; i++) {
-      const hx = barX + 30 + i * 40;
-      const hy = barY + barH / 2;
-      ctx.font = '28px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      if (i < this.hammerCount) {
-        ctx.fillText('🔨', hx, hy);
-      } else {
-        ctx.globalAlpha = 0.25;
-        ctx.fillText('🔨', hx, hy);
-        ctx.globalAlpha = 1;
-      }
-    }
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔨', cx, cy - 2);
 
-    // 数量显示
-    drawText(ctx, `x${this.hammerCount}`, barX + 145, barY + barH / 2, { fontSize: 20, color: '#5c2d0a', bold: true });
-
-    // 右侧按钮
-    const btnX = barX + 180;
-    const btnW = barW - 190;
-    const btnH = 32;
-    const btnY = barY + (barH - btnH) / 2;
-
-    if (this.hammerActive) {
-      // 使用中状态
-      ctx.fillStyle = '#ef4444';
-      this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+    // 数量角标
+    if (this.hammerCount > 0) {
+      ctx.fillStyle = '#e65100';
+      ctx.beginPath();
+      ctx.arc(cx + r - 4, cy - r + 4, 10, 0, Math.PI * 2);
       ctx.fill();
-      drawText(ctx, '🔨 取消', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 16, color: '#fff', bold: true });
-    } else if (this.hammerCount > 0) {
-      // 有锤子 - 使用按钮
-      ctx.fillStyle = '#4caf50';
-      this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
-      ctx.fill();
-      drawText(ctx, '使用', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 16, color: '#fff', bold: true });
+      drawText(ctx, `${this.hammerCount}`, cx + r - 4, cy - r + 4, { fontSize: 14, color: '#fff', bold: true });
     } else {
-      // 没锤子 - 答题按钮
-      ctx.fillStyle = '#ff9800';
-      this.roundRect(ctx, btnX, btnY, btnW, btnH, 10);
-      ctx.fill();
-      drawText(ctx, '🎯 答题', btnX + btnW / 2, btnY + btnH / 2, { fontSize: 16, color: '#fff', bold: true });
+      drawText(ctx, '答题', cx, cy + r + 16, { fontSize: 12, color: '#e65100', bold: true });
     }
 
-    this.hammerBarBtns = {
-      hammerBtn: { x: btnX, y: btnY, w: btnW, h: btnH },
-    };
+    this.hammerIconBtn = { x: cx - r, y: cy - r, w: r * 2, h: r * 2 + 20 };
   }
 
   drawQuizPopup(ctx, width, height) {
