@@ -653,21 +653,7 @@ class FruitGame {
         }
       }
       // 点击未放置的水果
-      for (const f of this.topFruits) {
-        if (f.removed) continue;
-        const dx = pos.x - f.x;
-        const dy = pos.y - f.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= f.radius + 20) {
-          this.hammerCount--;
-          this.hammerActive = false;
-          this.remainingFruits--;
-          playSound(SoundType.CLEAR);
-          this.createParticles(f.x, f.y, f.color);
-          this.scorePopups.push({ text: '🔨', x: f.x, y: f.y - 30, progress: 0 });
-          f.removed = true;
-          return;
-        }
-      }
+      // 锤子只能消除桶里的，不能消除空中的
       return;
     }
 
