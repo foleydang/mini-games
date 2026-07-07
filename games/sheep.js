@@ -44,7 +44,6 @@ class SheepGame {
 
     this.init();
   }
-  }
 
   init() {
     const { width, height, safeTop, safeBottom } = this.designSize;

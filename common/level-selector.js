@@ -186,10 +186,6 @@ export class LevelSelector {
     }
   }
 
-    // 关卡卡片
-    this.cards.forEach(card => this.drawCard(ctx, card));
-  }
-
   drawBottomButtons(ctx, width, height, safeBottom) {
     const buttonY = height - safeBottom - 80;
     
@@ -218,7 +214,6 @@ export class LevelSelector {
     // 这里可以添加动画效果，比如浮动动画、点击反馈等
     // 暂时留空，后续可以添加粒子效果或微动画
   }
-}
 
   drawCard(ctx, card) {
     const { x, y, width, height, level, isCompleted, isCurrent, isLocked, levelInfo } = card;

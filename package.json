@@ -5,5 +5,8 @@
   "description": "铃铛快乐屋小游戏合集",
   "creator": {
     "version": "3.8.8"
+  },
+  "devDependencies": {
+    "acorn": "^8.17.0"
   }
 }

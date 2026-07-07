@@ -859,12 +859,12 @@ renderProfile() {
     // 开关按钮
     const toggleWidth = 120;
     const toggleHeight = 36;
-    const startX = width / 2 + 50;
-    const startY = cardY + 40;
+    const toggleStartX = width / 2 + 50;
+    const toggleStartY = cardY + 40;
 
-    drawToggle(ctx, startX, startY, toggleWidth, toggleHeight, this.settings.soundEnabled, '音效');
-    drawToggle(ctx, startX, startY + 60, toggleWidth, toggleHeight, this.settings.musicEnabled, '音乐');
-    drawToggle(ctx, startX, startY + 120, toggleWidth, toggleHeight, this.settings.vibrationEnabled, '振动');
+    drawToggle(ctx, toggleStartX, toggleStartY, toggleWidth, toggleHeight, this.settings.soundEnabled, '音效');
+    drawToggle(ctx, toggleStartX, toggleStartY + 60, toggleWidth, toggleHeight, this.settings.musicEnabled, '音乐');
+    drawToggle(ctx, toggleStartX, toggleStartY + 120, toggleWidth, toggleHeight, this.settings.vibrationEnabled, '振动');
 
     // 提示文字
     drawText(ctx, '设置会自动保存', width / 2, height - safeBottom - 80, { fontSize: 22, color: '#a78bfa' });

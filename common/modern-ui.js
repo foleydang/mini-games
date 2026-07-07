@@ -85,6 +85,33 @@ export const ModernThemes = {
       surface: '#ffffff',
       gradient: ['#fef2f2', '#fee2e2'],
       themeName: '火焰'
+    },
+    
+    // 2048游戏主题
+    '2048': {
+      primary: '#f59e0b',
+      secondary: '#fbbf24',
+      bg: '#fffbeb',
+      surface: '#ffffff',
+      gradient: ['#fffbeb', '#fef3c7'],
+      numberColors: {
+        2: '#fef3c7', 4: '#fcd34d', 8: '#fbbf24', 16: '#f97316',
+        32: '#ef4444', 64: '#dc2626', 128: '#c4b5fd', 256: '#8b5cf6',
+        512: '#7c3aed', 1024: '#3b82f6', 2048: '#10b981'
+      },
+      themeName: '金橙'
+    },
+    
+    // Flappy游戏主题
+    flappy: {
+      primary: '#f59e0b',
+      secondary: '#fbbf24',
+      bg: '#fffbeb',
+      surface: '#ffffff',
+      gradient: ['#fffbeb', '#fef3c7'],
+      birdColor: '#f59e0b',
+      pipeColor: '#059669',
+      themeName: '飞翔'
     }
   },
   
@@ -132,84 +159,6 @@ export const ModernThemes = {
       gradient: ['#92400e', '#b45309'],
       text: '#fffbeb',
       textSecondary: '#fed7aa'
-    }
-  }
-},
-  'snake': {
-      snakeColor: '#059669',
-      foodColor: '#ef4444'
-    },
-    '2048': {
-      primary: '#f59e0b',
-      secondary: '#fbbf24',
-      bg: '#fffbeb',
-      surface: '#ffffff',
-      gradient: ['#fffbeb', '#fef3c7'],
-      numberColors: {
-        2: '#fef3c7', 4: '#fcd34d', 8: '#fbbf24', 16: '#f97316',
-        32: '#ef4444', 64: '#dc2626', 128: '#c4b5fd', 256: '#8b5cf6',
-        512: '#7c3aed', 1024: '#3b82f6', 2048: '#10b981'
-      }
-    },
-    tetris: {
-      primary: '#3b82f6',
-      secondary: '#60a5fa',
-      bg: '#eff6ff',
-      surface: '#ffffff',
-      gradient: ['#eff6ff', '#dbeafe'],
-      blockColors: ['#3b82f6', '#fbbf24', '#8b5cf6', '#10b981', '#f97316', '#ec4899']
-    },
-    flappy: {
-      primary: '#f59e0b',
-      secondary: '#fbbf24',
-      bg: '#fffbeb',
-      surface: '#ffffff',
-      gradient: ['#fffbeb', '#fef3c7'],
-      birdColor: '#f59e0b',
-      pipeColor: '#059669'
-    },
-    breakout: {
-      primary: '#8b5cf6',
-      secondary: '#a78bfa',
-      bg: '#faf5ff',
-      surface: '#ffffff',
-      gradient: ['#faf5ff', '#f3e8ff'],
-      ballColor: '#ef4444',
-      paddleColor: '#3b82f6'
-    },
-    memory: {
-      primary: '#06b6d4',
-      secondary: '#67e8f9',
-      bg: '#ecfeff',
-      surface: '#ffffff',
-      gradient: ['#ecfeff', '#cffafe'],
-      cardColors: ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
-    },
-    bounce: {
-      primary: '#ec4899',
-      secondary: '#f472b6',
-      bg: '#fdf2f8',
-      surface: '#ffffff',
-      gradient: ['#fdf2f8', '#fce7f3'],
-      ballColor: '#ec4899',
-      platformColor: '#3b82f6'
-    },
-    sheep: {
-      primary: '#e85d04',
-      secondary: '#f97316',
-      bg: '#fff5eb',
-      surface: '#ffffff',
-      gradient: ['#fff5eb', '#ffe0b2'],
-      cardColor: '#e85d04',
-      slotColor: '#3d1f0a'
-    },
-    fruit: {
-      primary: '#10b981',
-      secondary: '#34d399',
-      bg: '#ecfdf5',
-      surface: '#ffffff',
-      gradient: ['#ecfdf5', '#d1fae5'],
-      fruitColors: ['#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316']
     }
   }
 };

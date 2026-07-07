@@ -42,7 +42,6 @@ export default class MemoryGame {
     
     this.initGame();
   }
-  }
 
   initGame() {
     const { width, safeTop, safeBottom, height } = this.designSize;
