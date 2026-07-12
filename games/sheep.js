@@ -1,6 +1,6 @@
 // 叠叠消 - 羊了个羊风格多层堆叠消除游戏
 import { drawRoundRect, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
-import { getBackButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
+import { getBackButton, drawBottomButtons, checkBottomButtons } from '../common/ui.js';
 import { Levels } from '../common/config.js';
 
 const EMOJIS = ['🍜', '🍕', '🍔', '🍟', '🧁', '🍩', '🍺', '🍵', '🍦', '🍫', '🥤', '🍗'];
@@ -27,6 +27,11 @@ class SheepGame {
     this.backButton = getBackButton(designSize);
     this.soundEnabled = true;
 
+    // 渲染循环控制(修复返回后循环继续绘制导致的闪屏)
+    this.ended = false;
+    this.rafId = null;
+    this.dialogBtns = {};
+
     // 关卡（羊了个羊风格：只有2关）
     this.currentLevel = Math.min(level, 1);
     this.score = 0;
@@ -36,17 +41,23 @@ class SheepGame {
     this.slotSize = 80;
     this.slotGap = 10;
     this.slotY = 0;
-    this.gridStartY = 0;
 
     this.init();
   }
 
   init() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    
-    // 计算布局
-    this.slotY = height - safeBottom - 150;
-    this.gridStartY = safeTop + 280;
+
+    this.slotSize = 80;
+    this.slotGap = 10;
+
+    // 底部收集槽
+    this.slotY = height - safeBottom - 130;
+    // 道具按钮行(撤销/洗牌/重试)紧贴收集槽上方
+    this.propBtnY = this.slotY - 84;
+    // 牌堆区域:顶部按钮栏(约 safeTop+230)下方 到 道具按钮上方
+    this.pileTop = safeTop + 250;
+    this.pileBottom = this.propBtnY - 20;
 
     this.generateLevel(this.currentLevel);
     this.draw();
@@ -54,71 +65,81 @@ class SheepGame {
   }
 
   generateLevel(levelIndex) {
-    // 羊了个羊风格：第1关超简单，第2关超难
+    const { width } = this.designSize;
+
+    // 羊了个羊风格：每关由多层堆叠而成,越往上层牌越少,形成交错金字塔
+    // layers 从底层到顶层,每项为 [rows, cols]
     const configs = [
-      // 第1关：2层，3x4网格，4种图案，很容易
-      { layers: 2, rows: 3, cols: 4, emojiCount: 4, name: '新手村' },
-      // 第2关：4层，5x6网格，8种图案，很难
-      { layers: 4, rows: 5, cols: 6, emojiCount: 8, name: '地狱模式' }
+      // 第1关：底层大、顶层小,3种图案,容易
+      { layers: [[3, 4], [2, 3], [1, 2]], emojiCount: 4, name: '新手村' },
+      // 第2关：更多层数与图案,很难
+      { layers: [[5, 5], [4, 4], [3, 4], [2, 3], [1, 2]], emojiCount: 8, name: '地狱模式' }
     ];
-    
+
     const config = configs[levelIndex];
-    const { layers, rows, cols, emojiCount } = config;
+    const { layers, emojiCount } = config;
 
-    // 计算总牌数（必须是3的倍数）
-    let totalTiles = layers * rows * cols;
-    totalTiles = Math.floor(totalTiles / 3) * 3;
+    // 统计每层格子数,算出总牌数(向下取整到3的倍数)
+    let rawTotal = 0;
+    for (const [r, c] of layers) rawTotal += r * c;
+    const totalTiles = Math.floor(rawTotal / 3) * 3;
 
-    // 生成牌类型（每种图案3的倍数张）
+    // 生成牌类型:每3张同型为一组,保证一定能三消
+    const groups = totalTiles / 3;
     const types = [];
-    const pairsPerEmoji = Math.floor(totalTiles / 3 / emojiCount);
-    
-    for (let e = 0; e < emojiCount; e++) {
-      for (let p = 0; p < pairsPerEmoji; p++) {
-        types.push(e, e, e);
-      }
+    for (let g = 0; g < groups; g++) {
+      const e = g % emojiCount;
+      types.push(e, e, e);
     }
-
-    // 填充剩余位置
-    while (types.length < totalTiles) {
-      types.push(types.length % emojiCount);
-    }
-
-    // 打乱
     this.shuffleArray(types);
 
-    // 生成牌堆 - 使用更紧凑的布局
-    this.tiles = [];
-    const { width } = this.designSize;
-    
-    const layerOffsetX = 20;
-    const layerOffsetY = 15;
-    const cardGap = 8;
-    
-    const gridWidth = cols * (this.cardSize + cardGap) + (layers - 1) * layerOffsetX;
-    const startX = (width - gridWidth) / 2;
+    // 计算牌尺寸:让最大一层能塞进牌堆区域
+    const maxCols = Math.max(...layers.map(l => l[1]));
+    const maxRows = Math.max(...layers.map(l => l[0]));
+    const availW = width - 60;
+    const availH = this.pileBottom - this.pileTop;
+    this.cardSize = Math.floor(Math.min(availW / (maxCols + 0.5), availH / (maxRows + 0.5), 96));
 
+    const spacing = this.cardSize;
+    const centerX = width / 2;
+    const centerY = (this.pileTop + this.pileBottom) / 2;
+    const jitter = this.cardSize * 0.05;
+
+    // 逐层生成,每层居中并交错半格,叠出交错金字塔
+    this.tiles = [];
     let typeIndex = 0;
-    for (let layer = 0; layer < layers; layer++) {
-      const layerX = startX + layer * layerOffsetX;
-      const layerY = this.gridStartY + layer * layerOffsetY;
-      
+    for (let layer = 0; layer < layers.length; layer++) {
+      const [rows, cols] = layers[layer];
+      // 每层相对居中,交替偏移半格制造交错效果
+      const offset = (layer % 2 === 0) ? 0 : spacing * 0.5;
+      const startX = centerX - (cols * spacing) / 2 + offset * 0.5;
+      const startY = centerY - (rows * spacing) / 2 + layer * spacing * 0.18;
+
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (typeIndex >= types.length) break;
-          
           this.tiles.push({
             type: types[typeIndex],
             layer: layer,
-            row: r,
-            col: c,
-            x: layerX + c * (this.cardSize + cardGap),
-            y: layerY + r * (this.cardSize + cardGap),
+            x: startX + c * spacing + (Math.random() - 0.5) * jitter,
+            y: startY + r * spacing + (Math.random() - 0.5) * jitter,
             removed: false
           });
           typeIndex++;
         }
       }
+    }
+
+    // 剩余未放置的牌(极少数)追加到顶层随机位置
+    while (typeIndex < types.length) {
+      this.tiles.push({
+        type: types[typeIndex],
+        layer: layers.length,
+        x: centerX - spacing / 2 + (Math.random() - 0.5) * spacing * 2,
+        y: centerY + (Math.random() - 0.5) * spacing,
+        removed: false
+      });
+      typeIndex++;
     }
 
     this.slot = [];
@@ -289,48 +310,97 @@ class SheepGame {
     // 收集槽
     this.drawSlot();
 
-    // 游戏结束覆盖层
-    if (this.gameWon) {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '🎉 通关！', width / 2, height / 2 - 80, { fontSize: 56, color: '#fbbf24', bold: true });
-      drawText(ctx, `分数: ${this.score}`, width / 2, height / 2 - 10, { fontSize: 36, color: '#fff' });
-      
-      if (this.currentLevel === 0) {
-        drawText(ctx, '准备好挑战地狱模式了吗？', width / 2, height / 2 + 50, { fontSize: 28, color: '#fbbf24' });
-      } else {
-        drawText(ctx, '你是真正的高手！', width / 2, height / 2 + 50, { fontSize: 28, color: '#fbbf24' });
-      }
-      
-      drawHint(ctx, this.designSize, '点击返回');
-    } else if (this.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '失败了 😢', width / 2, height / 2 - 80, { fontSize: 56, color: '#ef4444', bold: true });
-      drawText(ctx, `分数: ${this.score}`, width / 2, height / 2 - 10, { fontSize: 36, color: '#fff' });
-      drawText(ctx, '收集槽已满，再试一次吧！', width / 2, height / 2 + 50, { fontSize: 28, color: '#fbbf24' });
-      drawHint(ctx, this.designSize, '点击返回');
+    // 游戏结算对话框
+    if (this.gameWon || this.gameOver) {
+      this.drawDialog(this.gameWon);
+    }
+  }
+
+  drawDialog(isWin) {
+    const ctx = this.ctx;
+    const { width, height } = this.designSize;
+    const cx = width / 2;
+
+    // 遮罩
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, width, height);
+
+    // 面板
+    const panelW = 580;
+    const panelH = 440;
+    const panelX = (width - panelW) / 2;
+    const panelY = (height - panelH) / 2;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 8;
+    drawRoundRect(ctx, panelX, panelY, panelW, panelH, 28, '#fff8f0');
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    drawRoundRect(ctx, panelX, panelY, panelW, panelH, 28, null, '#e85d04', 4);
+
+    const isLastLevel = this.currentLevel >= 1;
+
+    if (isWin) {
+      drawText(ctx, '🎉', cx, panelY + 95, { fontSize: 76 });
+      drawText(ctx, isLastLevel ? '全部通关！' : '通关成功！', cx, panelY + 180, { fontSize: 46, color: '#e85d04', bold: true });
+      drawText(ctx, `得分 ${this.score}`, cx, panelY + 240, { fontSize: 34, color: '#8b5a2b', bold: true });
+      drawText(ctx, isLastLevel ? '你是真正的高手！' : '准备好挑战地狱模式了吗？', cx, panelY + 288, { fontSize: 26, color: '#a0691f' });
+    } else {
+      drawText(ctx, '😢', cx, panelY + 95, { fontSize: 76 });
+      drawText(ctx, '挑战失败', cx, panelY + 180, { fontSize: 46, color: '#ef4444', bold: true });
+      drawText(ctx, `得分 ${this.score}`, cx, panelY + 240, { fontSize: 34, color: '#8b5a2b', bold: true });
+      drawText(ctx, '收集槽满了，再试一次吧', cx, panelY + 288, { fontSize: 26, color: '#a0691f' });
+    }
+
+    // 按钮
+    const btnW = 230;
+    const btnH = 74;
+    const btnY = panelY + panelH - btnH - 44;
+    const gap = 32;
+    this.dialogBtns = {};
+
+    if (isWin && !isLastLevel) {
+      const leftX = cx - btnW - gap / 2;
+      const rightX = cx + gap / 2;
+      this.dialogBtns.next = { x: leftX, y: btnY, width: btnW, height: btnH };
+      this.dialogBtns.back = { x: rightX, y: btnY, width: btnW, height: btnH };
+      this.drawStyledButton(ctx, leftX, btnY, btnW, btnH, '下一关 →', '#10b981');
+      this.drawStyledButton(ctx, rightX, btnY, btnW, btnH, '返回', '#8b5cf6');
+    } else if (isWin) {
+      const bx = cx - btnW / 2;
+      this.dialogBtns.back = { x: bx, y: btnY, width: btnW, height: btnH };
+      this.drawStyledButton(ctx, bx, btnY, btnW, btnH, '返回', '#8b5cf6');
+    } else {
+      const leftX = cx - btnW - gap / 2;
+      const rightX = cx + gap / 2;
+      this.dialogBtns.retry = { x: leftX, y: btnY, width: btnW, height: btnH };
+      this.dialogBtns.back = { x: rightX, y: btnY, width: btnW, height: btnH };
+      this.drawStyledButton(ctx, leftX, btnY, btnW, btnH, '🔁 重试', '#ef4444');
+      this.drawStyledButton(ctx, rightX, btnY, btnW, btnH, '返回', '#8b5cf6');
     }
   }
 
   drawActionButtons() {
     const ctx = this.ctx;
     const { width } = this.designSize;
-    const btnY = this.gridStartY - 60;
-    const btnHeight = 44;
-    const btnWidth = 120;
-    const gap = 20;
+    const btnY = this.propBtnY;
+    const btnHeight = 56;
+    const btnWidth = 150;
+    const gap = 24;
+    const totalW = btnWidth * 3 + gap * 2;
+    const startX = (width - totalW) / 2;
 
     // 撤销按钮
-    this.undoBtn = { x: width / 2 - btnWidth - gap - btnWidth / 2, y: btnY, width: btnWidth, height: btnHeight };
+    this.undoBtn = { x: startX, y: btnY, width: btnWidth, height: btnHeight };
     this.drawStyledButton(ctx, this.undoBtn.x, this.undoBtn.y, btnWidth, btnHeight, '↩ 撤销', '#8b5cf6');
 
     // 洗牌按钮
-    this.shuffleBtn = { x: width / 2 - btnWidth / 2, y: btnY, width: btnWidth, height: btnHeight };
+    this.shuffleBtn = { x: startX + btnWidth + gap, y: btnY, width: btnWidth, height: btnHeight };
     this.drawStyledButton(ctx, this.shuffleBtn.x, this.shuffleBtn.y, btnWidth, btnHeight, '🔄 洗牌', '#3b82f6');
 
     // 重试按钮
-    this.retryBtn = { x: width / 2 + gap + btnWidth / 2, y: btnY, width: btnWidth, height: btnHeight };
+    this.retryBtn = { x: startX + (btnWidth + gap) * 2, y: btnY, width: btnWidth, height: btnHeight };
     this.drawStyledButton(ctx, this.retryBtn.x, this.retryBtn.y, btnWidth, btnHeight, '🔁 重试', '#ef4444');
   }
 
@@ -357,51 +427,45 @@ class SheepGame {
   drawTiles() {
     const ctx = this.ctx;
     const maxLayer = Math.max(...this.tiles.filter(t => !t.removed).map(t => t.layer), 0);
+    const size = this.cardSize;
+    const inset = size * 0.06;
 
-    // 从底层到顶层绘制
+    // 从底层到顶层绘制,统一牌尺寸,靠阴影和遮罩体现层次
     for (let layer = 0; layer <= maxLayer; layer++) {
       const layerTiles = this.tiles.filter(t => !t.removed && t.layer === layer);
 
       for (const tile of layerTiles) {
         const clickable = this.isTileClickable(tile);
-        const layerRatio = (layer + 1) / (maxLayer + 1);
+        const drawX = tile.x + inset;
+        const drawY = tile.y + inset;
+        const s = size - inset * 2;
+        const cx = tile.x + size / 2;
+        const cy = tile.y + size / 2;
 
-        // 上层牌更大更亮
-        const scale = 0.75 + 0.25 * layerRatio;
-        const alpha = 0.5 + 0.5 * layerRatio;
-        const size = this.cardSize * scale;
+        // 立体阴影(所有牌都有,营造堆叠厚度)
+        ctx.shadowColor = 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 4;
 
-        const cx = tile.x + this.cardSize / 2;
-        const cy = tile.y + this.cardSize / 2;
-        const drawX = cx - size / 2;
-        const drawY = cy - size / 2;
-
-        ctx.globalAlpha = alpha;
-
-        // 阴影效果
-        if (clickable) {
-          ctx.shadowColor = 'rgba(0,0,0,0.4)';
-          ctx.shadowBlur = 6;
-          ctx.shadowOffsetY = 2;
-        }
-
-        // 牌背景
-        const bgColor = clickable ? '#ffffff' : '#e5e7eb';
-        const borderColor = clickable ? '#e85d04' : '#9ca3af';
-        drawRoundRect(ctx, drawX, drawY, size, size, 10, bgColor, borderColor, clickable ? 2.5 : 1);
+        const bgColor = '#ffffff';
+        const borderColor = clickable ? '#e85d04' : '#d1a17a';
+        drawRoundRect(ctx, drawX, drawY, s, s, 12, bgColor, borderColor, clickable ? 3 : 1.5);
 
         ctx.shadowBlur = 0;
         ctx.shadowOffsetY = 0;
 
         // Emoji
         const emoji = EMOJIS[tile.type];
-        ctx.font = `${Math.floor(size * 0.55)}px sans-serif`;
+        ctx.font = `${Math.floor(s * 0.58)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000';
         ctx.fillText(emoji, cx, cy);
 
-        ctx.globalAlpha = 1;
+        // 被覆盖的牌加一层灰色遮罩,提示不可点击
+        if (!clickable) {
+          drawRoundRect(ctx, drawX, drawY, s, s, 12, 'rgba(120,120,120,0.45)');
+        }
       }
     }
   }
@@ -453,21 +517,23 @@ class SheepGame {
   }
 
   onTouchStart(pos) {
+    // 结算对话框优先:只有点到对话框按钮才响应,点击别处不做任何事(避免误触返回)
+    if (this.gameOver || this.gameWon) {
+      const b = this.dialogBtns || {};
+      if (b.next && this.isPointInRect(pos, b.next)) { this.nextLevel(); return; }
+      if (b.retry && this.isPointInRect(pos, b.retry)) { this.retry(); return; }
+      if (b.back && this.isPointInRect(pos, b.back)) { this.exitGame(); return; }
+      return;
+    }
+
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
-      RankData.save(this.gameId, this.score);
-      this.onEnd({ score: this.score, passed: false });
+      this.exitGame();
       return;
     }
     if (btn === 'soundBtn') {
       this.soundEnabled = !this.soundEnabled;
       this.draw();
-      return;
-    }
-
-    if (this.gameOver || this.gameWon) {
-      RankData.save(this.gameId, this.score);
-      this.onEnd({ score: this.score, passed: this.gameWon });
       return;
     }
 
@@ -488,22 +554,16 @@ class SheepGame {
       return;
     }
 
-    // 点击牌（从顶层开始）
+    // 点击牌（从顶层开始,命中第一张可点击的牌）
     const maxLayer = Math.max(...this.tiles.filter(t => !t.removed).map(t => t.layer), 0);
+    const size = this.cardSize;
 
     for (let layer = maxLayer; layer >= 0; layer--) {
       const layerTiles = this.tiles.filter(t => !t.removed && t.layer === layer);
 
       for (const tile of layerTiles) {
-        const scale = 0.75 + 0.25 * ((layer + 1) / (maxLayer + 1));
-        const size = this.cardSize * scale;
-        const cx = tile.x + this.cardSize / 2;
-        const cy = tile.y + this.cardSize / 2;
-        const drawX = cx - size / 2;
-        const drawY = cy - size / 2;
-
-        if (pos.x >= drawX && pos.x <= drawX + size &&
-            pos.y >= drawY && pos.y <= drawY + size) {
+        if (pos.x >= tile.x && pos.x <= tile.x + size &&
+            pos.y >= tile.y && pos.y <= tile.y + size) {
           this.pickTile(tile);
           return;
         }
@@ -517,18 +577,42 @@ class SheepGame {
   }
 
   startLoop() {
+    this.ended = false;
     const loop = () => {
-      if (this.gameOver || this.gameWon) return;
+      if (this.ended || this.gameOver || this.gameWon) return;
       this.draw();
-      requestAnimationFrame(loop);
+      this.rafId = requestAnimationFrame(loop);
     };
-    loop();
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  exitGame() {
+    this.ended = true;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    RankData.save(this.gameId, this.score);
+    this.onEnd({ score: this.score, passed: this.gameWon });
+  }
+
+  nextLevel() {
+    this.currentLevel = Math.min(this.currentLevel + 1, 1);
+    this.generateLevel(this.currentLevel);
+    this.draw();
+    this.startLoop();
+  }
+
+  retry() {
+    this.generateLevel(this.currentLevel);
+    this.draw();
+    this.startLoop();
   }
 
   onTouchMove(pos) {}
   onTouchEnd(pos) {}
   update() {}
-  destroy() {}
+  destroy() {
+    this.ended = true;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+  }
 }
 
 export default SheepGame;

@@ -37,28 +37,39 @@ export default class MemoryGame {
     this.rows = cfg.rows;
     this.totalPairs = cfg.pairs;
     
-    this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F7DC6F', '#BB8FCE'];
-    this.symbols = ['★', '♦', '♣', '♠', '♥', '●', '▲', '■'];
+    this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F7DC6F', '#BB8FCE',
+                       '#FF9F43', '#54A0FF', '#5F27CD', '#00D2D3', '#EE5253', '#10AC84', '#F368E0'];
+    this.symbols = ['🍎', '🍌', '🍇', '🍓', '🍑', '🍉', '🥝', '🍍',
+                    '🥥', '🍒', '🥑', '🌽', '🍅', '🍆', '🥕'];
     
     this.initGame();
   }
 
   initGame() {
     const { width, safeTop, safeBottom, height } = this.designSize;
-    
-    // 更大的卡片布局
-    const cols = 4;
-    const rows = 4;
-    this.totalPairs = 8;
-    
-    const gameAreaTop = this.backButton.y + 80;
-    const gameAreaBottom = height - safeBottom - 100;
+
+    // 使用关卡配置的行列(之前被硬编码为 4x4,导致所有关卡一样)
+    const cols = this.cols;
+    const rows = this.rows;
+
+    const gameAreaTop = safeTop + 250;
+    const gameAreaBottom = height - safeBottom - 40;
     const gameAreaHeight = gameAreaBottom - gameAreaTop;
-    
+
     const padding = 20;
     const gap = 12;
-    const cardWidth = (width - padding * 2 - gap * (cols - 1)) / cols;
-    const cardHeight = (gameAreaHeight - gap * (rows - 1)) / rows;
+    // 正方形卡片:取宽高中较小值,保证不同行列都能放下
+    const maxCardW = (width - padding * 2 - gap * (cols - 1)) / cols;
+    const maxCardH = (gameAreaHeight - gap * (rows - 1)) / rows;
+    const cardSize = Math.floor(Math.min(maxCardW, maxCardH));
+    const cardWidth = cardSize;
+    const cardHeight = cardSize;
+
+    // 整体居中
+    const gridW = cols * cardWidth + gap * (cols - 1);
+    const gridH = rows * cardHeight + gap * (rows - 1);
+    const startX = (width - gridW) / 2;
+    const startY = gameAreaTop + (gameAreaHeight - gridH) / 2;
     
     const symbols = this.symbols.slice(0, this.totalPairs);
     const pairs = [...symbols, ...symbols];
@@ -74,8 +85,8 @@ export default class MemoryGame {
       const col = i % cols;
       const row = Math.floor(i / cols);
       this.cards.push({
-        x: padding + col * (cardWidth + gap),
-        y: gameAreaTop + row * (cardHeight + gap),
+        x: startX + col * (cardWidth + gap),
+        y: startY + row * (cardHeight + gap),
         width: cardWidth,
         height: cardHeight,
         symbol: pairs[i],

@@ -185,8 +185,10 @@ class FruitGame {
 
       // 放置区域：斜坡上方（safeTop+130 到 slopeTopY-10），左右分区
       const { safeTop } = this.designSize;
-      const areaTop = safeTop + 130;
-      const areaBottom = this.slopeTopY - 10;
+      // 按钮栏底部约 safeTop+230，等待水果需整体落在其下方,避免超出返回按钮
+      const areaTop = safeTop + 240 + this.fruitRadius;
+      // 限制成一个紧凑的横带,不要一路铺到斜坡(避免过于分散)
+      const areaBottom = Math.min(this.slopeTopY - 10, areaTop + this.fruitRadius * 9);
       
       for (let attempt = 0; attempt < 50; attempt++) {
         let x, y;
@@ -261,10 +263,19 @@ class FruitGame {
   }
 
   update(dt) {
-    // 水果互相碰撞
+    // 水果互相碰撞（掉落中的水果之间）
     for (let i = 0; i < this.fruits.length; i++) {
       for (let j = i + 1; j < this.fruits.length; j++) {
         this.resolveCollision(this.fruits[i], this.fruits[j]);
+      }
+    }
+
+    // 掉落水果撞到还在等待的水果（这些作为障碍/挂钉，让下落更有物理趣味）
+    for (const f of this.fruits) {
+      if (f.settled) continue;
+      for (const peg of this.topFruits) {
+        if (peg.removed) continue;
+        this.resolvePegCollision(f, peg);
       }
     }
 
@@ -460,6 +471,35 @@ class FruitGame {
       } else if (b.settled && !a.settled) {
         a.vy = -Math.abs(a.vy) * 0.3;
       }
+    }
+  }
+
+  // 掉落水果 f 撞到等待中的水果 peg（peg 不可动，充当障碍/挂钉，f 被推开并反弹滑走）
+  resolvePegCollision(f, peg) {
+    const dx = f.x - peg.x;
+    const dy = f.y - peg.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const minDist = f.radius + peg.radius;
+    if (dist >= minDist || dist <= 0.1) return;
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+    const overlap = minDist - dist;
+
+    // 把掉落水果推出障碍
+    f.x += nx * overlap;
+    f.y += ny * overlap;
+
+    // 沿法线反弹，切向分量保留 → 会沿着障碍滑开
+    const vn = f.vx * nx + f.vy * ny;
+    if (vn < 0) {
+      f.vx -= (1 + BOUNCE) * vn * nx;
+      f.vy -= (1 + BOUNCE) * vn * ny;
+    }
+
+    // 避免正好压在障碍顶部原地弹跳：给一点横向推力让它滑落
+    if (Math.abs(nx) < 0.25) {
+      f.vx += (f.x < peg.x ? -1 : 1) * 0.6;
     }
   }
 
@@ -722,7 +762,7 @@ class FruitGame {
     }
 
     // 锤子图标（桶左边）
-    this.drawHammerIcon(ctx, this.bucketLeft - this.bucketWallThick - 30, this.bucketTop + 60);
+    this.drawHammerIcon(ctx, this.bucketLeft - this.bucketWallThick - 46, this.bucketBottom - 54);
 
     // 标准按钮栏
     this.buttons = this.drawButtons(ctx, safeTop);
@@ -1011,33 +1051,38 @@ class FruitGame {
   }
 
   drawHammerIcon(ctx, cx, cy) {
-    // 锤子按钮
-    const r = 22;
-    ctx.fillStyle = this.hammerActive ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.85)';
-    ctx.strokeStyle = this.hammerActive ? '#b91c1c' : '#8b5a2b';
-    ctx.lineWidth = 2;
+    // 锤子按钮（功能按钮：视觉半径 r 同时决定点击热区 hammerIconBtn）
+    const r = 30;
+    ctx.shadowColor = 'rgba(0,0,0,0.25)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = this.hammerActive ? 'rgba(239,68,68,0.95)' : 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = this.hammerActive ? '#b91c1c' : '#e65100';
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
 
-    ctx.font = '28px sans-serif';
+    ctx.font = `${Math.round(r * 1.15)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🔨', cx, cy - 2);
+    ctx.fillText('🔨', cx, cy - 1);
 
     // 数量角标
     if (this.hammerCount > 0) {
       ctx.fillStyle = '#e65100';
       ctx.beginPath();
-      ctx.arc(cx + r - 4, cy - r + 4, 10, 0, Math.PI * 2);
+      ctx.arc(cx + r - 6, cy - r + 6, 12, 0, Math.PI * 2);
       ctx.fill();
-      drawText(ctx, `${this.hammerCount}`, cx + r - 4, cy - r + 4, { fontSize: 14, color: '#fff', bold: true });
+      drawText(ctx, `${this.hammerCount}`, cx + r - 6, cy - r + 6, { fontSize: 16, color: '#fff', bold: true });
     } else {
-      drawText(ctx, '答题', cx, cy + r + 16, { fontSize: 12, color: '#e65100', bold: true });
+      drawText(ctx, '答题', cx, cy + r + 14, { fontSize: 13, color: '#e65100', bold: true });
     }
 
-    this.hammerIconBtn = { x: cx - r, y: cy - r, w: r * 2, h: r * 2 + 20 };
+    this.hammerIconBtn = { x: cx - r, y: cy - r, w: r * 2, h: r * 2 + 18 };
   }
 
   drawQuizPopup(ctx, width, height) {

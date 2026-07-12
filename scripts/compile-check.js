@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Mini-Games 编译检查脚本
  * 用于在提交前检查JavaScript语法错误

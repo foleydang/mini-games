@@ -36,7 +36,12 @@
   "condition": {},
   "compileType": "game",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "scripts"
+      }
+    ],
     "include": []
   },
   "isGameTourist": false,

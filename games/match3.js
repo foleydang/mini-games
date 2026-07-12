@@ -55,11 +55,23 @@ class Match3Game {
   }
 
   init() {
+    const { width, height, safeTop, safeBottom } = this.designSize;
+
+    // 棋盘可用区域:HUD(标题/分数/按钮)下方 到 底部安全区上方
+    const areaTop = safeTop + 250;
+    const areaBottom = height - safeBottom - 40;
+    const availW = width - 60;
+    const availH = areaBottom - areaTop;
+
+    // 根据行列自适应格子大小,保证整个棋盘都能放下
+    this.cellSize = Math.floor(Math.min(availW / this.cols, availH / this.rows));
+
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
-    this.gridStartX = (this.designSize.width - gridWidth) / 2;
-    this.gridStartY = this.backButton.y + 80;
-    
+    this.gridStartX = (width - gridWidth) / 2;
+    // 在可用区域内垂直居中
+    this.gridStartY = areaTop + (availH - gridHeight) / 2;
+
     this.initGrid();
     this.draw();
   }
