@@ -99,7 +99,7 @@ export default class MemoryGame {
     const { width, safeTop, height, safeBottom } = this.designSize;
     
     ctx.clearRect(0, 0, width, height);
-    drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
+    drawGradientBg(ctx, width, height, '#f0f9ff', '#e0f2fe', '#06b6d4' + '11');
     
     drawText(ctx, '翻牌配对', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
     drawText(ctx, '步数: ' + this.moves + '  配对: ' + this.matchedPairs + '/' + this.totalPairs, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });

@@ -153,7 +153,8 @@ export default class BreakoutGame {
   }
 
   render() {
-    const { width, height, safeTop, safeBottom } = this.designSize;drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    const { width, height, safeTop, safeBottom } = this.designSize;
+    drawGradientBg(this.ctx, width, height, this.theme.gradient[0], this.theme.gradient[1], this.theme.primary + '11');
     // 底部按钮在后面统一绘制
 
     drawText(this.ctx, '打砖块', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });

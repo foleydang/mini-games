@@ -264,7 +264,7 @@ class SheepGame {
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    drawGradientBg(ctx, width, height, '#fff5eb', '#ffcba4');
+    drawGradientBg(ctx, width, height, '#fff5eb', '#ffe4c4', '#8b5cf6' + '08');
 
     // 标题和关卡信息
     const levelNames = ['新手村', '地狱模式'];

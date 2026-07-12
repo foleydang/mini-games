@@ -162,7 +162,7 @@ export default class FlappyGame {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    drawGradientBg(this.ctx, width, height, this.theme.gradient[0], this.theme.gradient[1], this.theme.primary + '11');
 
     drawText(this.ctx, '飞鸟', width / 2, safeTop + 50, { fontSize: 48, color: this.theme.primary, bold: true });
     const milestone = this.getCurrentMilestone();

@@ -92,17 +92,16 @@ class MainGame {
   initCards() {
     const { width, height, safeTop, safeBottom } = this.designSize;
     const cols = 2;
-    const rows = 4;
-    const cardGapH = 40;
-    const cardGapV = 80;
-    const paddingX = 30;
+    const cardGapH = 24;
+    const cardGapV = 32;
+    const paddingX = 24;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    const cardHeight = 120;
+    const cardHeight = 92;
 
     const startX = paddingX;
-    const startY = safeTop + 320;
+    const startY = safeTop + 270;
 
     Games.forEach((game, index) => {
       const col = index % cols;
@@ -122,26 +121,20 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
-          x: cardX + 20,
-          y: cardY + cardHeight + 5,
-          width: cardWidth - 40,
-          height: 36
-        },
-        playBtn: {
-          x: cardX + 20,
-          y: cardY + cardHeight + 50,
-          width: cardWidth - 40,
-          height: 36
+          x: cardX + cardWidth - 76,
+          y: cardY + cardHeight - 32,
+          width: 60,
+          height: 24
         }
       });
     });
 
     // 设置按钮位置
     this.settingsBtn = {
-      x: width - 120,
-      y: safeTop + 165,
-      width: 90,
-      height: 45
+      x: width - 100,
+      y: safeTop + 160,
+      width: 80,
+      height: 38
     };
   }
 
@@ -484,27 +477,27 @@ class MainGame {
   drawBg(width, height) {
     const ctx = this.ctx;
     
-    // 使用现代化渐变背景
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, '#fdf4ff');
-    gradient.addColorStop(0.5, '#fae8ff');
-    gradient.addColorStop(1, '#e9d5ff');
+    // 现代渐变背景
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#f5f3ff');
+    gradient.addColorStop(0.5, '#ede9fe');
+    gradient.addColorStop(1, '#ddd6fe');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
     
-    // 添加装饰粒子
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#c4b5fd';
+    // 装饰圆 - 更柔和
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = '#8b5cf6';
     ctx.beginPath();
-    ctx.arc(width * 0.2, height * 0.3, 100, 0, Math.PI * 2);
+    ctx.arc(width * 0.15, height * 0.25, 110, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#a78bfa';
+    ctx.fillStyle = '#ec4899';
     ctx.beginPath();
-    ctx.arc(width * 0.8, height * 0.6, 120, 0, Math.PI * 2);
+    ctx.arc(width * 0.85, height * 0.6, 130, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#f472b6';
+    ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
-    ctx.arc(width * 0.5, height * 0.8, 80, 0, Math.PI * 2);
+    ctx.arc(width * 0.5, height * 0.85, 90, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -522,32 +515,32 @@ class MainGame {
     drawParticles(this.ctx, this.particles);
 
     // 现代化标题
-    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 150, { fontSize: 52, color: '#7c3aed', bold: true });
-    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 195, { fontSize: 28, color: '#a78bfa' });
+    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 120, { fontSize: 46, color: '#7c3aed', bold: true });
+    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 160, { fontSize: 24, color: '#a78bfa' });
 
     // 右上角按钮区域（设置 + 我的）
     // 我的按钮（上方）
-    const myBtnX = width - 120;
-    const myBtnY = safeTop + 110;
-    drawModernButton(this.ctx, myBtnX, myBtnY, 90, 45, '我的', ModernThemes.primary, {
-      fontSize: 24,
+    const myBtnX = width - 100;
+    const myBtnY = safeTop + 108;
+    drawModernButton(this.ctx, myBtnX, myBtnY, 80, 38, '我的', ModernThemes.primary, {
+      fontSize: 22,
       icon: '👤'
     });
-    this.myButton = { x: myBtnX, y: myBtnY, width: 90, height: 45 };
+    this.myButton = { x: myBtnX, y: myBtnY, width: 80, height: 38 };
     
     // 设置按钮（下方）
-    this.settingsBtn.x = width - 120;
-    this.settingsBtn.y = safeTop + 165;
-    this.settingsBtn.width = 90;
-    this.settingsBtn.height = 45;
+    this.settingsBtn.x = width - 100;
+    this.settingsBtn.y = safeTop + 152;
+    this.settingsBtn.width = 80;
+    this.settingsBtn.height = 38;
     drawModernButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', ModernThemes.primary, {
-      fontSize: 24,
+      fontSize: 22,
       icon: '⚙️'
     });
 
     this.cards.forEach((card, index) => this.drawModernGameCard(card, index));
 
-    drawText(this.ctx, '点击卡片开始游戏', width / 2, height - safeBottom - 35, { fontSize: 22, color: '#c4b5fd' });
+    drawText(this.ctx, '🎮 点击卡片开始游戏', width / 2, height - safeBottom - 25, { fontSize: 20, color: '#c4b5fd' });
   }
 
   // 现代化游戏卡片
@@ -557,16 +550,16 @@ class MainGame {
 
     // 卡片阴影 + 渐变背景
     ctx.save();
-    ctx.shadowColor = `rgba(0, 0, 0, 0.12)`;
-    ctx.shadowBlur = 16;
-    ctx.shadowOffsetY = 6;
+    ctx.shadowColor = `rgba(0, 0, 0, 0.10)`;
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
 
     // 渐变卡片底色
-    const cardGradient = ctx.createLinearGradient(x, y, x, y + height);
+    const cardGradient = ctx.createLinearGradient(x, y, x + width, y + height);
     cardGradient.addColorStop(0, theme.surface || '#ffffff');
     cardGradient.addColorStop(1, theme.bg || '#faf5ff');
     ctx.fillStyle = cardGradient;
-    drawRoundRect(ctx, x, y, width, height, 20);
+    drawRoundRect(ctx, x, y, width, height, 14);
     ctx.fill();
 
     // 左侧彩色装饰条
@@ -576,26 +569,26 @@ class MainGame {
     barGradient.addColorStop(0, theme.primary);
     barGradient.addColorStop(1, theme.secondary || theme.primary);
     ctx.fillStyle = barGradient;
-    drawRoundRect(ctx, x, y, 8, height, 4);
+    drawRoundRect(ctx, x, y, 6, height, 3);
     ctx.fill();
 
     // 卡片边框
-    ctx.strokeStyle = theme.primary + '33';
-    ctx.lineWidth = 1.5;
-    drawRoundRect(ctx, x, y, width, height, 20);
+    ctx.strokeStyle = theme.primary + '22';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, x, y, width, height, 14);
     ctx.stroke();
     ctx.restore();
 
     // 游戏图标圆形背景
-    const iconX = x + 55;
+    const iconX = x + 44;
     const iconY = y + height / 2;
-    const iconRadius = 28;
+    const iconRadius = 22;
 
     ctx.save();
-    ctx.shadowColor = theme.primary + '66';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    const iconGradient = ctx.createRadialGradient(iconX - 8, iconY - 8, 2, iconX, iconY, iconRadius);
+    ctx.shadowColor = theme.primary + '55';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    const iconGradient = ctx.createRadialGradient(iconX - 6, iconY - 6, 2, iconX, iconY, iconRadius);
     iconGradient.addColorStop(0, theme.secondary || theme.primary);
     iconGradient.addColorStop(1, theme.primary);
     ctx.fillStyle = iconGradient;
@@ -608,28 +601,37 @@ class MainGame {
     drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, '#fff', game.shape);
 
     // 游戏名称
-    drawText(ctx, game.name, x + 100, y + 38, { fontSize: 30, color: '#1e293b', bold: true, align: 'left' });
+    drawText(ctx, game.name, x + 80, y + 30, { fontSize: 26, color: '#1e293b', bold: true, align: 'left' });
     // 描述
-    drawText(ctx, game.desc, x + 100, y + 72, { fontSize: 20, color: '#64748b', align: 'left' });
+    drawText(ctx, game.desc, x + 80, y + 58, { fontSize: 18, color: '#94a3b8', align: 'left' });
 
     // 关卡类型标签
     const tagText = game.type === 'levels' ? '关卡' : '无限';
-    const tagColor = game.type === 'levels' ? '#8b5cf6' : '#10b981';
-    ctx.font = 'bold 18px "PingFang SC", sans-serif';
-    const tagWidth = ctx.measureText(tagText).width + 24;
-    drawRoundRect(ctx, x + width - tagWidth - 15, y + 15, tagWidth, 30, 15, tagColor + '22');
+    const tagColor = game.type === 'levels' ? theme.primary : '#10b981';
+    ctx.font = 'bold 16px "PingFang SC", sans-serif';
+    const tagWidth = ctx.measureText(tagText).width + 20;
+    drawRoundRect(ctx, x + 80, y + 68, tagWidth, 22, 11, tagColor + '1a');
     ctx.fillStyle = tagColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(tagText, x + width - tagWidth / 2 - 15, y + 30);
+    ctx.fillText(tagText, x + 80 + tagWidth / 2, y + 79);
 
-    // 排行榜按钮
-    drawModernButton(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, '🏆 排行', theme, {
-      fontSize: 22,
-      radius: 14,
-      shadow: false,
-      gradient: true
-    });
+    // 排行榜按钮（卡片内右下角）
+    ctx.save();
+    const rbGradient = ctx.createLinearGradient(rankBtn.x, rankBtn.y, rankBtn.x, rankBtn.y + rankBtn.height);
+    rbGradient.addColorStop(0, theme.primary);
+    rbGradient.addColorStop(1, theme.secondary || theme.primary);
+    ctx.fillStyle = rbGradient;
+    drawRoundRect(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 12);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🏆', rankBtn.x + rankBtn.width / 2 - 8, rankBtn.y + rankBtn.height / 2);
+    ctx.font = 'bold 13px "PingFang SC", sans-serif';
+    ctx.fillText('排行', rankBtn.x + rankBtn.width / 2 + 8, rankBtn.y + rankBtn.height / 2);
+    ctx.restore();
   }
 renderProfile() {
     const { width, height, safeTop, safeBottom } = this.designSize;

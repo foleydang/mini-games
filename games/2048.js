@@ -218,7 +218,7 @@ export default class Game2048 {
 
   render() {
     const { width, height, safeTop, safeBottom } = this.designSize;
-    drawGradientBg(this.ctx, width, height, this.theme.bg, '#ffffff');
+    drawGradientBg(this.ctx, width, height, this.theme.gradient[0], this.theme.gradient[1], this.theme.primary + '11');
 
     // 标题区域 - 分两行，避免重叠
     drawText(this.ctx, '2048', width / 2, safeTop + 55, { fontSize: 52, color: this.theme.primary, bold: true });

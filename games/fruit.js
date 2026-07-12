@@ -57,6 +57,7 @@ class FruitGame {
     this.bucketRight = this.bucketCenterX + this.bucketHalfWidth;
     this.bucketWallThick = 14;
     // 桶底部贴着屏幕最下方
+    this.bucketCapacity = 4; // 桶最多容纳4个水果
     this.bucketBottom = height - safeBottom;
     this.bucketTop = this.bucketBottom - this.fruitRadius * 2 * this.bucketCapacity;
     this.bucketHeight = this.bucketBottom - this.bucketTop;
@@ -690,12 +691,12 @@ class FruitGame {
     const ctx = this.ctx;
     const { width, height, safeTop } = this.designSize;
 
-    // 暖色背景
+    // 清新暖色背景
     const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-    bgGradient.addColorStop(0, '#fef9e7');
-    bgGradient.addColorStop(0.4, '#fdebd0');
-    bgGradient.addColorStop(0.7, '#fad7a1');
-    bgGradient.addColorStop(1, '#e8c87a');
+    bgGradient.addColorStop(0, '#fff8e7');
+    bgGradient.addColorStop(0.35, '#fde8d0');
+    bgGradient.addColorStop(0.7, '#f9d89a');
+    bgGradient.addColorStop(1, '#e8b86a');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, width, height);
 
@@ -703,21 +704,21 @@ class FruitGame {
     this.drawDecorations(ctx, width, height);
 
     // 标题
-    ctx.shadowColor = 'rgba(0,0,0,0.15)';
-    ctx.shadowBlur = 4;
+    ctx.shadowColor = 'rgba(0,0,0,0.12)';
+    ctx.shadowBlur = 3;
     ctx.shadowOffsetY = 1;
-    drawText(ctx, '🍎 水果消消乐', width / 2, safeTop + 40, { fontSize: 40, color: '#e65100', bold: true });
+    drawText(ctx, '🍎 水果消消乐', width / 2, safeTop + 38, { fontSize: 36, color: '#c4390a', bold: true });
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
     // 信息行
-    drawText(ctx, `分数: ${this.score}`, width / 2 - 80, safeTop + 85, { fontSize: 24, color: '#bf360c', bold: true });
+    drawText(ctx, `分数: ${this.score}`, width / 2 - 70, safeTop + 78, { fontSize: 22, color: '#a3330a', bold: true });
     
     const remaining = this.topFruits.filter(f => !f.removed).length + this.fruits.length;
-    drawText(ctx, `剩余: ${remaining}`, width / 2 + 80, safeTop + 85, { fontSize: 24, color: '#bf360c', bold: true });
+    drawText(ctx, `剩余: ${remaining}`, width / 2 + 70, safeTop + 78, { fontSize: 22, color: '#a3330a', bold: true });
     
     if (this.combo > 1) {
-      drawText(ctx, `🔥 连击 x${this.combo}`, width / 2, safeTop + 115, { fontSize: 22, color: '#d84315', bold: true });
+      drawText(ctx, `🔥 连击 x${this.combo}`, width / 2, safeTop + 108, { fontSize: 20, color: '#d84315', bold: true });
     }
 
     // 锤子图标（桶左边）

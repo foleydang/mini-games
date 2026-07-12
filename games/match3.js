@@ -89,19 +89,39 @@ class Match3Game {
     const { width, safeTop, safeBottom, height } = this.designSize;
     
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    drawGradientBg(ctx, width, height, '#fdf4ff', '#e9d5ff');
+    
+    // 现代渐变背景
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+    bgGradient.addColorStop(0, '#faf5ff');
+    bgGradient.addColorStop(0.5, '#f3e8ff');
+    bgGradient.addColorStop(1, '#e9d5ff');
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, width, height);
     
     // 标题和分数
-    drawText(ctx, '消消乐', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
-    drawText(ctx, `分数: ${this.score}/${this.target}  步数: ${this.moves}`, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
+    drawText(ctx, '💎 消消乐', width / 2, safeTop + 75, { fontSize: 42, color: '#6b21a8', bold: true });
+    drawText(ctx, `分数: ${this.score}/${this.target}  步数: ${this.moves}`, width / 2, safeTop + 128, { fontSize: 26, color: '#5b21b6' });
     
     // 底部按钮
     this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
     
-    // 网格背景
+    // 网格背景 - 更现代
     const gridWidth = this.cols * this.cellSize;
     const gridHeight = this.rows * this.cellSize;
-    drawRoundRect(ctx, this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 16, '#1e3a5f');
+    ctx.save();
+    ctx.shadowColor = 'rgba(139,92,246,0.3)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+    drawRoundRect(ctx, this.gridStartX - 10, this.gridStartY - 10, gridWidth + 20, gridHeight + 20, 16, '#2d1b4e');
+    ctx.restore();
+    
+    // 网格内背景渐变
+    const gridBg = ctx.createLinearGradient(0, this.gridStartY, 0, this.gridStartY + gridHeight);
+    gridBg.addColorStop(0, '#1a1033');
+    gridBg.addColorStop(1, '#2d1b4e');
+    ctx.fillStyle = gridBg;
+    drawRoundRect(ctx, this.gridStartX - 6, this.gridStartY - 6, gridWidth + 12, gridHeight + 12, 12);
+    ctx.fill();
     
     // 绘制宝石（考虑动画状态）
     this.drawGemsWithAnimation();
@@ -192,9 +212,18 @@ class Match3Game {
     const size = this.cellSize * 0.38 * scale;
     
     ctx.globalAlpha = alpha;
+    
+    // 外发光
     ctx.shadowColor = gem.color;
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = gem.color;
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 2;
+    
+    // 渐变填充
+    const gemGradient = ctx.createRadialGradient(x - size * 0.3, y - size * 0.3, size * 0.1, x, y, size);
+    gemGradient.addColorStop(0, this.lightenColor(gem.color, 30));
+    gemGradient.addColorStop(0.6, gem.color);
+    gemGradient.addColorStop(1, this.darkenColor(gem.color, 20));
+    ctx.fillStyle = gemGradient;
     ctx.beginPath();
     
     switch (gem.shape) {
@@ -228,7 +257,34 @@ class Match3Game {
     }
     
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
     ctx.globalAlpha = 1;
+    
+    // 高光
+    if (alpha > 0.5 && scale > 0.8) {
+      ctx.globalAlpha = alpha * 0.4;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  lightenColor(hex, percent) {
+    const num = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, (num >> 16) + Math.round(255 * percent / 100));
+    const g = Math.min(255, ((num >> 8) & 0xff) + Math.round(255 * percent / 100));
+    const b = Math.min(255, (num & 0xff) + Math.round(255 * percent / 100));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  darkenColor(hex, percent) {
+    const num = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, (num >> 16) - Math.round(255 * percent / 100));
+    const g = Math.max(0, ((num >> 8) & 0xff) - Math.round(255 * percent / 100));
+    const b = Math.max(0, (num & 0xff) - Math.round(255 * percent / 100));
+    return `rgb(${r},${g},${b})`;
   }
 
   drawStar(ctx, cx, cy, size, points) {

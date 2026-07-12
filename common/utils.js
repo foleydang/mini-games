@@ -437,10 +437,11 @@ export function drawProgress(ctx, x, y, width, height, progress, color, radius =
 }
 
 // 绘制渐变背景
-export function drawGradientBg(ctx, width, height, color1, color2) {
+export function drawGradientBg(ctx, width, height, color1, color2, color3) {
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
   gradient.addColorStop(0, color1);
-  gradient.addColorStop(1, color2);
+  gradient.addColorStop(0.5, color2);
+  gradient.addColorStop(1, color3 || color2);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 }
