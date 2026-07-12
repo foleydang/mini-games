@@ -2,6 +2,8 @@
  * 音效管理器 - 微信小游戏音效系统 + 背景音乐 + 震动 + 音效文件
  */
 
+import { Storage } from './utils.js';
+
 export const SoundType = {
   CLICK: 'click',
   SUCCESS: 'success',
@@ -46,19 +48,33 @@ const soundFiles = {
 
 class AudioManager {
   constructor() {
-    this.enabled = true;
-    this.musicEnabled = true;
-    this.soundEnabled = true;
+    // 从 Storage 加载持久化配置（与 GameSettings 共用同一 key）
+    const saved = Storage.load('gameSettings') || {};
+    this.soundEnabled = saved.soundEnabled !== undefined ? saved.soundEnabled : true;
+    this.musicEnabled = saved.musicEnabled !== undefined ? saved.musicEnabled : true;
     this.lastVibrateTime = 0;
     this.minInterval = 100;
     this.bgMusic = null;
     this.bgMusicPlaying = false;
-    this.sfxPool = []; // 音效对象池（复用避免创建太多）
+    this.sfxPool = [];
     this.sfxIndex = 0;
     this.poolSize = 5;
 
     this.initBgMusic();
     this.initSfxPool();
+  }
+
+  // 兼容旧 API：enabled 返回 soundEnabled
+  get enabled() { return this.soundEnabled; }
+  set enabled(v) { this.soundEnabled = v; this.save(); }
+
+  save() {
+    const existing = Storage.load('gameSettings') || {};
+    Storage.save('gameSettings', {
+      ...existing,
+      soundEnabled: this.soundEnabled,
+      musicEnabled: this.musicEnabled
+    });
   }
 
   initBgMusic() {
@@ -84,7 +100,7 @@ class AudioManager {
   }
 
   startBgMusic() {
-    if (!this.musicEnabled || !this.enabled || !this.bgMusic || this.bgMusicPlaying) return;
+    if (!this.musicEnabled || !this.bgMusic || this.bgMusicPlaying) return;
     try {
       this.bgMusic.play();
       this.bgMusicPlaying = true;
@@ -101,13 +117,23 @@ class AudioManager {
 
   toggleMusic() {
     this.musicEnabled = !this.musicEnabled;
-    if (this.musicEnabled && this.enabled) { this.startBgMusic(); }
+    this.save();
+    if (this.musicEnabled) { this.startBgMusic(); }
     else { this.stopBgMusic(); }
     return this.musicEnabled;
   }
 
+  toggleSound() {
+    this.soundEnabled = !this.soundEnabled;
+    this.save();
+    return this.soundEnabled;
+  }
+
+  // 兼容旧 API
+  toggle() { return this.toggleSound(); }
+
   play(type) {
-    if (!this.enabled) return;
+    if (!this.soundEnabled) return;
 
     // 震动反馈
     if (shouldVibrate[type]) {
@@ -127,7 +153,7 @@ class AudioManager {
     }
 
     // 音效文件播放
-    if (this.soundEnabled && soundFiles[type]) {
+    if (soundFiles[type]) {
       try {
         const sfx = this.sfxPool[this.sfxIndex % this.poolSize];
         this.sfxIndex++;
@@ -137,16 +163,9 @@ class AudioManager {
       } catch (e) {}
     }
   }
-
-  toggle() {
-    this.enabled = !this.enabled;
-    if (!this.enabled) { this.stopBgMusic(); }
-    else if (this.musicEnabled) { this.startBgMusic(); }
-    return this.enabled;
-  }
 }
 
 export const audioManager = new AudioManager();
 export const playSound = (type) => audioManager.play(type);
-export const toggleSound = () => audioManager.toggle();
+export const toggleSound = () => audioManager.toggleSound();
 export const toggleMusic = () => audioManager.toggleMusic();

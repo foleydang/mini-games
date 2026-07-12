@@ -1,6 +1,7 @@
 // 翻牌配对游戏
 import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
+import { audioManager } from '../common/audio.js';
 
 export default class MemoryGame {
   constructor(canvas, ctx, designSize, onEnd, level = 0) {
@@ -17,7 +18,7 @@ export default class MemoryGame {
     this.moves = 0;
     this.gameOver = false;
     this.checkingMatch = false;
-    this.soundEnabled = true;
+    this.soundEnabled = audioManager.soundEnabled;
     
     // 按钮配置
     this.backButton = getBackButton(designSize);
@@ -178,7 +179,8 @@ export default class MemoryGame {
       return;
     }
     if (btn === 'soundBtn') {
-      this.soundEnabled = !this.soundEnabled;
+      audioManager.toggleSound();
+      this.soundEnabled = audioManager.soundEnabled;
       this.draw();
       return;
     }

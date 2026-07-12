@@ -13,6 +13,7 @@ import { syncUserToServer } from './common/utils.js';
 import { ModernThemes, drawModernButton, drawModernCard, drawModernNavbar, drawModernTag, drawModernProgress } from './common/modern-ui.js';
 import LevelSelector from './common/level-selector.js';
 import { themeManager } from './common/theme-manager.js';
+import { audioManager } from './common/audio.js';
 import Match3Game from './games/match3.js';
 import SnakeGame from './games/snake.js';
 import Game2048 from './games/2048.js';
@@ -395,6 +396,8 @@ class MainGame {
     if (pos.x >= startX && pos.x <= startX + toggleWidth &&
         pos.y >= startY && pos.y <= startY + toggleHeight) {
       this.settings = GameSettings.toggle('soundEnabled');
+      audioManager.soundEnabled = this.settings.soundEnabled;
+      audioManager.save();
       if (this.settings.vibrationEnabled) {
         wx.vibrateShort({ type: 'light' });
       }
@@ -407,6 +410,10 @@ class MainGame {
     if (pos.x >= startX && pos.x <= startX + toggleWidth &&
         pos.y >= musicY && pos.y <= musicY + toggleHeight) {
       this.settings = GameSettings.toggle('musicEnabled');
+      audioManager.musicEnabled = this.settings.musicEnabled;
+      audioManager.save();
+      if (this.settings.musicEnabled) { audioManager.startBgMusic(); }
+      else { audioManager.stopBgMusic(); }
       if (this.settings.vibrationEnabled) {
         wx.vibrateShort({ type: 'light' });
       }
@@ -476,26 +483,26 @@ class MainGame {
 
   drawBg(width, height) {
     const ctx = this.ctx;
-    
-    // 现代渐变背景
+
+    // 柔和明亮渐变背景
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#f5f3ff');
-    gradient.addColorStop(0.5, '#ede9fe');
-    gradient.addColorStop(1, '#ddd6fe');
+    gradient.addColorStop(0, '#faf8ff');
+    gradient.addColorStop(0.5, '#f5f0ff');
+    gradient.addColorStop(1, '#ede8ff');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
-    
-    // 装饰圆 - 更柔和
-    ctx.globalAlpha = 0.06;
-    ctx.fillStyle = '#8b5cf6';
+
+    // 装饰圆 - 更淡更柔和
+    ctx.globalAlpha = 0.04;
+    ctx.fillStyle = '#a78bfa';
     ctx.beginPath();
     ctx.arc(width * 0.15, height * 0.25, 110, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ec4899';
+    ctx.fillStyle = '#f9a8d4';
     ctx.beginPath();
     ctx.arc(width * 0.85, height * 0.6, 130, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#3b82f6';
+    ctx.fillStyle = '#93c5fd';
     ctx.beginPath();
     ctx.arc(width * 0.5, height * 0.85, 90, 0, Math.PI * 2);
     ctx.fill();
@@ -515,8 +522,8 @@ class MainGame {
     drawParticles(this.ctx, this.particles);
 
     // 现代化标题
-    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 130, { fontSize: 48, color: '#7c3aed', bold: true });
-    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 174, { fontSize: 24, color: '#a78bfa' });
+    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 130, { fontSize: 48, color: '#6d28d9', bold: true });
+    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 174, { fontSize: 24, color: '#8b5cf6' });
 
     // 右上角按钮区域（设置 + 我的）
     // 我的按钮（上方）
@@ -540,7 +547,7 @@ class MainGame {
 
     this.cards.forEach((card, index) => this.drawModernGameCard(card, index));
 
-    drawText(this.ctx, '🎮 点击卡片开始游戏', width / 2, height - safeBottom - 25, { fontSize: 20, color: '#c4b5fd' });
+    drawText(this.ctx, '🎮 点击卡片开始游戏', width / 2, height - safeBottom - 25, { fontSize: 20, color: '#a78bfa' });
   }
 
   // 现代化游戏卡片

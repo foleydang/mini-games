@@ -2,6 +2,7 @@
 import { drawRoundRect, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
 import { getBackButton, drawBottomButtons, checkBottomButtons } from '../common/ui.js';
 import { Levels } from '../common/config.js';
+import { audioManager } from '../common/audio.js';
 
 const EMOJIS = ['🍜', '🍕', '🍔', '🍟', '🧁', '🍩', '🍺', '🍵', '🍦', '🍫', '🥤', '🍗'];
 
@@ -25,7 +26,7 @@ class SheepGame {
 
     // 按钮
     this.backButton = getBackButton(designSize);
-    this.soundEnabled = true;
+    this.soundEnabled = audioManager.soundEnabled;
 
     // 渲染循环控制(修复返回后循环继续绘制导致的闪屏)
     this.ended = false;
@@ -532,7 +533,8 @@ class SheepGame {
       return;
     }
     if (btn === 'soundBtn') {
-      this.soundEnabled = !this.soundEnabled;
+      audioManager.toggleSound();
+      this.soundEnabled = audioManager.soundEnabled;
       this.draw();
       return;
     }

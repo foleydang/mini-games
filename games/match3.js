@@ -1,6 +1,7 @@
 // 消消乐游戏 - 带动画效果
 import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
+import { audioManager } from '../common/audio.js';
 
 class Match3Game {
   constructor(canvas, ctx, designSize, onEnd, level = 0) {
@@ -40,7 +41,7 @@ class Match3Game {
     this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
-    this.soundEnabled = true;
+    this.soundEnabled = audioManager.soundEnabled;
     
     this.gemTypes = [
       { color: '#ff4757', shape: 'circle' },
@@ -339,7 +340,8 @@ class Match3Game {
       return;
     }
     if (btn === 'soundBtn') {
-      this.soundEnabled = !this.soundEnabled;
+      audioManager.toggleSound();
+      this.soundEnabled = audioManager.soundEnabled;
       this.draw();
       return;
     }
