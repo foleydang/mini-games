@@ -92,16 +92,16 @@ class MainGame {
   initCards() {
     const { width, height, safeTop, safeBottom } = this.designSize;
     const cols = 2;
-    const cardGapH = 24;
-    const cardGapV = 32;
-    const paddingX = 24;
+    const cardGapH = 28;
+    const cardGapV = 40;
+    const paddingX = 28;
 
     const availableWidth = width - paddingX * 2 - cardGapH;
     const cardWidth = Math.floor(availableWidth / cols);
-    const cardHeight = 92;
+    const cardHeight = 112;
 
     const startX = paddingX;
-    const startY = safeTop + 270;
+    const startY = safeTop + 300;
 
     Games.forEach((game, index) => {
       const col = index % cols;
@@ -121,10 +121,10 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
-          x: cardX + cardWidth - 76,
-          y: cardY + cardHeight - 32,
-          width: 60,
-          height: 24
+          x: cardX + cardWidth - 80,
+          y: cardY + cardHeight - 36,
+          width: 64,
+          height: 26
         }
       });
     });
@@ -132,7 +132,7 @@ class MainGame {
     // 设置按钮位置
     this.settingsBtn = {
       x: width - 100,
-      y: safeTop + 160,
+      y: safeTop + 162,
       width: 80,
       height: 38
     };
@@ -515,13 +515,13 @@ class MainGame {
     drawParticles(this.ctx, this.particles);
 
     // 现代化标题
-    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 120, { fontSize: 46, color: '#7c3aed', bold: true });
-    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 160, { fontSize: 24, color: '#a78bfa' });
+    drawText(this.ctx, '铃铛快乐屋', width / 2, safeTop + 130, { fontSize: 48, color: '#7c3aed', bold: true });
+    drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 174, { fontSize: 24, color: '#a78bfa' });
 
     // 右上角按钮区域（设置 + 我的）
     // 我的按钮（上方）
     const myBtnX = width - 100;
-    const myBtnY = safeTop + 108;
+    const myBtnY = safeTop + 118;
     drawModernButton(this.ctx, myBtnX, myBtnY, 80, 38, '我的', ModernThemes.primary, {
       fontSize: 22,
       icon: '👤'
@@ -530,7 +530,7 @@ class MainGame {
     
     // 设置按钮（下方）
     this.settingsBtn.x = width - 100;
-    this.settingsBtn.y = safeTop + 152;
+    this.settingsBtn.y = safeTop + 162;
     this.settingsBtn.width = 80;
     this.settingsBtn.height = 38;
     drawModernButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', ModernThemes.primary, {
@@ -580,9 +580,9 @@ class MainGame {
     ctx.restore();
 
     // 游戏图标圆形背景
-    const iconX = x + 44;
+    const iconX = x + 48;
     const iconY = y + height / 2;
-    const iconRadius = 22;
+    const iconRadius = 26;
 
     ctx.save();
     ctx.shadowColor = theme.primary + '55';
@@ -601,20 +601,20 @@ class MainGame {
     drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, '#fff', game.shape);
 
     // 游戏名称
-    drawText(ctx, game.name, x + 80, y + 30, { fontSize: 26, color: '#1e293b', bold: true, align: 'left' });
+    drawText(ctx, game.name, x + 86, y + 34, { fontSize: 28, color: '#1e293b', bold: true, align: 'left' });
     // 描述
-    drawText(ctx, game.desc, x + 80, y + 58, { fontSize: 18, color: '#94a3b8', align: 'left' });
+    drawText(ctx, game.desc, x + 86, y + 64, { fontSize: 19, color: '#94a3b8', align: 'left' });
 
     // 关卡类型标签
     const tagText = game.type === 'levels' ? '关卡' : '无限';
     const tagColor = game.type === 'levels' ? theme.primary : '#10b981';
     ctx.font = 'bold 16px "PingFang SC", sans-serif';
     const tagWidth = ctx.measureText(tagText).width + 20;
-    drawRoundRect(ctx, x + 80, y + 68, tagWidth, 22, 11, tagColor + '1a');
+    drawRoundRect(ctx, x + 86, y + 76, tagWidth, 24, 12, tagColor + '1a');
     ctx.fillStyle = tagColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(tagText, x + 80 + tagWidth / 2, y + 79);
+    ctx.fillText(tagText, x + 86 + tagWidth / 2, y + 88);
 
     // 排行榜按钮（卡片内右下角）
     ctx.save();
