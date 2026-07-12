@@ -176,8 +176,10 @@ export function drawRoundRect(ctx, x, y, width, height, radius, fillColor, strok
   ctx.arcTo(x, y, x + radius, y, radius);
   ctx.closePath();
 
-  if (fillColor) {
+  if (fillColor !== undefined) {
     ctx.fillStyle = fillColor;
+    ctx.fill();
+  } else {
     ctx.fill();
   }
 

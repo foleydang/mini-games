@@ -191,15 +191,13 @@ export function drawModernButton(ctx, x, y, width, height, text, theme, options 
   
   // 绘制按钮背景
   if (gradient && !disabled) {
-    const gradient = ctx.createLinearGradient(x, y, x, y + height);
-    gradient.addColorStop(0, theme.primary);
-    gradient.addColorStop(1, theme.secondary);
-    ctx.fillStyle = gradient;
+    const grad = ctx.createLinearGradient(x, y, x, y + height);
+    grad.addColorStop(0, theme.primary);
+    grad.addColorStop(1, theme.secondary);
+    drawRoundRect(ctx, x, y, width, height, radius, grad);
   } else {
-    ctx.fillStyle = disabled ? '#e5e7eb' : theme.primary;
+    drawRoundRect(ctx, x, y, width, height, radius, disabled ? '#e5e7eb' : theme.primary);
   }
-  
-  drawRoundRect(ctx, x, y, width, height, radius);
   
   // 重置阴影
   ctx.shadowBlur = 0;
