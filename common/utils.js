@@ -55,61 +55,71 @@ export const Colors = {
       primary: '#ef4444',
       secondary: '#fca5a5',
       bg: '#fef2f2',
-      pattern: '#fee2e2'
+      pattern: '#fee2e2',
+      gradient: ['#fef2f2', '#fee2e2']
     },
     snake: {
       primary: '#10b981',
       secondary: '#6ee7b7',
       bg: '#ecfdf5',
-      pattern: '#d1fae5'
+      pattern: '#d1fae5',
+      gradient: ['#ecfdf5', '#d1fae5']
     },
     '2048': {
       primary: '#f59e0b',
       secondary: '#fcd34d',
       bg: '#fffbeb',
-      pattern: '#fef3c7'
+      pattern: '#fef3c7',
+      gradient: ['#fffbeb', '#fef3c7']
     },
     tetris: {
       primary: '#3b82f6',
       secondary: '#93c5fd',
       bg: '#eff6ff',
-      pattern: '#dbeafe'
+      pattern: '#dbeafe',
+      gradient: ['#eff6ff', '#dbeafe']
     },
     flappy: {
       primary: '#f59e0b',
       secondary: '#fcd34d',
       bg: '#fffbeb',
-      pattern: '#fef3c7'
+      pattern: '#fef3c7',
+      gradient: ['#fffbeb', '#fef3c7']
     },
     breakout: {
       primary: '#8b5cf6',
       secondary: '#c4b5fd',
       bg: '#f5f3ff',
-      pattern: '#ede9fe'
+      pattern: '#ede9fe',
+      gradient: ['#f5f3ff', '#ede9fe']
     },
     memory: {
       primary: '#06b6d4',
       secondary: '#67e8f9',
       bg: '#ecfeff',
-      pattern: '#cffafe'
+      pattern: '#cffafe',
+      gradient: ['#ecfeff', '#cffafe']
     },
     bounce: {
       primary: '#ec4899',
       secondary: '#f9a8d4',
       bg: '#fdf2f8',
-      pattern: '#fce7f3'
+      pattern: '#fce7f3',
+      gradient: ['#fdf2f8', '#fce7f3']
     },
     sheep: {
       primary: '#e85d04',
       secondary: '#f97316',
       bg: '#fff5eb',
-      pattern: '#ffe0b2'
+      pattern: '#ffe0b2',
+      gradient: ['#fff5eb', '#ffe0b2']
     },
     fruit: {
       primary: '#10b981',
       secondary: '#34d399',
       bg: '#ecfdf5',
-      pattern: '#d1fae5'
+      pattern: '#d1fae5',
+      gradient: ['#ecfdf5', '#d1fae5']
     }
   },
 
