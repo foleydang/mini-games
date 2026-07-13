@@ -16,48 +16,93 @@ export const Games = [
   { id: 'fruit', name: '接水果', shortName: '接', desc: '水桶接住掉落水果', shape: 'fruit', type: 'levels' }
 ];
 
-// 🎯 关卡型游戏配置（有明确过关目标）
+// 难度分层名(用于关卡卡片标签)
+const TIER_NAMES = ['入门', '简单', '普通', '进阶', '困难', '专家', '大师', '宗师', '传奇', '巅峰'];
+function tierName(i, n) {
+  const t = Math.min(TIER_NAMES.length - 1, Math.floor(i / Math.max(1, n / TIER_NAMES.length)));
+  return TIER_NAMES[t];
+}
+
+// 消消乐:网格/颜色/目标分随关卡递增,步数缓降
+function genMatch3Levels(n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1);
+    const rows = 8 + Math.floor(p * 2);                 // 8..10
+    const cols = 6 + Math.floor(p * 2);                 // 6..8
+    const colors = 4 + Math.min(2, Math.floor(i / Math.ceil(n / 3))); // 4,5,6
+    const moves = Math.max(18, 30 - Math.floor(i / 5)); // 30 → 18
+    const target = 1000 + i * 150;                      // 目标分递增
+    arr.push({ rows, cols, colors, moves, target, name: tierName(i, n) });
+  }
+  return arr;
+}
+
+// 打砖块:砖块行列/球速/砖块血量随关卡递增(均有封顶,防止不可玩)
+function genBreakoutLevels(n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    const rows = Math.min(8, 3 + Math.floor(i / 7));    // 3..8
+    const cols = Math.min(9, 5 + Math.floor(i / 9));    // 5..9
+    const speed = Math.min(30, 15 + i * 0.4);           // 15 → 30
+    const hp = Math.min(4, 1 + Math.floor(i / 12));     // 1..4(顶部砖块更硬)
+    arr.push({ rows, cols, speed, hp, name: tierName(i, n) });
+  }
+  return arr;
+}
+
+// 翻牌:棋盘随关卡增大(取整齐可整除的布局),并叠加倒计时收紧
+function genMemoryLevels(n) {
+  // 递增的整齐棋盘,乘积为偶数 → pairs 为整数,rows ≤ 8
+  const boards = [
+    { cols: 4, rows: 3 }, // 6 对
+    { cols: 4, rows: 4 }, // 8
+    { cols: 6, rows: 3 }, // 9
+    { cols: 5, rows: 4 }, // 10
+    { cols: 6, rows: 4 }, // 12
+    { cols: 4, rows: 7 }, // 14
+    { cols: 6, rows: 5 }, // 15
+    { cols: 4, rows: 8 }, // 16
+    { cols: 6, rows: 6 }, // 18
+    { cols: 5, rows: 8 }, // 20
+    { cols: 6, rows: 7 }, // 21
+    { cols: 6, rows: 8 }  // 24
+  ];
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    const bi = Math.min(boards.length - 1, Math.floor(i * boards.length / n));
+    const b = boards[bi];
+    const pairs = (b.cols * b.rows) / 2;
+    const perPair = Math.max(2.2, 6 - i * 0.08);        // 每对可用秒数随关卡递减
+    const timeLimit = Math.round(pairs * perPair);
+    arr.push({ cols: b.cols, rows: b.rows, pairs, timeLimit, name: tierName(i, n) });
+  }
+  return arr;
+}
+
+// 接水果:水果数量/种类递增,半径递减(更密)
+function genFruitLevels(n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    const types = Math.min(8, 4 + Math.floor(i / Math.ceil(n / 5))); // 4..8
+    const maxFruits = 24 + i;                                        // 24..
+    const radius = Math.max(22, 34 - Math.floor(i * 0.25));          // 34 → 22
+    arr.push({ maxFruits, types, radius, name: tierName(i, n) });
+  }
+  return arr;
+}
+
+// 🎯 关卡型游戏配置
 export const Levels = {
-  // 消消乐：目标分数驱动，网格大小递增
-  match3: [
-    { cols: 6, rows: 8, colors: 4, moves: 28, target: 800, name: '入门' },
-    { cols: 6, rows: 8, colors: 4, moves: 25, target: 1200, name: '简单' },
-    { cols: 6, rows: 8, colors: 5, moves: 22, target: 1800, name: '普通' },
-    { cols: 6, rows: 8, colors: 5, moves: 18, target: 2500, name: '困难' },
-    { cols: 6, rows: 8, colors: 6, moves: 15, target: 3500, name: '专家' }
-  ],
+  match3: genMatch3Levels(60),
+  breakout: genBreakoutLevels(50),
+  memory: genMemoryLevels(50),
+  fruit: genFruitLevels(60),
 
-  // 水果消消乐：掉落速度递增，水果种类递增
-  fruit: [
-    { dropInterval: 1800, fruitCount: 4, name: '入门' },
-    { dropInterval: 1400, fruitCount: 5, name: '简单' },
-    { dropInterval: 1100, fruitCount: 6, name: '普通' },
-    { dropInterval: 800, fruitCount: 7, name: '困难' },
-    { dropInterval: 500, fruitCount: 8, name: '专家' }
-  ],
-
-  // 打砖块：砖块数量递增
-  breakout: [
-    { rows: 3, cols: 5, name: '入门' },
-    { rows: 4, cols: 6, name: '简单' },
-    { rows: 5, cols: 7, name: '普通' },
-    { rows: 6, cols: 8, name: '困难' },
-    { rows: 7, cols: 9, name: '专家' }
-  ],
-
-  // 叠叠消：牌数和图案种类递增
+  // 叠叠消:羊了个羊风格,固定 2 关
   sheep: [
     { layers: 2, rows: 3, cols: 4, emojiCount: 4, name: '新手村' },
     { layers: 4, rows: 5, cols: 6, emojiCount: 8, name: '地狱模式' }
-  ],
-
-  // 翻牌：牌数递增
-  memory: [
-    { cols: 4, rows: 3, pairs: 6, name: '入门' },
-    { cols: 4, rows: 4, pairs: 8, name: '简单' },
-    { cols: 5, rows: 4, pairs: 10, name: '普通' },
-    { cols: 6, rows: 4, pairs: 12, name: '困难' },
-    { cols: 6, rows: 5, pairs: 15, name: '专家' }
   ]
 };
 
@@ -106,8 +151,8 @@ export const Milestones = {
   }
 };
 
-// 翻牌符号配置
-export const MemorySymbols = ['🌟', '💎', '🔥', '⚡', '💜', '🎯', '🍀', '🌈', '🌸', '🌺', '🌙', '☀️', '🎈', '🎁', '🎪'];
+// 翻牌符号配置(扩到 24 种以支持大棋盘)
+export const MemorySymbols = ['🌟', '💎', '🔥', '⚡', '💜', '🎯', '🍀', '🌈', '🌸', '🌺', '🌙', '☀️', '🎈', '🎁', '🎪', '🍎', '🍌', '🍇', '🍓', '🍑', '🍉', '🥝', '🍍', '🥥'];
 
 // 打砖块颜色配置
 export const BrickColors = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];

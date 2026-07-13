@@ -736,6 +736,29 @@ export const RankData = {
     Storage.remove('rank_' + gameId);
   }
 };
+
+// 关卡型游戏通关:解锁下一关 + 以“到达关卡”(最高通关关卡,1-based)提交排行榜
+export function completeLevel(gameId, levelIndex) {
+  const saved = Storage.load(gameId + '_level') || 0;
+  const reached = Math.max(saved, levelIndex + 1);
+  if (reached > saved) Storage.save(gameId + '_level', reached);
+  RankData.addRank(gameId, reached, '玩家');
+  return reached;
+}
+
+// 记录某关的最好星级(只增不减),返回该关最终最好星级
+export function saveLevelStars(gameId, levelIndex, stars) {
+  const key = gameId + '_stars';
+  const map = Storage.load(key) || {};
+  const prev = map[levelIndex] || 0;
+  if (stars > prev) { map[levelIndex] = stars; Storage.save(key, map); }
+  return Math.max(prev, stars);
+}
+
+// 读取某游戏所有关卡的最好星级映射 { levelIndex: stars }
+export function loadLevelStars(gameId) {
+  return Storage.load(gameId + '_stars') || {};
+}
 // 兼容旧函数名
 export const drawNeonRoundRect = drawRoundRect;
 export const drawNeonButton = drawButton;

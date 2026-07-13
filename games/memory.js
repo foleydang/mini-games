@@ -1,7 +1,9 @@
 // 翻牌配对游戏
-import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg } from '../common/utils.js';
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, completeLevel, saveLevelStars } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { audioManager } from '../common/audio.js';
+import { Levels, MemorySymbols } from '../common/config.js';
+import LevelResult from '../common/level-result.js';
 
 export default class MemoryGame {
   constructor(canvas, ctx, designSize, onEnd, level = 0) {
@@ -12,38 +14,40 @@ export default class MemoryGame {
     this.gameId = 'memory';
     this.currentLevel = level;
     
+    this.levels = Levels.memory;
+    this.currentLevel = Math.max(0, Math.min(level, this.levels.length - 1));
+
     this.cards = [];
     this.flippedCards = [];
     this.matchedPairs = 0;
     this.moves = 0;
     this.gameOver = false;
+    this.win = false;
+    this.result = null;
     this.checkingMatch = false;
     this.soundEnabled = audioManager.soundEnabled;
-    
+    this.timer = null;
+
     // 按钮配置
     this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
-    
-    // 根据关卡配置
-    const levelConfigs = [
-      { cols: 4, rows: 3, pairs: 6 },
-      { cols: 4, rows: 4, pairs: 8 },
-      { cols: 5, rows: 4, pairs: 10 },
-      { cols: 6, rows: 4, pairs: 12 },
-      { cols: 6, rows: 5, pairs: 15 }
-    ];
-    const cfg = levelConfigs[level] || levelConfigs[0];
+
+    this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F7DC6F', '#BB8FCE',
+                       '#FF9F43', '#54A0FF', '#5F27CD', '#00D2D3', '#EE5253', '#10AC84', '#F368E0'];
+    this.symbols = MemorySymbols;
+
+    this.applyLevelConfig();
+    this.initGame();
+  }
+
+  applyLevelConfig() {
+    const cfg = this.levels[this.currentLevel] || this.levels[0];
     this.cols = cfg.cols;
     this.rows = cfg.rows;
     this.totalPairs = cfg.pairs;
-    
-    this.cardColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F7DC6F', '#BB8FCE',
-                       '#FF9F43', '#54A0FF', '#5F27CD', '#00D2D3', '#EE5253', '#10AC84', '#F368E0'];
-    this.symbols = ['🍎', '🍌', '🍇', '🍓', '🍑', '🍉', '🥝', '🍍',
-                    '🥥', '🍒', '🥑', '🌽', '🍅', '🍆', '🥕'];
-    
-    this.initGame();
+    this.timeLimit = cfg.timeLimit || 60;
+    this.levelName = cfg.name || `第${this.currentLevel + 1}关`;
   }
 
   initGame() {
@@ -74,13 +78,13 @@ export default class MemoryGame {
     
     const symbols = this.symbols.slice(0, this.totalPairs);
     const pairs = [...symbols, ...symbols];
-    
+
     // 洗牌
     for (let i = pairs.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
     }
-    
+
     this.cards = [];
     for (let i = 0; i < rows * cols; i++) {
       const col = i % cols;
@@ -91,19 +95,75 @@ export default class MemoryGame {
         width: cardWidth,
         height: cardHeight,
         symbol: pairs[i],
-        color: this.cardColors[symbols.indexOf(pairs[i])],
+        color: this.cardColors[symbols.indexOf(pairs[i]) % this.cardColors.length],
         flipped: false,
         matched: false
       });
     }
-    
+
     this.flippedCards = [];
     this.matchedPairs = 0;
     this.moves = 0;
     this.gameOver = false;
+    this.win = false;
+    this.result = null;
     this.checkingMatch = false;
-    
+    this.timeLeft = this.timeLimit;
+
+    this.startTimer();
     this.draw();
+  }
+
+  startTimer() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      if (this.gameOver) return;
+      this.timeLeft -= 0.25;
+      if (this.timeLeft <= 0) {
+        this.timeLeft = 0;
+        this.finish(false);
+      }
+      this.draw();
+    }, 250);
+  }
+
+  destroy() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
+
+  finish(win) {
+    if (this.gameOver) return;
+    this.gameOver = true;
+    this.win = win;
+    if (win) {
+      completeLevel(this.gameId, this.currentLevel);
+      audioManager.play && audioManager.play('levelup');
+    }
+    const hasNext = win && this.currentLevel < this.levels.length - 1;
+    // 星级:步数效率(完美步数 = 对数×2)
+    const perfect = this.totalPairs * 2;
+    const ratio = perfect > 0 ? this.moves / perfect : 1;
+    const stars = ratio <= 1.6 ? 3 : ratio <= 2.2 ? 2 : 1;
+    if (win) saveLevelStars(this.gameId, this.currentLevel, stars);
+    this.result = new LevelResult(this.designSize, {
+      win,
+      score: this.moves,
+      scoreLabel: '步数',
+      levelName: this.levelName,
+      hasNext,
+      stars,
+      primaryColor: '#7c3aed'
+    });
+    this.draw();
+  }
+
+  nextLevel() {
+    this.currentLevel = Math.min(this.currentLevel + 1, this.levels.length - 1);
+    this.applyLevelConfig();
+    this.initGame();
+  }
+
+  retry() {
+    this.applyLevelConfig();
+    this.initGame();
   }
 
   draw() {
@@ -114,20 +174,25 @@ export default class MemoryGame {
     drawGradientBg(ctx, width, height, '#f0f9ff', '#e0f2fe', '#06b6d4' + '11');
     
     drawText(ctx, '翻牌配对', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
-    drawText(ctx, '步数: ' + this.moves + '  配对: ' + this.matchedPairs + '/' + this.totalPairs, width / 2, safeTop + 140, { fontSize: 28, color: '#4b5563' });
-    
+    drawText(ctx, `第${this.currentLevel + 1}关 · 步数: ${this.moves}  配对: ${this.matchedPairs}/${this.totalPairs}`, width / 2, safeTop + 135, { fontSize: 24, color: '#4b5563' });
+
+    // 倒计时条
+    const remain = Math.max(0, this.timeLeft || 0);
+    const ratio = this.timeLimit > 0 ? remain / this.timeLimit : 0;
+    const barW = width - 100;
+    const barX = 50;
+    const barY = safeTop + 165;
+    drawRoundRect(ctx, barX, barY, barW, 14, 7, '#e5e7eb');
+    const barColor = ratio > 0.3 ? '#10b981' : '#ef4444';
+    if (ratio > 0) drawRoundRect(ctx, barX, barY, barW * ratio, 14, 7, barColor);
+    drawText(ctx, `⏱ ${Math.ceil(remain)}s`, width / 2, barY + 32, { fontSize: 22, color: barColor, bold: true });
+
     // 底部按钮（返回在左边）
     this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
-    
+
     for (const card of this.cards) this.drawCard(card);
-    
-    if (this.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(0, 0, width, height);
-      drawText(ctx, '恭喜过关！', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, '步数: ' + this.moves, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
-      drawHint(ctx, this.designSize, '点击返回');
-    }
+
+    if (this.gameOver && this.result) this.result.draw(ctx);
   }
 
   drawCard(card) {
@@ -169,9 +234,18 @@ export default class MemoryGame {
   }
 
   onTouchStart(pos) {
+    if (this.gameOver && this.result) {
+      const action = this.result.onTouchStart(pos);
+      if (action === 'next') this.nextLevel();
+      else if (action === 'replay' || action === 'retry') this.retry();
+      else if (action === 'back') { this.destroy(); this.onEnd({ score: this.moves, passed: this.win }); }
+      return;
+    }
+
     // 检测按钮点击
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {
+      this.destroy();
       this.onEnd({ score: this.moves, passed: false });
       return;
     }
@@ -184,12 +258,7 @@ export default class MemoryGame {
       this.draw();
       return;
     }
-    
-    if (this.gameOver) {
-      this.onEnd({ score: this.moves, passed: true });
-      return;
-    }
-    
+
     if (this.checkingMatch) return;
     
     const card = this.cards.find(c => 
@@ -214,7 +283,7 @@ export default class MemoryGame {
           card1.matched = true;
           card2.matched = true;
           this.matchedPairs++;
-          if (this.matchedPairs === this.totalPairs) this.gameOver = true;
+          if (this.matchedPairs === this.totalPairs) { this.flippedCards = []; this.checkingMatch = false; this.finish(true); return; }
         } else {
           card1.flipped = false;
           card2.flipped = false;

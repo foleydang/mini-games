@@ -1,7 +1,9 @@
 // 接水果 - 窄桶 + 双斜坡 + 上方等待网格(整片下滚)
-import { drawText, RankData, Colors } from '../common/utils.js';
+import { drawText, Colors, completeLevel, saveLevelStars } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, checkBottomButtons } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
+import { Levels } from '../common/config.js';
+import LevelResult from '../common/level-result.js';
 
 const FRUITS = [
   { emoji: '🍎', color: '#ff4757' },
@@ -27,28 +29,46 @@ class FruitGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'fruit';
-    this.level = level;
 
-    const levelConfigs = [
-      { maxFruits: 24, types: 4, radius: 34 },
-      { maxFruits: 34, types: 5, radius: 32 },
-      { maxFruits: 44, types: 6, radius: 30 },
-      { maxFruits: 56, types: 7, radius: 28 },
-      { maxFruits: 70, types: 8, radius: 26 }
-    ];
-    const cfg = levelConfigs[Math.min(level, levelConfigs.length - 1)];
+    this.levels = Levels.fruit;
+    this.currentLevel = Math.max(0, Math.min(level, this.levels.length - 1));
+
+    this.result = null;
+
+    // 题库(全局一次,跨关卡保留)
+    this.quizPool = [];
+    this.initQuizPool();
+
+    this.backButton = getBackButton(designSize);
+    this.shareButton = getShareButton(designSize);
+    this.soundButton = getSoundButton(designSize);
+    this.buttons = null;
+
+    this.animate = this.animate.bind(this);
+    this.setupLevel();
+    this.startLoop();
+  }
+
+  applyLevelConfig() {
+    const cfg = this.levels[this.currentLevel] || this.levels[0];
     this.maxFruits = cfg.maxFruits;
     this.maxTypes = cfg.types;
     this.fruitRadius = cfg.radius;
+    this.levelName = cfg.name || `第${this.currentLevel + 1}关`;
+  }
+
+  // 依据当前关卡重建几何布局与牌面(可重复调用,用于换关/重试)
+  setupLevel() {
+    this.applyLevelConfig();
+
+    const { width, height, safeBottom } = this.designSize;
 
     this.score = 0;
     this.combo = 0;
     this.maxCombo = 0;
     this.gameOver = false;
     this.gameWon = false;
-    this.scoreSaved = false;
-
-    const { width, height, safeTop, safeBottom } = designSize;
+    this.result = null;
 
     // 窄桶 - 只有一列水果宽，厚壁装饰
     this.bucketCenterX = width / 2;
@@ -81,20 +101,25 @@ class FruitGame {
     this.quizData = null;
     this.quizResult = null;
     this.quizResultTimer = 0;
-    this.quizPool = []; // 题库
-    this.initQuizPool();
-
-    this.backButton = getBackButton(designSize);
-    this.shareButton = getShareButton(designSize);
-    this.soundButton = getSoundButton(designSize);
-    this.buttons = null;
 
     this.generateTopFruits();
+  }
 
+  startLoop() {
     // 用 rAF 回调的时间戳做计时,不用 performance.now()——真机 iOS 无全局 performance,会导致构造崩溃
     this.lastTime = null;
-    this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  nextLevel() {
+    this.currentLevel = Math.min(this.currentLevel + 1, this.levels.length - 1);
+    this.setupLevel();
+    this.startLoop();
+  }
+
+  retry() {
+    this.setupLevel();
+    this.startLoop();
   }
 
   initQuizPool() {
@@ -582,24 +607,32 @@ class FruitGame {
 
   showEndModal() {
     const isWin = this.gameWon;
-    wx.showModal({
-      title: isWin ? '🎉 通关！' : '😢 失败了',
-      content: `得分: ${this.score}${this.maxCombo > 1 ? `\n最高连击: ${this.maxCombo}x` : ''}`,
-      confirmText: '确定',
-      showCancel: false,
-      success: (res) => {
-        if (res.confirm) {
-          if (!this.scoreSaved) {
-            this.scoreSaved = true;
-            setTimeout(() => { try { RankData.save(this.gameId, this.score); } catch (e) {} }, 100);
-          }
-          this.onEnd({ score: this.score, passed: isWin });
-        }
-      }
+    if (isWin) completeLevel(this.gameId, this.currentLevel);
+    const hasNext = isWin && this.currentLevel < this.levels.length - 1;
+    // 星级:本关最大连击(≥5/≥3/其他 → 3/2/1 星)
+    const stars = this.maxCombo >= 4 ? 3 : this.maxCombo >= 2 ? 2 : 1;
+    if (isWin) saveLevelStars(this.gameId, this.currentLevel, stars);
+    this.result = new LevelResult(this.designSize, {
+      win: isWin,
+      score: this.score,
+      scoreLabel: '得分',
+      levelName: this.levelName,
+      hasNext,
+      stars,
+      primaryColor: '#e65100'
     });
   }
 
   onTouchStart(pos) {
+    // 结算遮罩优先处理
+    if ((this.gameOver || this.gameWon) && this.result) {
+      const action = this.result.onTouchStart(pos);
+      if (action === 'next') this.nextLevel();
+      else if (action === 'replay' || action === 'retry') this.retry();
+      else if (action === 'back') this.onEnd({ score: this.score, passed: this.gameWon });
+      return;
+    }
+
     // 答题弹窗点击
     if (this.showQuiz) {
       if (this.quizResult && this.quizResult === 'correct') {
@@ -637,15 +670,6 @@ class FruitGame {
     }
     if (btn === 'soundBtn') {
       audioManager.toggle();
-      return;
-    }
-
-    // 已结束只处理按钮点击
-    if (this.gameOver || this.gameWon) {
-      if (btn === 'backBtn') {
-        this.onEnd({ score: this.score, passed: this.gameWon });
-        return;
-      }
       return;
     }
 
@@ -817,15 +841,14 @@ class FruitGame {
     }
     ctx.globalAlpha = 1;
 
-    // 游戏结束遮罩
-    if (this.gameWon || this.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(0, 0, width, height);
-    }
-
-    // 答题弹窗（最顶层）
+    // 答题弹窗
     if (this.showQuiz) {
       this.drawQuizPopup(ctx, width, height);
+    }
+
+    // 游戏结束统一结算遮罩（最顶层）
+    if ((this.gameWon || this.gameOver) && this.result) {
+      this.result.draw(ctx);
     }
   }
 

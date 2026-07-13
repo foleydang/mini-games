@@ -1,8 +1,9 @@
 // 叠叠消 - 羊了个羊风格多层堆叠消除游戏
-import { drawRoundRect, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
+import { drawRoundRect, drawText, drawGradientBg, Storage, completeLevel, saveLevelStars } from '../common/utils.js';
 import { getBackButton, drawBottomButtons, checkBottomButtons } from '../common/ui.js';
 import { Levels } from '../common/config.js';
 import { audioManager } from '../common/audio.js';
+import LevelResult from '../common/level-result.js';
 
 const EMOJIS = ['🍜', '🍕', '🍔', '🍟', '🧁', '🍩', '🍺', '🍵', '🍦', '🍫', '🥤', '🍗'];
 
@@ -20,6 +21,7 @@ class SheepGame {
     this.undoStack = [];
     this.gameOver = false;
     this.gameWon = false;
+    this.result = null;
     this.animating = false;
     this.matchedPairs = 0;
     this.totalPairs = 0;
@@ -149,6 +151,7 @@ class SheepGame {
     this.matchedPairs = 0;
     this.totalPairs = totalTiles / 3;
     this.score = 0;
+    this.shuffleUsed = 0;
   }
 
   shuffleArray(arr) {
@@ -255,29 +258,22 @@ class SheepGame {
 
   showEndModal() {
     const isWin = this.gameWon;
-    const isLastLevel = this.currentLevel >= 1;
-    wx.showModal({
-      title: isWin ? (isLastLevel ? '🎉 全部通关！' : '🎉 通关成功！') : '😢 挑战失败',
-      content: isWin
-        ? (isLastLevel ? '你是真正的高手！' : '准备好挑战地狱模式了吗？')
-        : '收集槽满了，再试一次吧',
-      confirmText: isWin && !isLastLevel ? '下一关' : (isWin ? '返回' : '重试'),
-      cancelText: (isWin && !isLastLevel) || !isWin ? '返回' : undefined,
-      showCancel: (isWin && !isLastLevel) || !isWin,
-      success: (res) => {
-        if (res.confirm) {
-          if (isWin && !isLastLevel) {
-            this.nextLevel();
-          } else if (isWin) {
-            this.exitGame();
-          } else {
-            this.retry();
-          }
-        } else {
-          this.exitGame();
-        }
-      }
+    if (isWin) completeLevel(this.gameId, this.currentLevel);
+    const hasNext = isWin && this.currentLevel < 1;
+    const levelName = ['新手村', '地狱模式'][this.currentLevel] || `第${this.currentLevel + 1}关`;
+    // 星级:洗牌次数(0/1/≥2 → 3/2/1 星)
+    const stars = this.shuffleUsed <= 1 ? 3 : this.shuffleUsed <= 3 ? 2 : 1;
+    if (isWin) saveLevelStars(this.gameId, this.currentLevel, stars);
+    this.result = new LevelResult(this.designSize, {
+      win: isWin,
+      score: this.score,
+      scoreLabel: '得分',
+      levelName,
+      hasNext,
+      stars,
+      primaryColor: '#e85d04'
     });
+    this.draw();
   }
 
   undo() {
@@ -296,6 +292,7 @@ class SheepGame {
 
   shuffleTiles() {
     if (this.animating || this.gameOver || this.gameWon) return;
+    this.shuffleUsed++;
 
     const remaining = this.tiles.filter(t => !t.removed);
     const types = remaining.map(t => t.type);
@@ -339,10 +336,9 @@ class SheepGame {
     // 收集槽
     this.drawSlot();
 
-    // 游戏结束遮罩
-    if (this.gameWon || this.gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(0, 0, width, height);
+    // 游戏结束结算遮罩
+    if ((this.gameWon || this.gameOver) && this.result) {
+      this.result.draw(ctx);
     }
   }
 
@@ -482,7 +478,14 @@ class SheepGame {
   }
 
   onTouchStart(pos) {
-    // 结算时点击无效
+    // 结算遮罩优先处理
+    if ((this.gameOver || this.gameWon) && this.result) {
+      const action = this.result.onTouchStart(pos);
+      if (action === 'next') this.nextLevel();
+      else if (action === 'replay' || action === 'retry') this.retry();
+      else if (action === 'back') this.exitGame();
+      return;
+    }
     if (this.gameOver || this.gameWon) return;
 
     const btn = checkBottomButtons(pos, this.buttons);
@@ -549,18 +552,19 @@ class SheepGame {
   exitGame() {
     this.ended = true;
     if (this.rafId) cancelAnimationFrame(this.rafId);
-    RankData.save(this.gameId, this.score);
     this.onEnd({ score: this.score, passed: this.gameWon });
   }
 
   nextLevel() {
     this.currentLevel = Math.min(this.currentLevel + 1, 1);
+    this.result = null;
     this.generateLevel(this.currentLevel);
     this.draw();
     this.startLoop();
   }
 
   retry() {
+    this.result = null;
     this.generateLevel(this.currentLevel);
     this.draw();
     this.startLoop();

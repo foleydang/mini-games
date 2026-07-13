@@ -3,8 +3,8 @@
  * 提供统一的关卡选择和进度显示功能
  */
 
-import { Colors, drawRoundRect, drawText, Storage } from './utils.js';
-import { ModernThemes, drawModernButton, drawModernProgress, drawModernTag } from './modern-ui.js';
+import { Colors, drawRoundRect, drawText, Storage, loadLevelStars } from './utils.js';
+import { ModernThemes, drawModernButton, drawModernProgress } from './modern-ui.js';
 import { Games, Levels } from './config.js';
 
 export default class LevelSelector {
@@ -22,28 +22,55 @@ export default class LevelSelector {
 
     // 获取当前进度
     this.currentLevel = Storage.load(`${gameId}_level`) || 0;
+    // 每关最好星级映射 { levelIndex: stars }
+    this.starMap = loadLevelStars(gameId);
 
     // UI状态
     this.cards = [];
     this.buttons = [];
 
+    // 滚动状态
+    this.scrollY = 0;
+    this.maxScroll = 0;
+    this.dragStartY = 0;
+    this.dragStartScroll = 0;
+    this.dragging = false;
+    this.moved = false;
+    // 惯性滚动(帧步进,不依赖 performance.now——真机 iOS 无全局 performance)
+    this.scrollVel = 0;
+    this.prevPointerY = 0;
+
     this.init();
   }
 
   init() {
-    const { width, safeTop } = this.designSize;
+    const { width, height, safeTop, safeBottom } = this.designSize;
 
-    // 计算布局
-    this.cardWidth = 140;
-    this.cardHeight = 170;
-    this.cardSpacing = 20;
-    this.cardsPerRow = Math.floor((width - 60) / (this.cardWidth + this.cardSpacing));
+    // 一行一个关卡的列表布局
+    this.rowMargin = 28;
+    this.rowWidth = width - this.rowMargin * 2;
+    this.rowHeight = 92;
+    this.rowGap = 15;
+    this.startX = this.rowMargin;
 
-    const totalWidth = this.cardsPerRow * this.cardWidth + (this.cardsPerRow - 1) * this.cardSpacing;
-    this.startX = (width - totalWidth) / 2;
-    this.startY = safeTop + 280;
+    // 列表可视区域(头部区块下方),用于裁剪与滚动计算
+    this.cardAreaTop = safeTop + 280;
+    this.cardAreaBottom = height - safeBottom - 30;
+    this.startY = this.cardAreaTop + 12;
 
     this.generateCards();
+
+    // 内容总高度与最大滚动量
+    const contentBottom = this.startY + this.levels.length * (this.rowHeight + this.rowGap);
+    this.maxScroll = Math.max(0, contentBottom - this.cardAreaBottom + 12);
+
+    // 打开时自动定位到当前关卡(居中显示),避免从第1关翻起
+    const cur = this.cards[Math.min(this.currentLevel, this.cards.length - 1)];
+    if (cur) {
+      const viewH = this.cardAreaBottom - this.cardAreaTop;
+      const target = cur.y - this.cardAreaTop - viewH / 2 + this.rowHeight / 2;
+      this.scrollY = Math.max(0, Math.min(this.maxScroll, target));
+    }
   }
 
   generateCards() {
@@ -52,11 +79,7 @@ export default class LevelSelector {
 
     for (let i = 0; i < this.levels.length; i++) {
       const level = this.levels[i];
-      const row = Math.floor(i / this.cardsPerRow);
-      const col = i % this.cardsPerRow;
-
-      const x = this.startX + col * (this.cardWidth + this.cardSpacing);
-      const y = this.startY + row * (this.cardHeight + this.cardSpacing);
+      const y = this.startY + i * (this.rowHeight + this.rowGap);
 
       const isCompleted = i < this.currentLevel;
       const isCurrent = i === this.currentLevel;
@@ -64,15 +87,25 @@ export default class LevelSelector {
 
       this.cards.push({
         level: i,
-        x, y,
-        width: this.cardWidth,
-        height: this.cardHeight,
+        x: this.startX, y,
+        width: this.rowWidth,
+        height: this.rowHeight,
         levelInfo: level,
         isCompleted,
         isCurrent,
         isLocked
       });
     }
+  }
+
+  // 惯性滚动步进,每帧调用
+  stepScroll() {
+    if (this.dragging) return;
+    if (Math.abs(this.scrollVel) < 0.3) { this.scrollVel = 0; return; }
+    this.scrollY += this.scrollVel;
+    this.scrollVel *= 0.92;
+    if (this.scrollY < 0) { this.scrollY = 0; this.scrollVel = 0; }
+    else if (this.scrollY > this.maxScroll) { this.scrollY = this.maxScroll; this.scrollVel = 0; }
   }
 
   draw(ctx) {
@@ -83,15 +116,42 @@ export default class LevelSelector {
     
     // 标题区域
     this.drawHeader(ctx, width, safeTop);
-    
-    // 关卡卡片
-    this.cards.forEach(card => this.drawCard(ctx, card));
-    
-    // 底部按钮
-    this.drawBottomButtons(ctx, width, height, safeBottom);
-    
+
+    // 惯性滚动步进
+    this.stepScroll();
+
+    // 关卡列表(裁剪 + 滚动 + 视口剔除,仅绘制可见行以保证流畅)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, this.cardAreaTop, width, this.cardAreaBottom - this.cardAreaTop);
+    ctx.clip();
+    ctx.translate(0, -this.scrollY);
+    const visTop = this.scrollY + this.cardAreaTop;
+    const visBot = this.scrollY + this.cardAreaBottom;
+    for (const card of this.cards) {
+      if (card.y + card.height < visTop || card.y > visBot) continue;
+      this.drawCard(ctx, card);
+    }
+    ctx.restore();
+
+    // 顶部/底部渐隐提示可滚动
+    if (this.maxScroll > 0) this.drawScrollHint(ctx, width);
+
+    // 操作按钮行(返回 / 重置进度),位于描述与进度之间
+    this.drawActionButtons(ctx, width, safeTop);
+
     // 动画效果
     this.drawAnimations(ctx);
+  }
+
+  drawScrollHint(ctx, width) {
+    // 底部可继续滚动时,画一个小箭头提示
+    if (this.scrollY < this.maxScroll - 1) {
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      drawText(ctx, '⌄', width / 2, this.cardAreaBottom - 6, { fontSize: 40, color: this.theme.primary, bold: true });
+      ctx.restore();
+    }
   }
 
   drawBackground(ctx, width, height) {
@@ -128,39 +188,34 @@ export default class LevelSelector {
 
   drawHeader(ctx, width, safeTop) {
     // 游戏标题
-    drawText(ctx, this.gameInfo.name, width / 2, safeTop + 80, {
+    drawText(ctx, this.gameInfo.name, width / 2, safeTop + 72, {
       fontSize: 52, color: this.theme.primary, bold: true
     });
-    
+
     // 副标题
-    drawText(ctx, this.gameInfo.desc, width / 2, safeTop + 130, {
+    drawText(ctx, this.gameInfo.desc, width / 2, safeTop + 114, {
       fontSize: 24, color: '#64748b'
     });
 
-    // 关卡类型标签
-    const levelType = this.gameInfo.type === 'levels' ? '关卡' : '无限';
-    const typeColor = this.gameInfo.type === 'levels' ? this.theme.primary : '#10b981';
-    drawModernTag(ctx, width - 120, safeTop + 80, levelType, this.theme, {
-      fontSize: 20, fontWeight: 'bold', backgroundColor: typeColor + '22', textColor: typeColor
-    });
+    // 操作按钮行(描述与进度之间)在 draw() 中通过 drawActionButtons 绘制
 
     // 进度信息
     const progress = this.levels.length > 0 ? (this.currentLevel / this.levels.length) : 0;
-    
+
     // 进度标题
-    drawText(ctx, `进度`, width / 2 - 100, safeTop + 185, {
+    drawText(ctx, `进度`, width / 2 - 100, safeTop + 218, {
       fontSize: 22, color: '#64748b', bold: true
     });
-    
+
     // 进度百分比
-    drawText(ctx, `${Math.round(progress * 100)}%`, width / 2 + 100, safeTop + 185, {
+    drawText(ctx, `${Math.round(progress * 100)}%`, width / 2 + 100, safeTop + 218, {
       fontSize: 22, color: this.theme.primary, bold: true
     });
 
     // 进度条背景
     const progressW = width - 100;
     const progressX = 50;
-    const progressY = safeTop + 210;
+    const progressY = safeTop + 242;
     
     // 进度条背景
     drawRoundRect(ctx, progressX, progressY, progressW, 16, 8);
@@ -186,28 +241,23 @@ export default class LevelSelector {
     }
   }
 
-  drawBottomButtons(ctx, width, height, safeBottom) {
-    const buttonY = height - safeBottom - 80;
-    
-    // 返回按钮
-    drawModernButton(ctx, 30, buttonY, 150, 60, '← 返回', this.theme, {
-      fontSize: 24, radius: 18, shadow: true, gradient: false
-    });
-    this.backBtn = { x: 30, y: buttonY, width: 150, height: 60 };
+  drawActionButtons(ctx, width, safeTop) {
+    const btnY = safeTop + 148;
+    const btnH = 52;
+    const btnW = 132;
 
-    // 重置进度按钮
-    drawModernButton(ctx, width - 180, buttonY, 150, 60, '重置进度', this.theme, {
-      fontSize: 22, radius: 18, shadow: true, gradient: false
+    // 返回按钮(左上角)
+    drawModernButton(ctx, 24, btnY, btnW, btnH, '← 返回', this.theme, {
+      fontSize: 22, radius: 16, shadow: true, gradient: false
     });
-    this.resetBtn = { x: width - 180, y: buttonY, width: 150, height: 60 };
-    
-    // 底部装饰线
-    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, buttonY - 10);
-    ctx.lineTo(width, buttonY - 10);
-    ctx.stroke();
+    this.backBtn = { x: 24, y: btnY, width: btnW, height: btnH };
+
+    // 重置进度按钮(右上角)
+    const resetX = width - 24 - btnW;
+    drawModernButton(ctx, resetX, btnY, btnW, btnH, '重置进度', this.theme, {
+      fontSize: 20, radius: 16, shadow: true, gradient: false
+    });
+    this.resetBtn = { x: resetX, y: btnY, width: btnW, height: btnH };
   }
 
   drawAnimations(ctx) {
@@ -215,134 +265,169 @@ export default class LevelSelector {
     // 暂时留空，后续可以添加粒子效果或微动画
   }
 
+  // 依据关卡在总关卡中的位置计算难度(5 档)
+  getDifficulty(level) {
+    const total = this.levels.length;
+    const t = total <= 1 ? 0 : level / (total - 1);
+    const tier = Math.min(4, Math.floor(t * 5));
+    const labels = ['轻松', '简单', '普通', '挑战', '地狱'];
+    const colors = ['#22c55e', '#38bdf8', '#fbbf24', '#fb923c', '#ef4444'];
+    const emojis = ['🌱', '🙂', '🔥', '💪', '💀'];
+    return { tier, label: labels[tier], color: colors[tier], emoji: emojis[tier], stars: tier + 1 };
+  }
+
+  // 左对齐绘制 total 颗星,filled 颗高亮
+  drawStars(ctx, x, y, filled, total, filledColor, emptyColor) {
+    ctx.font = '17px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    let sx = x;
+    for (let i = 0; i < total; i++) {
+      ctx.fillStyle = i < filled ? filledColor : emptyColor;
+      ctx.fillText('★', sx, y);
+      sx += 19;
+    }
+  }
+
   drawCard(ctx, card) {
     const { x, y, width, height, level, isCompleted, isCurrent, isLocked, levelInfo } = card;
+    const cy = y + height / 2;
+    const radius = 24;
+    const diff = this.getDifficulty(level);
 
     ctx.save();
-    
-    // 卡片阴影
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetY = 8;
 
-    // 卡片背景
+    // 行背景 + 阴影
+    ctx.shadowColor = isCurrent ? this.theme.primary + '55' : 'rgba(100,116,139,0.14)';
+    ctx.shadowBlur = isCurrent ? 20 : 10;
+    ctx.shadowOffsetY = 5;
+
     if (isCurrent) {
-      // 当前关卡 - 渐变背景
-      const cardGradient = ctx.createLinearGradient(x, y, x, y + height);
-      cardGradient.addColorStop(0, this.theme.primary);
-      cardGradient.addColorStop(1, this.theme.secondary);
-      ctx.fillStyle = cardGradient;
+      const g = ctx.createLinearGradient(x, y, x + width, y + height);
+      g.addColorStop(0, this.theme.primary);
+      g.addColorStop(1, this.theme.secondary);
+      ctx.fillStyle = g;
     } else if (isCompleted) {
-      // 已完成关卡 - 绿色背景
-      const cardGradient = ctx.createLinearGradient(x, y, x, y + height);
-      cardGradient.addColorStop(0, '#10b981');
-      cardGradient.addColorStop(1, '#059669');
-      ctx.fillStyle = cardGradient;
+      ctx.fillStyle = '#ffffff';
     } else {
-      // 未解锁关卡 - 灰色背景
-      const cardGradient = ctx.createLinearGradient(x, y, x, y + height);
-      cardGradient.addColorStop(0, '#f3f4f6');
-      cardGradient.addColorStop(1, '#e5e7eb');
-      ctx.fillStyle = cardGradient;
+      ctx.fillStyle = '#f8fafc';
     }
-    
-    // 圆角矩形
-    drawRoundRect(ctx, x, y, width, height, 20);
+    drawRoundRect(ctx, x, y, width, height, radius);
     ctx.fill();
-    
-    // 卡片边框
-    if (isCurrent) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-      ctx.lineWidth = 2;
-      drawRoundRect(ctx, x, y, width, height, 20);
-      ctx.stroke();
-    }
-    
+
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
-    
-    // 关卡编号背景
-    const badgeX = x + 15;
-    const badgeY = y + 15;
-    const badgeSize = 32;
-    
+
+    // 顶部柔光高光(可爱感)
+    ctx.save();
+    ctx.beginPath();
+    drawRoundRect(ctx, x, y, width, height, radius);
+    ctx.clip();
+    const hl = ctx.createLinearGradient(0, y, 0, y + height * 0.5);
+    hl.addColorStop(0, isCurrent ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.6)');
+    hl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl;
+    ctx.fillRect(x, y, width, height * 0.5);
+    ctx.restore();
+
+    // 描边(未开始/已完成用淡色描边,当前用白色内描边)
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = isCurrent ? 'rgba(255,255,255,0.55)' : (isCompleted ? '#d1fae5' : '#e2e8f0');
+    drawRoundRect(ctx, x + 1, y + 1, width - 2, height - 2, radius - 1);
+    ctx.stroke();
+
+    // 左侧圆角方形编号徽章(比圆形更饱满可爱)
+    const badgeSize = 56;
+    const badgeX = x + 18;
+    const badgeY = cy - badgeSize / 2;
     if (isCurrent) {
-      // 当前关卡 - 彩色徽章
-      const badgeGradient = ctx.createRadialGradient(badgeX + 8, badgeY + 8, 2, badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2);
-      badgeGradient.addColorStop(0, 'rgba(255,255,255,0.9)');
-      badgeGradient.addColorStop(1, 'rgba(255,255,255,0.6)');
-      ctx.fillStyle = badgeGradient;
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
     } else if (isCompleted) {
-      // 已完成 - 白色徽章
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      const bg = ctx.createLinearGradient(badgeX, badgeY, badgeX, badgeY + badgeSize);
+      bg.addColorStop(0, '#34d399');
+      bg.addColorStop(1, '#10b981');
+      ctx.fillStyle = bg;
     } else {
-      // 未解锁 - 灰色徽章
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillStyle = '#e2e8f0';
     }
-    
-    drawRoundRect(ctx, badgeX, badgeY, badgeSize, badgeSize, badgeSize/2);
+    drawRoundRect(ctx, badgeX, badgeY, badgeSize, badgeSize, 18);
     ctx.fill();
-    
-    // 关卡编号文字
-    ctx.font = 'bold 20px "PingFang SC", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isCurrent ? this.theme.primary : (isCompleted ? '#059669' : '#6b7280');
-    ctx.fillText(`${level + 1}`, badgeX + badgeSize/2, badgeY + badgeSize/2);
-    
-    // 关卡名称
-    drawText(ctx, levelInfo.name, x + width/2, y + 65, {
-      fontSize: 24, 
-      color: isCurrent ? '#ffffff' : (isCompleted ? '#ffffff' : '#374151'), 
-      bold: true,
-      align: 'center'
-    });
-    
-    // 关卡信息
-    const info = this.getLevelInfo(levelInfo);
-    drawText(ctx, info, x + width/2, y + 95, {
-      fontSize: 18, 
-      color: isCurrent ? 'rgba(255,255,255,0.9)' : (isCompleted ? 'rgba(255,255,255,0.8)' : '#6b7280'),
-      align: 'center'
-    });
-    
-    // 状态图标
-    const iconY = y + height - 35;
+
+    const badgeCX = badgeX + badgeSize / 2;
     if (isCompleted) {
-      // 完成图标
-      ctx.font = '32px "Apple Color Emoji"';
+      // 完成:大对勾 + 角标数字
+      ctx.font = '32px "Apple Color Emoji", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText('✓', x + width/2, iconY);
-      
-      // 星星装饰
-      ctx.font = '20px "Apple Color Emoji"';
-      ctx.fillText('⭐', x + width/2 - 25, iconY - 15);
-      ctx.fillText('⭐', x + width/2 + 25, iconY - 15);
-    } else if (isLocked) {
-      // 锁定图标
-      ctx.font = '32px "Apple Color Emoji"';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#9ca3af';
-      ctx.fillText('🔒', x + width/2, iconY);
-    } else if (isCurrent) {
-      // 当前关卡 - 播放图标
-      ctx.font = '32px "Apple Color Emoji"';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('▶', x + width/2, iconY);
+      ctx.fillText('✓', badgeCX, cy);
+    } else {
+      drawText(ctx, `${level + 1}`, badgeCX, cy, {
+        fontSize: 30,
+        color: isCurrent ? this.theme.primary : '#94a3b8',
+        bold: true
+      });
     }
-    
+
+    // 中间(两行):第1行 名称 + 紧跟其后的规格说明;第2行 难度标签 + 星级
+    const textX = badgeX + badgeSize + 16;
+    const nameColor = isCurrent ? '#ffffff' : (isCompleted ? '#1f2937' : '#64748b');
+    const subColor = isCurrent ? 'rgba(255,255,255,0.85)' : (isLocked ? '#a3aec0' : '#94a3b8');
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    // 名称
+    const nameStr = `${diff.emoji} ${levelInfo.name}`;
+    ctx.font = 'bold 24px "PingFang SC", sans-serif';
+    ctx.fillStyle = nameColor;
+    ctx.fillText(nameStr, textX, cy - 14);
+    // 规格说明紧跟名称之后(小字、弱化)
+    const nameW = ctx.measureText(nameStr).width;
+    ctx.font = '16px "PingFang SC", sans-serif';
+    ctx.fillStyle = subColor;
+    ctx.fillText(this.getLevelInfo(levelInfo), textX + nameW + 12, cy - 13);
+
+    // 第2行:难度标签 + 星级
+    drawText(ctx, diff.label, textX, cy + 16, {
+      fontSize: 15, color: isCurrent ? '#fff' : diff.color, bold: true, align: 'left'
+    });
+    this.drawStars(
+      ctx, textX + 42, cy + 16, diff.stars, 5,
+      isCurrent ? '#fde047' : diff.color,
+      isCurrent ? 'rgba(255,255,255,0.4)' : '#dbe2ea'
+    );
+
+    // 右侧状态
+    if (isCurrent) {
+      const pillW = 96, pillH = 46;
+      const pillX = x + width - pillW - 18;
+      const pillY = cy - pillH / 2;
+      ctx.fillStyle = '#ffffff';
+      drawRoundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+      ctx.fill();
+      drawText(ctx, '开始 ▶', pillX + pillW / 2, cy, {
+        fontSize: 22, color: this.theme.primary, bold: true
+      });
+    } else if (isCompleted) {
+      // 真实获得的星级(旧存档无记录时默认 3 星,避免回退观感)
+      const earned = this.starMap[level] != null ? this.starMap[level] : 3;
+      this.drawStars(ctx, x + width - 78, cy, earned, 3, '#fbbf24', '#e5e7eb');
+    } else {
+      ctx.font = '30px "Apple Color Emoji", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 0.5;
+      ctx.fillText('🔒', x + width - 44, cy);
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
   }
 
   getLevelInfo(levelInfo) {
     switch (this.gameId) {
       case 'match3': return `${levelInfo.cols}×${levelInfo.rows} ${levelInfo.colors}色`;
-      case 'fruit': return `${levelInfo.fruitCount}种水果`;
+      case 'fruit': return `${levelInfo.types}种·${levelInfo.maxFruits}个`;
       case 'breakout': return `${levelInfo.rows}×${levelInfo.cols}砖块`;
       case 'sheep': return `${levelInfo.layers}层 ${levelInfo.emojiCount}种`;
       case 'memory': return `${levelInfo.pairs}对卡片`;
@@ -351,23 +436,52 @@ export default class LevelSelector {
   }
 
   onTouchStart(pos) {
-    // 返回按钮
+    // 记录拖动起点,松手时再判定点击/滚动
+    this.dragging = true;
+    this.moved = false;
+    this.dragStartY = pos.y;
+    this.dragStartScroll = this.scrollY;
+    this.prevPointerY = pos.y;
+    this.scrollVel = 0;
+  }
+
+  onTouchMove(pos) {
+    if (!this.dragging) return;
+    const dy = pos.y - this.dragStartY;
+    if (Math.abs(dy) > 8) this.moved = true;
+    this.scrollY = Math.max(0, Math.min(this.maxScroll, this.dragStartScroll - dy));
+    // 帧间位移作为惯性初速度(手指下滑 → 内容下移 → scrollY 减小)
+    this.scrollVel = this.prevPointerY - pos.y;
+    this.prevPointerY = pos.y;
+  }
+
+  onTouchEnd(pos) {
+    const wasDragging = this.dragging;
+    this.dragging = false;
+    // 拖动过则视为滚动,不触发点击(惯性由 stepScroll 接管)
+    if (this.moved || !wasDragging) { return; }
+
+    // 固定按钮(不随滚动)
     if (this.backBtn && this.hitTest(pos, this.backBtn)) {
       this.shouldBack = true;
       return;
     }
-
-    // 重置按钮
     if (this.resetBtn && this.hitTest(pos, this.resetBtn)) {
       Storage.save(`${this.gameId}_level`, 0);
+      Storage.remove(`${this.gameId}_stars`);
       this.currentLevel = 0;
+      this.starMap = {};
       this.generateCards();
       return;
     }
 
-    // 关卡卡片
+    // 卡片区域外的点击忽略(避免穿透到标题/按钮区)
+    if (pos.y < this.cardAreaTop || pos.y > this.cardAreaBottom) return;
+
+    // 卡片按滚动偏移换算到布局坐标
+    const layoutPos = { x: pos.x, y: pos.y + this.scrollY };
     for (const card of this.cards) {
-      if (this.hitTest(pos, card) && !card.isLocked) {
+      if (this.hitTest(layoutPos, card) && !card.isLocked) {
         this.onLevelSelect(card.level);
         return;
       }

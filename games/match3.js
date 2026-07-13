@@ -1,7 +1,9 @@
 // 消消乐游戏 - 特殊道具 / 连击 / 手感反馈(粒子·飘字·震屏·缓动) / 死局重排 / 闲置提示
-import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData } from '../common/utils.js';
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData, completeLevel, saveLevelStars } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { audioManager } from '../common/audio.js';
+import { Levels } from '../common/config.js';
+import LevelResult from '../common/level-result.js';
 
 // 各阶段动画时长(秒)
 const SWAP_DUR = 0.16;
@@ -20,19 +22,9 @@ class Match3Game {
     this.gameId = 'match3';
     this.currentLevel = level;
 
-    const levelConfigs = [
-      { rows: 8, cols: 6, colors: 4, moves: 28, target: 800 },
-      { rows: 8, cols: 6, colors: 4, moves: 25, target: 1200 },
-      { rows: 9, cols: 7, colors: 5, moves: 22, target: 1800 },
-      { rows: 10, cols: 7, colors: 5, moves: 18, target: 2500 },
-      { rows: 10, cols: 8, colors: 6, moves: 15, target: 3500 }
-    ];
-    const cfg = levelConfigs[level] || levelConfigs[0];
-    this.rows = cfg.rows;
-    this.cols = cfg.cols;
-    this.numColors = cfg.colors;
-    this.moves = cfg.moves;
-    this.target = cfg.target;
+    this.levels = Levels.match3;
+    this.currentLevel = Math.max(0, Math.min(level, this.levels.length - 1));
+    this.applyLevelConfig();
     this.cellSize = 85;
 
     this.grid = [];
@@ -44,6 +36,7 @@ class Match3Game {
 
     // 阶段状态机
     this.phase = 'idle';        // idle|swap|swapback|removing|falling|over
+    this.result = null;         // 统一结算遮罩
     this.swapAnim = null;
     this.removeAnim = null;
     this.fallAnim = null;
@@ -79,7 +72,22 @@ class Match3Game {
     this.init();
   }
 
+  applyLevelConfig() {
+    const cfg = this.levels[this.currentLevel] || this.levels[0];
+    this.rows = cfg.rows;
+    this.cols = cfg.cols;
+    this.numColors = cfg.colors;
+    this.moves = cfg.moves;
+    this.target = cfg.target;
+    this.levelName = cfg.name || `第${this.currentLevel + 1}关`;
+  }
+
   init() {
+    this.setupBoard();
+    this.startLoop();
+  }
+
+  setupBoard() {
     const { width, height, safeTop, safeBottom } = this.designSize;
     const areaTop = safeTop + 250;
     const areaBottom = height - safeBottom - 40;
@@ -94,7 +102,6 @@ class Match3Game {
 
     this.initGrid();
     if (!this.hasAnyMove()) this.reshuffle();
-    this.startLoop();
   }
 
   initGrid() {
@@ -259,13 +266,8 @@ class Match3Game {
       ctx.restore();
     }
 
-    if (this.phase === 'over') {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(0, 0, width, height);
-      const win = this.score >= this.target;
-      drawText(ctx, win ? '过关!' : '游戏结束', width / 2, height / 2 - 50, { fontSize: 48, color: '#fff', bold: true });
-      drawText(ctx, '得分: ' + this.score, width / 2, height / 2 + 20, { fontSize: 32, color: '#fff' });
-      drawHint(ctx, this.designSize, '点击返回');
+    if (this.phase === 'over' && this.result) {
+      this.result.draw(ctx);
     }
   }
 
@@ -583,7 +585,14 @@ class Match3Game {
       return;
     }
 
-    if (this.phase === 'over') { this.running = false; this.onEnd({ score: this.score, passed: this.score >= this.target }); return; }
+    if (this.phase === 'over') {
+      if (!this.result) return;
+      const action = this.result.onTouchStart(pos);
+      if (action === 'next') this.nextLevel();
+      else if (action === 'replay' || action === 'retry') this.retry();
+      else if (action === 'back') { this.running = false; this.onEnd({ score: this.score, passed: this.score >= this.target }); }
+      return;
+    }
     if (this.phase !== 'idle') return;
 
     this.idleTime = 0;
@@ -1035,19 +1044,68 @@ class Match3Game {
     this.comboCount = 0;
     this.selected = null;
     if (this.score >= this.target) {
-      this.phase = 'over';
       audioManager.play('levelup');
+      this.finish(true);
       return;
     }
     if (this.moves <= 0) {
-      this.phase = 'over';
       audioManager.play('gameover');
+      this.finish(false);
       return;
     }
     if (!this.hasAnyMove()) this.reshuffle();
     this.phase = 'idle';
     this.idleTime = 0;
     this.hint = null;
+  }
+
+  finish(win) {
+    this.phase = 'over';
+    if (win) completeLevel(this.gameId, this.currentLevel);
+    const hasNext = win && this.currentLevel < this.levels.length - 1;
+    // 星级:达标倍率(得分相对目标分)
+    const ratio = this.target > 0 ? this.score / this.target : 1;
+    const stars = ratio >= 1.4 ? 3 : ratio >= 1.2 ? 2 : 1;
+    if (win) saveLevelStars(this.gameId, this.currentLevel, stars);
+    this.result = new LevelResult(this.designSize, {
+      win,
+      score: this.score,
+      scoreLabel: '得分',
+      levelName: this.levelName,
+      hasNext,
+      stars,
+      primaryColor: '#8b5cf6'
+    });
+  }
+
+  nextLevel() {
+    this.currentLevel = Math.min(this.currentLevel + 1, this.levels.length - 1);
+    this.restartLevel();
+  }
+
+  retry() {
+    this.restartLevel();
+  }
+
+  restartLevel() {
+    this.applyLevelConfig();
+    this.result = null;
+    this.score = 0;
+    this.selected = null;
+    this.dragStart = null;
+    this.pendingDetonate = null;
+    this.comboCount = 0;
+    this.particles = [];
+    this.floaters = [];
+    this.banner = null;
+    this.shake = 0;
+    this.idleTime = 0;
+    this.hint = null;
+    this.phase = 'idle';
+    this.swapAnim = null;
+    this.removeAnim = null;
+    this.fallAnim = null;
+    this.setupBoard();
   }
 
   // ---------- 死局检测 / 重排 / 提示 ----------

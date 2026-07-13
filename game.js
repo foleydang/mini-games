@@ -169,11 +169,6 @@ class MainGame {
       const pos = getTouchPos(e.touches[0], this.designSize);
       if (this.showingLevelSelect && this.levelSelector) {
         this.levelSelector.onTouchStart(pos);
-        if (this.levelSelector && this.levelSelector.shouldBack) {
-          this.showingLevelSelect = false;
-          this.levelSelector = null;
-          this.startAnimation();
-        }
         return;
       }
       if (this.showingProfile) {
@@ -191,6 +186,10 @@ class MainGame {
 
     wx.onTouchMove((e) => {
       const pos = getTouchPos(e.touches[0], this.designSize);
+      if (this.showingLevelSelect && this.levelSelector) {
+        this.levelSelector.onTouchMove(pos);
+        return;
+      }
       if (!this.showingSettings && !this.showingRank && this.currentGame) {
         this.currentGame.onTouchMove(pos);
       }
@@ -198,6 +197,15 @@ class MainGame {
 
     wx.onTouchEnd((e) => {
       const pos = getTouchPos(e.changedTouches[0], this.designSize);
+      if (this.showingLevelSelect && this.levelSelector) {
+        this.levelSelector.onTouchEnd(pos);
+        if (this.levelSelector && this.levelSelector.shouldBack) {
+          this.showingLevelSelect = false;
+          this.levelSelector = null;
+          this.startAnimation();
+        }
+        return;
+      }
       if (!this.showingSettings && !this.showingRank && this.currentGame) {
         this.currentGame.onTouchEnd(pos);
       }
@@ -292,7 +300,6 @@ class MainGame {
   endGame(result) {
     // 支持 { score, passed } 对象或纯数字 score
     const score = typeof result === 'object' ? result.score : result;
-    const passed = typeof result === 'object' ? result.passed : (score > 0);
 
     // 安全网:确保离场前停掉游戏自身的循环(定时器/rAF),避免野循环画到主页
     if (this.currentGame && typeof this.currentGame.destroy === 'function') {
@@ -300,22 +307,21 @@ class MainGame {
     }
     this.currentGame = null;
     audioManager.stopBgMusic();
-    RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
-    
-    // 关卡型游戏：只有关卡通过才解锁下一关
-    if (this.currentLevel !== undefined && this.currentRankGame) {
-      const gameConfig = Games.find(g => g.id === this.currentRankGame);
-      if (gameConfig && gameConfig.type === 'levels') {
-        if (passed) {
-          const savedLevel = Storage.load(`${this.currentRankGame}_level`) || 0;
-          if (this.currentLevel >= savedLevel) {
-            Storage.save(`${this.currentRankGame}_level`, this.currentLevel + 1);
-          }
-        }
-        this.currentLevel = undefined;
-      }
+
+    // 无限型游戏:提交分数到排行榜。
+    // 关卡型游戏:排行榜提交“到达关卡”与解锁均在游戏内通关时经 completeLevel 处理,此处不再提交分数。
+    const gameConfig = Games.find(g => g.id === this.currentRankGame);
+    if (!gameConfig || gameConfig.type !== 'levels') {
+      RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
     }
-    
+    this.currentLevel = undefined;
+
+    // 关卡型游戏:退出后回到选关页(而非最外层首页),方便继续挑战
+    if (gameConfig && gameConfig.type === 'levels') {
+      this.showLevelSelect(this.currentRankGame);
+      return;
+    }
+
     this.startAnimation();
   }
 
@@ -490,7 +496,8 @@ class MainGame {
     this.showingRank = true;
     this.currentRankGame = gameId;
     this.rankTheme = theme;
-    const sortType = gameId === 'memory' ? 'asc' : 'desc';
+    // 统一按降序:关卡型比“到达关卡”越高越好,无限型比分数越高越好
+    const sortType = 'desc';
     
     // 先显示本地数据
     this.rankData = RankData.getRank(gameId, sortType);
@@ -639,21 +646,24 @@ class MainGame {
     // 图标
     drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, theme.primary, game.shape);
 
-    // 游戏名称
-    drawText(ctx, game.name, x + 86, y + 34, { fontSize: 28, color: '#1e293b', bold: true, align: 'left' });
+    // 游戏名称(上下大致居中于卡片)
+    drawText(ctx, game.name, x + 86, y + 44, { fontSize: 28, color: '#1e293b', bold: true, align: 'left' });
     // 描述
-    drawText(ctx, game.desc, x + 86, y + 64, { fontSize: 19, color: '#94a3b8', align: 'left' });
+    drawText(ctx, game.desc, x + 86, y + 74, { fontSize: 19, color: '#94a3b8', align: 'left' });
 
-    // 关卡类型标签
+    // 关卡类型标签(卡片右上角)
     const tagText = game.type === 'levels' ? '关卡' : '无限';
     const tagColor = game.type === 'levels' ? theme.primary : '#10b981';
-    ctx.font = 'bold 16px "PingFang SC", sans-serif';
-    const tagWidth = ctx.measureText(tagText).width + 20;
-    drawRoundRect(ctx, x + 86, y + 76, tagWidth, 24, 12, tagColor + '1a');
+    ctx.font = 'bold 19px "PingFang SC", sans-serif';
+    const tagWidth = ctx.measureText(tagText).width + 24;
+    const tagH = 28;
+    const tagX = x + width - tagWidth - 14;
+    const tagY = y + 14;
+    drawRoundRect(ctx, tagX, tagY, tagWidth, tagH, 12, tagColor + '1a');
     ctx.fillStyle = tagColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(tagText, x + 86 + tagWidth / 2, y + 88);
+    ctx.fillText(tagText, tagX + tagWidth / 2, tagY + tagH / 2 + 1);
 
     // 排行榜按钮（卡片内右下角）
     ctx.save();
@@ -1003,8 +1013,10 @@ renderProfile() {
         // 昵称
         drawText(this.ctx, nickname, 160, y + 30, { fontSize: 26, color: rankColor, align: 'left' });
         
-        // 分数
-        const displayScore = this.currentRankGame === 'memory' ? item.score + '步' : item.score + '分';
+        // 分数/关卡:关卡型游戏展示“到达关卡”,无限型展示分数
+        const gameCfg = Games.find(g => g.id === this.currentRankGame);
+        const isLevelGame = gameCfg && gameCfg.type === 'levels';
+        const displayScore = isLevelGame ? `第${item.score}关` : item.score + '分';
         drawText(this.ctx, displayScore, width - 80, y + 30, { fontSize: 26, color: rankColor, bold: true });
       });
     }
