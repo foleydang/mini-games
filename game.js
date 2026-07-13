@@ -32,8 +32,14 @@ class MainGame {
     this.ctx = this.canvas.getContext('2d');
     this.designSize = getDesignSize();
 
-    this.canvas.width = this.designSize.width;
-    this.canvas.height = this.designSize.height;
+    // 画布后备缓冲区按物理像素分辨率设置，避免在高清屏被放大导致画面发虚（散光感）；
+    // 再把绘图上下文缩放回 750 设计坐标系，绘制/触摸坐标不变，仅提升清晰度。
+    const sysInfo = wx.getSystemInfoSync();
+    const dpr = sysInfo.pixelRatio || 1;
+    this.canvas.width = Math.round(sysInfo.screenWidth * dpr);
+    this.canvas.height = Math.round(sysInfo.screenHeight * dpr);
+    const renderScale = this.canvas.width / this.designSize.width;
+    this.ctx.scale(renderScale, renderScale);
 
     // 状态管理
     this.currentGame = null;

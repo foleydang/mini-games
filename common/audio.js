@@ -137,7 +137,7 @@ class AudioManager {
   // 兼容旧 API
   toggle() { return this.toggleSound(); }
 
-  play(type) {
+  play(type, options) {
     if (!this.soundEnabled) return;
 
     // 震动反馈
@@ -163,6 +163,12 @@ class AudioManager {
         const sfx = this.sfxPool[this.sfxIndex % this.poolSize];
         this.sfxIndex++;
         sfx.stop();
+        // 可选变调（连击升调等），部分平台支持 playbackRate 0.5~2.0
+        if (options && typeof options.rate === 'number') {
+          try { sfx.playbackRate = Math.max(0.5, Math.min(2.0, options.rate)); } catch (e) {}
+        } else {
+          try { sfx.playbackRate = 1.0; } catch (e) {}
+        }
         sfx.src = soundFiles[type];
         sfx.play();
       } catch (e) {}
