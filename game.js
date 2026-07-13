@@ -10,6 +10,7 @@ import {
 import { Games, Levels } from './common/config.js';
 import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
 import { syncUserToServer } from './common/utils.js';
+import { checkTextSecurity, maskSensitive } from './common/contentSecurity.js';
 import { ModernThemes, drawModernButton, drawModernCard, drawModernNavbar, drawModernTag, drawModernProgress } from './common/modern-ui.js';
 import LevelSelector from './common/level-selector.js';
 import { themeManager } from './common/theme-manager.js';
@@ -655,8 +656,8 @@ renderProfile() {
     
     const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
     const avatarColor = avatarColors[this.myProfile.avatarIndex] || '#7c3aed';
-    const nickname = this.myProfile.nickname || '玩家';
-    
+    const nickname = maskSensitive(this.myProfile.nickname || '玩家');
+
     // ===== 头像区域 =====
     const avatarStartY = safeTop + 230;
     
@@ -739,17 +740,28 @@ renderProfile() {
         confirmType: 'done'
       });
       
+      // 输入过程中仅暂存到临时变量，确认时才做内容安全校验后落库
+      let pendingNickname = this.myProfile.nickname;
       wx.onKeyboardInput((res) => {
-        this.myProfile.nickname = res.value || '玩家';
+        pendingNickname = res.value || '玩家';
       });
-      
-      wx.onKeyboardConfirm((res) => {
-        this.myProfile.nickname = res.value || '玩家';
-        this.saveProfile(this.myProfile);
+
+      wx.onKeyboardConfirm(async (res) => {
+        const value = (res.value || pendingNickname || '玩家').trim() || '玩家';
         wx.hideKeyboard();  // 关闭键盘
-        this.renderProfile();
         wx.offKeyboardInput();
         wx.offKeyboardConfirm();
+
+        const result = await checkTextSecurity(value);
+        if (!result.pass) {
+          wx.showToast({ title: '昵称含违规内容，请修改', icon: 'none' });
+          this.renderProfile();  // 保持原昵称，不保存、不上传
+          return;
+        }
+
+        this.myProfile.nickname = value;
+        this.saveProfile(this.myProfile);
+        this.renderProfile();
       });
       
       wx.onKeyboardComplete(() => {
@@ -921,10 +933,11 @@ renderProfile() {
         
         drawCircle(this.ctx, avatarX, avatarY, avatarRadius, avatarColor);
         // 显示昵称首字
-        drawText(this.ctx, (item.nickname || '玩家').charAt(0), avatarX, avatarY, { fontSize: 24, color: '#fff', bold: true });
-        
+        // 昵称展示端脱敏（防止服务器历史/未过滤的违规内容被展示）
+        const nickname = maskSensitive(item.nickname || item.name || '玩家');
+        drawText(this.ctx, nickname.charAt(0), avatarX, avatarY, { fontSize: 24, color: '#fff', bold: true });
+
         // 昵称
-        const nickname = item.nickname || item.name || '玩家';
         drawText(this.ctx, nickname, 160, y + 30, { fontSize: 26, color: rankColor, align: 'left' });
         
         // 分数

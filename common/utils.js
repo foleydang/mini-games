@@ -1,6 +1,7 @@
 /**
  * 精美视觉工具函数 - 鲜明活力风格
  */
+import { containsSensitive } from './contentSecurity.js';
 
 // 获取安全区域信息
 export function getSafeArea() {
@@ -560,12 +561,14 @@ function getOpenId() {
 // 同步用户设置到服务器
 export function syncUserToServer(profile) {
   const openid = getOpenId();
+  // 上传前兜底：违规昵称不流入服务器
+  const safeNickname = containsSensitive(profile.nickname) ? '玩家' : (profile.nickname || '玩家');
   wx.request({
     url: `${API_BASE}/user`,
     method: 'POST',
     data: {
       openid: openid,
-      nickname: profile.nickname || '玩家',
+      nickname: safeNickname,
       avatarIndex: profile.avatarIndex || 0
     },
     header: { 'content-type': 'application/json' },
@@ -644,6 +647,9 @@ export const RankData = {
         avatarColor = myProfile.avatarColor || '#7c3aed';
       }
     } catch (e) {}
+
+    // 上传前兜底：违规昵称不写入排行榜/服务器
+    if (containsSensitive(nickname)) nickname = '玩家';
     
     // 头像使用颜色索引，服务器端会转换为颜色
     const avatar = `color:${avatarIndex}`;
