@@ -478,11 +478,10 @@ class MainGame {
     this.rankData = RankData.getRank(gameId, sortType);
     this.renderRank(gameName);
     
-    // 异步从服务器获取最新数据
+    // 异步从服务器获取最新数据（服务器为准，空数组也覆盖本地缓存）
     RankData.getRankFromCloud(gameId, sortType).then(data => {
-      if (data && data.length > 0) {
+      if (data) {
         this.rankData = data;
-        // 预加载头像图片
         this.preloadAvatars(data);
         this.renderRank(gameName);
       }
