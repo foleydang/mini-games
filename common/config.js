@@ -13,7 +13,7 @@ export const Games = [
   { id: 'memory', name: '翻牌', shortName: '翻', desc: '记忆配对练脑子', shape: 'card', type: 'levels' },
   { id: 'bounce', name: '弹球', shortName: '弹', desc: '反弹跳跃得高分', shape: 'ball', type: 'endless' },
   { id: 'sheep', name: '叠叠消', shortName: '叠', desc: '美食堆叠消消乐', shape: 'card', type: 'levels' },
-  { id: 'fruit', name: '水果消消乐', shortName: '果', desc: '水果掉落三消乐', shape: 'fruit', type: 'levels' }
+  { id: 'fruit', name: '接水果', shortName: '接', desc: '水桶接住掉落水果', shape: 'fruit', type: 'levels' }
 ];
 
 // 🎯 关卡型游戏配置（有明确过关目标）

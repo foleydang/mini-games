@@ -1,4 +1,4 @@
-// 水果消消乐 - 窄桶 + 双斜坡 + 物理碰撞
+// 接水果 - 窄桶 + 双斜坡 + 上方等待网格(整片下滚)
 import { drawText, RankData, Colors } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, checkBottomButtons } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -30,11 +30,11 @@ class FruitGame {
     this.level = level;
 
     const levelConfigs = [
-      { maxFruits: 16, types: 4, radius: 36 },
-      { maxFruits: 20, types: 5, radius: 34 },
-      { maxFruits: 24, types: 6, radius: 32 },
-      { maxFruits: 28, types: 7, radius: 30 },
-      { maxFruits: 32, types: 8, radius: 28 }
+      { maxFruits: 24, types: 4, radius: 34 },
+      { maxFruits: 34, types: 5, radius: 32 },
+      { maxFruits: 44, types: 6, radius: 30 },
+      { maxFruits: 56, types: 7, radius: 28 },
+      { maxFruits: 70, types: 8, radius: 26 }
     ];
     const cfg = levelConfigs[Math.min(level, levelConfigs.length - 1)];
     this.maxFruits = cfg.maxFruits;
@@ -91,7 +91,8 @@ class FruitGame {
 
     this.generateTopFruits();
 
-    this.lastTime = performance.now();
+    // 用 rAF 回调的时间戳做计时,不用 performance.now()——真机 iOS 无全局 performance,会导致构造崩溃
+    this.lastTime = null;
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
@@ -152,16 +153,16 @@ class FruitGame {
 
   generateTopFruits() {
     this.topFruits = [];
-    
-    // 保证每种偶数个
+
+    // 保证每种偶数个（消除以对为单位）
     const types = [];
     const perType = Math.ceil(this.maxFruits / this.maxTypes);
     const evenPer = perType % 2 === 0 ? perType : perType + 1;
-    
+
     for (let t = 0; t < this.maxTypes; t++) {
       for (let i = 0; i < evenPer; i++) types.push(t);
     }
-    
+
     const total = Math.min(types.length, this.maxFruits);
     types.length = total % 2 === 0 ? total : total - 1;
 
@@ -171,66 +172,96 @@ class FruitGame {
       [types[i], types[j]] = [types[j], types[i]];
     }
 
-    // 随机放置在斜坡区域（左斜坡 + 右斜坡）
-    const { width } = this.designSize;
-    const padding = 15;
-    const minGap = 8;
-    
-    for (let i = 0; i < types.length; i++) {
-      const type = types[i];
-      const isLeft = i % 2 === 0;
-      let placed = false;
+    // 棋盘网格:居中多列 + 松散间距 + 随机分布(随机留空 + 轻微抖动)
+    // 底部行(row==clearedRows)清空后整体下滚一行,顶部隐藏行随之露出
+    const { width, safeTop } = this.designSize;
+    this.colStep = this.fruitRadius * 2 + 26;
+    this.rowStep = this.fruitRadius * 2 + 22;
+    this.gridCols = Math.max(4, Math.min(6, Math.floor((width - 40) / this.colStep)));
 
-      // 放置区域：斜坡上方（safeTop+130 到 slopeTopY-10），左右分区
-      const { safeTop } = this.designSize;
-      // 按钮栏底部约 safeTop+230，等待水果需整体落在其下方,避免超出返回按钮
-      const areaTop = safeTop + 240 + this.fruitRadius;
-      // 限制成一个紧凑的横带,不要一路铺到斜坡(避免过于分散)
-      const areaBottom = Math.min(this.slopeTopY - 10, areaTop + this.fruitRadius * 9);
-      
-      for (let attempt = 0; attempt < 50; attempt++) {
-        let x, y;
-        if (isLeft) {
-          x = 20 + this.fruitRadius + Math.random() * (this.bucketLeft - 40 - this.fruitRadius * 2);
-          y = areaTop + Math.random() * (areaBottom - areaTop);
-        } else {
-          x = this.bucketRight + 20 + this.fruitRadius + Math.random() * (this.designSize.width - this.bucketRight - 40 - this.fruitRadius * 2);
-          y = areaTop + Math.random() * (areaBottom - areaTop);
-        }
-        
-        let overlap = false;
-        for (const other of this.topFruits) {
-          const dx = other.x - x;
-          const dy = other.y - y;
-          if (Math.sqrt(dx * dx + dy * dy) < this.fruitRadius * 2 + minGap) {
-            overlap = true; break;
-          }
-        }
-        
-        if (!overlap) {
-          this.topFruits.push({ x, y, type, emoji: FRUITS[type].emoji, color: FRUITS[type].color, radius: this.fruitRadius, removed: false });
-          placed = true;
-          break;
-        }
-      }
-      
-      if (!placed) {
-        const x = isLeft ? 20 + this.fruitRadius + Math.random() * (this.bucketLeft - 40 - this.fruitRadius * 2)
-          : this.bucketRight + 20 + this.fruitRadius + Math.random() * (this.designSize.width - this.bucketRight - 40 - this.fruitRadius * 2);
-        const y = areaTop + Math.random() * (areaBottom - areaTop);
-        this.topFruits.push({ x, y, type, emoji: FRUITS[type].emoji, color: FRUITS[type].color, radius: this.fruitRadius, removed: false });
+    const gridWidth = this.gridCols * this.colStep;
+    this.gridStartX = (width - gridWidth) / 2 + this.colStep / 2;
+
+    // 可见横带(高位,与旧版位置一致),仅显示 visibleRows 行,其余行隐藏在上方
+    this.waitVisibleTop = safeTop + 235;
+    this.visibleRows = 4;
+    this.waitBottomY = this.waitVisibleTop + this.fruitRadius + (this.visibleRows - 1) * this.rowStep;
+    this.clearedRows = 0;
+
+    // 生成足够多的行,把水果随机撒入格子(留白 → 随机分布观感)
+    const count = types.length;
+    const fillRatio = 0.72;
+    const rows = Math.max(this.visibleRows, Math.ceil(count / (this.gridCols * fillRatio)));
+    const cells = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < this.gridCols; c++) cells.push({ r, c });
+    }
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cells[i], cells[j]] = [cells[j], cells[i]];
+    }
+
+    for (let i = 0; i < count; i++) {
+      const type = types[i];
+      const { r, c } = cells[i];
+      const jx = (Math.random() - 0.5) * 12;
+      const jy = (Math.random() - 0.5) * 10;
+      const f = {
+        row: r, col: c, type,
+        emoji: FRUITS[type].emoji, color: FRUITS[type].color,
+        radius: this.fruitRadius, removed: false,
+        jy, x: this.gridStartX + c * this.colStep + jx, y: 0, targetY: 0
+      };
+      f.targetY = this.computeTargetY(f);
+      f.y = f.targetY;
+      this.topFruits.push(f);
+    }
+
+    this.totalFruits = count;
+    this.remainingFruits = count;
+
+    // 归一化初始底行(跳过随机留空的底部行)
+    this.advanceRows();
+    for (const f of this.topFruits) f.y = this.computeTargetY(f);
+  }
+
+  // 某水果当前应处的 Y(随 clearedRows 整体下移)
+  computeTargetY(f) {
+    return this.waitBottomY - (f.row - this.clearedRows) * this.rowStep + (f.jy || 0);
+  }
+
+  // 底部行清空后整体下滚一行(连续空行一并跳过)
+  advanceRows() {
+    let guard = 0;
+    while (guard++ < 2000) {
+      if (!this.topFruits.some(f => !f.removed)) break;
+      const bottomHas = this.topFruits.some(f => !f.removed && f.row === this.clearedRows);
+      if (bottomHas) break;
+      this.clearedRows++;
+    }
+  }
+
+  // 每帧把等待水果的 y 平滑逼近 targetY(整片下滚动画)
+  updateWaiting(dt) {
+    const k = Math.min(1, 0.2 * dt);
+    for (const f of this.topFruits) {
+      if (f.removed) continue;
+      f.targetY = this.computeTargetY(f);
+      if (Math.abs(f.targetY - f.y) > 0.5) {
+        f.y += (f.targetY - f.y) * k;
+      } else {
+        f.y = f.targetY;
       }
     }
-    
-    this.totalFruits = this.topFruits.length;
-    this.remainingFruits = this.totalFruits;
   }
 
   clickFruit(fruit) {
     if (fruit.removed) return;
     fruit.removed = true;
     playSound(SoundType.DROP);
-    
+
+    this.advanceRows();
+
     this.fruits.push({
       x: fruit.x,
       y: fruit.y,
@@ -252,6 +283,7 @@ class FruitGame {
       return;
     }
 
+    if (this.lastTime == null) this.lastTime = currentTime;
     const dt = Math.min((currentTime - this.lastTime) / 16.67, 2);
     this.lastTime = currentTime;
     this.update(dt);
@@ -267,14 +299,8 @@ class FruitGame {
       }
     }
 
-    // 掉落水果撞到还在等待的水果（这些作为障碍/挂钉，让下落更有物理趣味）
-    for (const f of this.fruits) {
-      if (f.settled) continue;
-      for (const peg of this.topFruits) {
-        if (peg.removed) continue;
-        this.resolvePegCollision(f, peg);
-      }
-    }
+    // 等待区整片下滚
+    this.updateWaiting(dt);
 
     // 更新每个水果
     for (const f of this.fruits) {
@@ -468,35 +494,6 @@ class FruitGame {
       } else if (b.settled && !a.settled) {
         a.vy = -Math.abs(a.vy) * 0.3;
       }
-    }
-  }
-
-  // 掉落水果 f 撞到等待中的水果 peg（peg 不可动，充当障碍/挂钉，f 被推开并反弹滑走）
-  resolvePegCollision(f, peg) {
-    const dx = f.x - peg.x;
-    const dy = f.y - peg.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const minDist = f.radius + peg.radius;
-    if (dist >= minDist || dist <= 0.1) return;
-
-    const nx = dx / dist;
-    const ny = dy / dist;
-    const overlap = minDist - dist;
-
-    // 把掉落水果推出障碍
-    f.x += nx * overlap;
-    f.y += ny * overlap;
-
-    // 沿法线反弹，切向分量保留 → 会沿着障碍滑开
-    const vn = f.vx * nx + f.vy * ny;
-    if (vn < 0) {
-      f.vx -= (1 + BOUNCE) * vn * nx;
-      f.vy -= (1 + BOUNCE) * vn * ny;
-    }
-
-    // 避免正好压在障碍顶部原地弹跳：给一点横向推力让它滑落
-    if (Math.abs(nx) < 0.25) {
-      f.vx += (f.x < peg.x ? -1 : 1) * 0.6;
     }
   }
 
@@ -701,15 +698,16 @@ class FruitGame {
       return;
     }
 
-    // 点击水果
+    // 点击等待区:取可见区内最近的水果(随机分布,任意可见水果可点)
     let closest = null;
     let closestDist = Infinity;
     for (const f of this.topFruits) {
       if (f.removed) continue;
+      if (f.y < this.waitVisibleTop - this.fruitRadius) continue; // 隐藏在上方,不可点
       const dx = pos.x - f.x;
       const dy = pos.y - f.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= f.radius + 15 && dist < closestDist) {
+      if (dist <= f.radius + 14 && dist < closestDist) {
         closest = f;
         closestDist = dist;
       }
@@ -752,7 +750,7 @@ class FruitGame {
     ctx.shadowColor = 'rgba(0,0,0,0.12)';
     ctx.shadowBlur = 3;
     ctx.shadowOffsetY = 1;
-    drawText(ctx, '🍎 水果消消乐', width / 2, safeTop + 38, { fontSize: 36, color: '#c4390a', bold: true });
+    drawText(ctx, '🍎 接水果', width / 2, safeTop + 38, { fontSize: 36, color: '#c4390a', bold: true });
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
@@ -776,11 +774,16 @@ class FruitGame {
     this.drawSlopes(ctx);
     this.drawBucket(ctx);
 
-    // 顶部水果
+    // 等待区水果（裁剪到可见区，超出上方的行被隐藏，随下滚逐渐露出）
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, this.waitVisibleTop, width, this.waitBottomY + this.fruitRadius + 4 - this.waitVisibleTop);
+    ctx.clip();
     for (const f of this.topFruits) {
       if (f.removed) continue;
       this.drawFruit(f, 1, 1);
     }
+    ctx.restore();
 
     // 掉落水果（带轨迹）
     for (const f of this.fruits) {

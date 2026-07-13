@@ -256,12 +256,29 @@ class MainGame {
     };
     const GameClass = gameClasses[gameId];
     if (!GameClass) return;
+    // 防御:销毁上一局残留实例,避免旧渲染循环盖在新游戏画面上
+    try {
+      if (this.currentGame && typeof this.currentGame.destroy === 'function') {
+        this.currentGame.destroy();
+      }
+    } catch (e) {
+      console.error('destroy prev game failed:', gameId, e);
+    }
+    this.currentGame = null;
     // 关卡型游戏传 level 参数，无限型不传
     const gameConfig = Games.find(g => g.id === gameId);
-    if (gameConfig && gameConfig.type === 'levels') {
-      this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score), level);
-    } else {
-      this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score));
+    try {
+      if (gameConfig && gameConfig.type === 'levels') {
+        this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score), level);
+      } else {
+        this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score));
+      }
+    } catch (e) {
+      // 关键:构造失败不再让整个小游戏崩溃重载,回到关卡选择并暴露错误
+      console.error('launch game failed:', gameId, 'level=', level, e);
+      this.currentGame = null;
+      this.showLevelSelect(gameId);
+      return;
     }
     // 进入游戏时播放背景音乐
     audioManager.startBgMusic();
