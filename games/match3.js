@@ -124,6 +124,8 @@ class Match3Game {
     return false;
   }
 
+  destroy() { this.running = false; }
+
   // ---------- 主循环 ----------
   startLoop() {
     this.running = true;
@@ -1032,9 +1034,14 @@ class Match3Game {
   settle() {
     this.comboCount = 0;
     this.selected = null;
+    if (this.score >= this.target) {
+      this.phase = 'over';
+      audioManager.play('levelup');
+      return;
+    }
     if (this.moves <= 0) {
       this.phase = 'over';
-      audioManager.play(this.score >= this.target ? 'levelup' : 'gameover');
+      audioManager.play('gameover');
       return;
     }
     if (!this.hasAnyMove()) this.reshuffle();

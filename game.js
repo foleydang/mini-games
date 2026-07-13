@@ -10,7 +10,7 @@ import {
 import { Games, Levels } from './common/config.js';
 import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
 import { syncUserToServer, initOpenId } from './common/utils.js';
-import { checkTextSecurity, maskSensitive } from './common/contentSecurity.js';
+import { checkTextSecurity, maskSensitive, containsSensitive } from './common/contentSecurity.js';
 import { ModernThemes, drawModernButton, drawModernCard, drawModernNavbar, drawModernTag, drawModernProgress } from './common/modern-ui.js';
 import LevelSelector from './common/level-selector.js';
 import { themeManager } from './common/theme-manager.js';
@@ -84,7 +84,13 @@ class MainGame {
   loadProfile() {
     try {
       const saved = wx.getStorageSync('myProfile');
-      return saved || { nickname: '玩家', avatarIndex: 0, avatarColor: '#7c3aed' };
+      if (!saved) return { nickname: '玩家', avatarIndex: 0, avatarColor: '#7c3aed' };
+      // 入场自愈:历史遗留的违规昵称(词库更新前存下的)重置为默认,并回写
+      if (containsSensitive(saved.nickname)) {
+        saved.nickname = '玩家';
+        try { wx.setStorageSync('myProfile', saved); } catch (e) {}
+      }
+      return saved;
     } catch (e) {
       return { nickname: '玩家', avatarIndex: 0, avatarColor: '#7c3aed' };
     }
@@ -271,6 +277,10 @@ class MainGame {
     const score = typeof result === 'object' ? result.score : result;
     const passed = typeof result === 'object' ? result.passed : (score > 0);
 
+    // 安全网:确保离场前停掉游戏自身的循环(定时器/rAF),避免野循环画到主页
+    if (this.currentGame && typeof this.currentGame.destroy === 'function') {
+      try { this.currentGame.destroy(); } catch (e) {}
+    }
     this.currentGame = null;
     audioManager.stopBgMusic();
     RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
@@ -766,6 +776,11 @@ renderProfile() {
     if (this.editNicknameBtn &&
         pos.x >= this.editNicknameBtn.x && pos.x <= this.editNicknameBtn.x + this.editNicknameBtn.width &&
         pos.y >= this.editNicknameBtn.y && pos.y <= this.editNicknameBtn.y + this.editNicknameBtn.height) {
+      // 先清掉可能残留的监听,避免连续点击"修改昵称"导致回调叠加
+      wx.offKeyboardInput();
+      wx.offKeyboardConfirm();
+      wx.offKeyboardComplete();
+
       // 使用微信键盘输入昵称
       wx.showKeyboard({
         defaultValue: this.myProfile.nickname,
@@ -774,7 +789,7 @@ renderProfile() {
         confirmHold: false,
         confirmType: 'done'
       });
-      
+
       // 输入过程中仅暂存到临时变量，确认时才做内容安全校验后落库
       let pendingNickname = this.myProfile.nickname;
       wx.onKeyboardInput((res) => {
