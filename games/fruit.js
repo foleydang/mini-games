@@ -1,6 +1,6 @@
 // 水果消消乐 - 窄桶 + 双斜坡 + 物理碰撞
-import { drawText, Storage, RankData, Colors } from '../common/utils.js';
-import { getBackButton, getShareButton, getSoundButton, checkBottomButtons, drawHint } from '../common/ui.js';
+import { drawText, RankData, Colors } from '../common/utils.js';
+import { getBackButton, getShareButton, getSoundButton, checkBottomButtons } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 
 const FRUITS = [
@@ -71,7 +71,6 @@ class FruitGame {
     this.topFruits = []; // 待点击的水果
     this.particles = [];
     this.scorePopups = [];
-    this.confirmBtn = null;
     this.quizBtn = null;
     this.quizBtn2 = null;
 
@@ -91,7 +90,6 @@ class FruitGame {
     this.buttons = null;
 
     this.generateTopFruits();
-    audioManager.startBgMusic();
 
     this.lastTime = performance.now();
     this.animate = this.animate.bind(this);
@@ -250,7 +248,6 @@ class FruitGame {
 
   animate(currentTime) {
     if (this.gameOver || this.gameWon) {
-      audioManager.stopBgMusic();
       this.draw();
       return;
     }
@@ -572,6 +569,7 @@ class FruitGame {
     if (!hasTop && !hasFalling && !hasBucket) {
       this.gameWon = true;
       playSound(SoundType.LEVEL_UP);
+      this.showEndModal();
     }
   }
 
@@ -581,7 +579,27 @@ class FruitGame {
     if (settledCount > 4) {
       this.gameOver = true;
       playSound(SoundType.GAME_OVER);
+      this.showEndModal();
     }
+  }
+
+  showEndModal() {
+    const isWin = this.gameWon;
+    wx.showModal({
+      title: isWin ? '🎉 通关！' : '😢 失败了',
+      content: `得分: ${this.score}${this.maxCombo > 1 ? `\n最高连击: ${this.maxCombo}x` : ''}`,
+      confirmText: '确定',
+      showCancel: false,
+      success: (res) => {
+        if (res.confirm) {
+          if (!this.scoreSaved) {
+            this.scoreSaved = true;
+            setTimeout(() => { try { RankData.save(this.gameId, this.score); } catch (e) {} }, 100);
+          }
+          this.onEnd({ score: this.score, passed: isWin });
+        }
+      }
+    });
   }
 
   onTouchStart(pos) {
@@ -628,19 +646,6 @@ class FruitGame {
     // 已结束只处理按钮点击
     if (this.gameOver || this.gameWon) {
       if (btn === 'backBtn') {
-        this.onEnd({ score: this.score, passed: this.gameWon });
-        return;
-      }
-      if (btn === 'soundBtn') {
-        audioManager.toggle();
-        return;
-      }
-      if (this.confirmBtn && pos.x >= this.confirmBtn.x && pos.x <= this.confirmBtn.x + this.confirmBtn.w &&
-          pos.y >= this.confirmBtn.y && pos.y <= this.confirmBtn.y + this.confirmBtn.h) {
-        if (!this.scoreSaved) {
-          this.scoreSaved = true;
-          setTimeout(() => { try { RankData.save(this.gameId, this.score); } catch (e) {} }, 100);
-        }
         this.onEnd({ score: this.score, passed: this.gameWon });
         return;
       }
@@ -809,9 +814,10 @@ class FruitGame {
     }
     ctx.globalAlpha = 1;
 
-    // 游戏结束弹窗
+    // 游戏结束遮罩
     if (this.gameWon || this.gameOver) {
-      this.drawEndPopup(ctx, width, height, this.gameWon);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, width, height);
     }
 
     // 答题弹窗（最顶层）
@@ -1182,59 +1188,6 @@ class FruitGame {
     }
   }
 
-  drawEndPopup(ctx, width, height, isWin) {
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, width, height);
-
-    const cardW = 360;
-    const cardH = 340;
-    const cardX = (width - cardW) / 2;
-    const cardY = (height - cardH) / 2;
-
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetY = 8;
-
-    const cardGradient = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
-    cardGradient.addColorStop(0, '#fff8e1');
-    cardGradient.addColorStop(1, '#ffe0b2');
-    ctx.fillStyle = cardGradient;
-    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    ctx.strokeStyle = isWin ? '#f59e0b' : '#ef4444';
-    ctx.lineWidth = 3;
-    this.roundRect(ctx, cardX, cardY, cardW, cardH, 20);
-    ctx.stroke();
-
-    const title = isWin ? '🎉 通关！' : '😢 失败了';
-    const titleColor = isWin ? '#f59e0b' : '#ef4444';
-    drawText(ctx, title, width / 2, cardY + 60, { fontSize: 48, color: titleColor, bold: true });
-    drawText(ctx, `得分: ${this.score}`, width / 2, cardY + 120, { fontSize: 32, color: '#1a1a1a', bold: true });
-    
-    if (this.maxCombo > 1) {
-      drawText(ctx, `最高连击: ${this.maxCombo}x 🔥`, width / 2, cardY + 160, { fontSize: 26, color: '#d84315' });
-    }
-
-    const btnW = 200;
-    const btnH = 50;
-    const btnX = (width - btnW) / 2;
-    const btnY = cardY + cardH - 80;
-
-    const btnGradient = ctx.createLinearGradient(0, btnY, 0, btnY + btnH);
-    btnGradient.addColorStop(0, isWin ? '#f59e0b' : '#ef4444');
-    btnGradient.addColorStop(1, isWin ? '#d97706' : '#dc2626');
-    ctx.fillStyle = btnGradient;
-    this.roundRect(ctx, btnX, btnY, btnW, btnH, 14);
-    ctx.fill();
-
-    drawText(ctx, '确 定', width / 2, btnY + btnH / 2, { fontSize: 24, color: '#fff', bold: true });
-    this.confirmBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
-  }
-
   drawFruit(fruit, alpha, scale) {
     const ctx = this.ctx;
     const r = fruit.radius * scale;
@@ -1270,7 +1223,6 @@ class FruitGame {
 
   destroy() {
     this.gameOver = true;
-    audioManager.stopBgMusic();
   }
 }
 

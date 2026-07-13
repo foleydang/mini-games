@@ -248,6 +248,8 @@ class MainGame {
     } else {
       this.currentGame = new GameClass(this.canvas, this.ctx, this.designSize, (score) => this.endGame(score));
     }
+    // 进入游戏时播放背景音乐
+    audioManager.startBgMusic();
   }
 
   startGame(gameId) {
@@ -259,8 +261,9 @@ class MainGame {
     // 支持 { score, passed } 对象或纯数字 score
     const score = typeof result === 'object' ? result.score : result;
     const passed = typeof result === 'object' ? result.passed : (score > 0);
-    
+
     this.currentGame = null;
+    audioManager.stopBgMusic();
     RankData.addRank(this.currentRankGame || 'unknown', score, '玩家');
     
     // 关卡型游戏：只有关卡通过才解锁下一关
@@ -527,21 +530,22 @@ class MainGame {
     drawText(this.ctx, '精选小游戏合集', width / 2, safeTop + 174, { fontSize: 24, color: '#8b5cf6' });
 
     // 右上角按钮区域（设置 + 我的）
+    const btnTheme = ModernThemes.gameThemes.match3;
     // 我的按钮（上方）
-    const myBtnX = width - 100;
+    const myBtnX = width - 134;
     const myBtnY = safeTop + 118;
-    drawModernButton(this.ctx, myBtnX, myBtnY, 80, 38, '我的', ModernThemes.primary, {
+    drawModernButton(this.ctx, myBtnX, myBtnY, 114, 40, '我的', btnTheme, {
       fontSize: 22,
       icon: '👤'
     });
-    this.myButton = { x: myBtnX, y: myBtnY, width: 80, height: 38 };
+    this.myButton = { x: myBtnX, y: myBtnY, width: 114, height: 40 };
     
     // 设置按钮（下方）
-    this.settingsBtn.x = width - 100;
+    this.settingsBtn.x = width - 134;
     this.settingsBtn.y = safeTop + 162;
-    this.settingsBtn.width = 80;
-    this.settingsBtn.height = 38;
-    drawModernButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', ModernThemes.primary, {
+    this.settingsBtn.width = 114;
+    this.settingsBtn.height = 40;
+    drawModernButton(this.ctx, this.settingsBtn.x, this.settingsBtn.y, this.settingsBtn.width, this.settingsBtn.height, '设置', btnTheme, {
       fontSize: 22,
       icon: '⚙️'
     });
@@ -556,32 +560,26 @@ class MainGame {
     const { game, x, y, width, height, theme, rankBtn } = card;
     const ctx = this.ctx;
 
-    // 卡片阴影 + 渐变背景
+    // 卡片阴影 + 白色底色
     ctx.save();
-    ctx.shadowColor = `rgba(0, 0, 0, 0.10)`;
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 4;
+    ctx.shadowColor = `rgba(0, 0, 0, 0.06)`;
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
 
-    // 渐变卡片底色
-    const cardGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-    cardGradient.addColorStop(0, theme.surface || '#ffffff');
-    cardGradient.addColorStop(1, theme.bg || '#faf5ff');
-    ctx.fillStyle = cardGradient;
+    // 白色卡片底色
+    ctx.fillStyle = '#ffffff';
     drawRoundRect(ctx, x, y, width, height, 14);
     ctx.fill();
 
-    // 左侧彩色装饰条
+    // 左侧浅色装饰条
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
-    const barGradient = ctx.createLinearGradient(x, y, x, y + height);
-    barGradient.addColorStop(0, theme.primary);
-    barGradient.addColorStop(1, theme.secondary || theme.primary);
-    ctx.fillStyle = barGradient;
+    ctx.fillStyle = theme.primary + '30';
     drawRoundRect(ctx, x, y, 6, height, 3);
     ctx.fill();
 
     // 卡片边框
-    ctx.strokeStyle = theme.primary + '22';
+    ctx.strokeStyle = theme.primary + '18';
     ctx.lineWidth = 1;
     drawRoundRect(ctx, x, y, width, height, 14);
     ctx.stroke();
@@ -593,20 +591,17 @@ class MainGame {
     const iconRadius = 26;
 
     ctx.save();
-    ctx.shadowColor = theme.primary + '55';
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetY = 2;
-    const iconGradient = ctx.createRadialGradient(iconX - 6, iconY - 6, 2, iconX, iconY, iconRadius);
-    iconGradient.addColorStop(0, theme.secondary || theme.primary);
-    iconGradient.addColorStop(1, theme.primary);
-    ctx.fillStyle = iconGradient;
+    ctx.shadowColor = theme.primary + '30';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetY = 1;
+    ctx.fillStyle = theme.primary + '20';
     ctx.beginPath();
     ctx.arc(iconX, iconY, iconRadius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     // 图标
-    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, '#fff', game.shape);
+    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, theme.primary, game.shape);
 
     // 游戏名称
     drawText(ctx, game.name, x + 86, y + 34, { fontSize: 28, color: '#1e293b', bold: true, align: 'left' });
@@ -932,9 +927,9 @@ renderProfile() {
         }
         
         drawCircle(this.ctx, avatarX, avatarY, avatarRadius, avatarColor);
-        // 显示昵称首字
         // 昵称展示端脱敏（防止服务器历史/未过滤的违规内容被展示）
         const nickname = maskSensitive(item.nickname || item.name || '玩家');
+        // 显示昵称首字
         drawText(this.ctx, nickname.charAt(0), avatarX, avatarY, { fontSize: 24, color: '#fff', bold: true });
 
         // 昵称

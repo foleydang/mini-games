@@ -31,7 +31,6 @@ class SheepGame {
     // 渲染循环控制(修复返回后循环继续绘制导致的闪屏)
     this.ended = false;
     this.rafId = null;
-    this.dialogBtns = {};
 
     // 关卡（羊了个羊风格：只有2关）
     this.currentLevel = Math.min(level, 1);
@@ -231,6 +230,7 @@ class SheepGame {
     if (remaining.length === 0 && this.slot.length === 0) {
       this.gameWon = true;
       this.score += 100;
+      this.showEndModal();
       return;
     }
 
@@ -240,16 +240,44 @@ class SheepGame {
       for (const s of this.slot) {
         typeCounts[s.type] = (typeCounts[s.type] || 0) + 1;
       }
-      
+
       let hasMatch = false;
       for (const count of Object.values(typeCounts)) {
         if (count >= 3) hasMatch = true;
       }
-      
+
       if (!hasMatch) {
         this.gameOver = true;
+        this.showEndModal();
       }
     }
+  }
+
+  showEndModal() {
+    const isWin = this.gameWon;
+    const isLastLevel = this.currentLevel >= 1;
+    wx.showModal({
+      title: isWin ? (isLastLevel ? '🎉 全部通关！' : '🎉 通关成功！') : '😢 挑战失败',
+      content: isWin
+        ? (isLastLevel ? '你是真正的高手！' : '准备好挑战地狱模式了吗？')
+        : '收集槽满了，再试一次吧',
+      confirmText: isWin && !isLastLevel ? '下一关' : (isWin ? '返回' : '重试'),
+      cancelText: (isWin && !isLastLevel) || !isWin ? '返回' : undefined,
+      showCancel: (isWin && !isLastLevel) || !isWin,
+      success: (res) => {
+        if (res.confirm) {
+          if (isWin && !isLastLevel) {
+            this.nextLevel();
+          } else if (isWin) {
+            this.exitGame();
+          } else {
+            this.retry();
+          }
+        } else {
+          this.exitGame();
+        }
+      }
+    });
   }
 
   undo() {
@@ -311,74 +339,10 @@ class SheepGame {
     // 收集槽
     this.drawSlot();
 
-    // 游戏结算对话框
+    // 游戏结束遮罩
     if (this.gameWon || this.gameOver) {
-      this.drawDialog(this.gameWon);
-    }
-  }
-
-  drawDialog(isWin) {
-    const ctx = this.ctx;
-    const { width, height } = this.designSize;
-    const cx = width / 2;
-
-    // 遮罩
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, 0, width, height);
-
-    // 面板
-    const panelW = 580;
-    const panelH = 440;
-    const panelX = (width - panelW) / 2;
-    const panelY = (height - panelH) / 2;
-
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 30;
-    ctx.shadowOffsetY = 8;
-    drawRoundRect(ctx, panelX, panelY, panelW, panelH, 28, '#fff8f0');
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-    drawRoundRect(ctx, panelX, panelY, panelW, panelH, 28, null, '#e85d04', 4);
-
-    const isLastLevel = this.currentLevel >= 1;
-
-    if (isWin) {
-      drawText(ctx, '🎉', cx, panelY + 95, { fontSize: 76 });
-      drawText(ctx, isLastLevel ? '全部通关！' : '通关成功！', cx, panelY + 180, { fontSize: 46, color: '#e85d04', bold: true });
-      drawText(ctx, `得分 ${this.score}`, cx, panelY + 240, { fontSize: 34, color: '#8b5a2b', bold: true });
-      drawText(ctx, isLastLevel ? '你是真正的高手！' : '准备好挑战地狱模式了吗？', cx, panelY + 288, { fontSize: 26, color: '#a0691f' });
-    } else {
-      drawText(ctx, '😢', cx, panelY + 95, { fontSize: 76 });
-      drawText(ctx, '挑战失败', cx, panelY + 180, { fontSize: 46, color: '#ef4444', bold: true });
-      drawText(ctx, `得分 ${this.score}`, cx, panelY + 240, { fontSize: 34, color: '#8b5a2b', bold: true });
-      drawText(ctx, '收集槽满了，再试一次吧', cx, panelY + 288, { fontSize: 26, color: '#a0691f' });
-    }
-
-    // 按钮
-    const btnW = 230;
-    const btnH = 74;
-    const btnY = panelY + panelH - btnH - 44;
-    const gap = 32;
-    this.dialogBtns = {};
-
-    if (isWin && !isLastLevel) {
-      const leftX = cx - btnW - gap / 2;
-      const rightX = cx + gap / 2;
-      this.dialogBtns.next = { x: leftX, y: btnY, width: btnW, height: btnH };
-      this.dialogBtns.back = { x: rightX, y: btnY, width: btnW, height: btnH };
-      this.drawStyledButton(ctx, leftX, btnY, btnW, btnH, '下一关 →', '#10b981');
-      this.drawStyledButton(ctx, rightX, btnY, btnW, btnH, '返回', '#8b5cf6');
-    } else if (isWin) {
-      const bx = cx - btnW / 2;
-      this.dialogBtns.back = { x: bx, y: btnY, width: btnW, height: btnH };
-      this.drawStyledButton(ctx, bx, btnY, btnW, btnH, '返回', '#8b5cf6');
-    } else {
-      const leftX = cx - btnW - gap / 2;
-      const rightX = cx + gap / 2;
-      this.dialogBtns.retry = { x: leftX, y: btnY, width: btnW, height: btnH };
-      this.dialogBtns.back = { x: rightX, y: btnY, width: btnW, height: btnH };
-      this.drawStyledButton(ctx, leftX, btnY, btnW, btnH, '🔁 重试', '#ef4444');
-      this.drawStyledButton(ctx, rightX, btnY, btnW, btnH, '返回', '#8b5cf6');
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, width, height);
     }
   }
 
@@ -518,14 +482,8 @@ class SheepGame {
   }
 
   onTouchStart(pos) {
-    // 结算对话框优先:只有点到对话框按钮才响应,点击别处不做任何事(避免误触返回)
-    if (this.gameOver || this.gameWon) {
-      const b = this.dialogBtns || {};
-      if (b.next && this.isPointInRect(pos, b.next)) { this.nextLevel(); return; }
-      if (b.retry && this.isPointInRect(pos, b.retry)) { this.retry(); return; }
-      if (b.back && this.isPointInRect(pos, b.back)) { this.exitGame(); return; }
-      return;
-    }
+    // 结算时点击无效
+    if (this.gameOver || this.gameWon) return;
 
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') {

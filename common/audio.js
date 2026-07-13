@@ -126,6 +126,11 @@ class AudioManager {
   toggleSound() {
     this.soundEnabled = !this.soundEnabled;
     this.save();
+    if (this.soundEnabled) {
+      if (this.musicEnabled) this.startBgMusic();
+    } else {
+      this.stopBgMusic();
+    }
     return this.soundEnabled;
   }
 
