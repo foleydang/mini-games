@@ -9,7 +9,7 @@ import {
 } from './common/utils.js';
 import { Games, Levels } from './common/config.js';
 import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
-import { syncUserToServer } from './common/utils.js';
+import { syncUserToServer, initOpenId } from './common/utils.js';
 import { checkTextSecurity, maskSensitive } from './common/contentSecurity.js';
 import { ModernThemes, drawModernButton, drawModernCard, drawModernNavbar, drawModernTag, drawModernProgress } from './common/modern-ui.js';
 import LevelSelector from './common/level-selector.js';
@@ -63,6 +63,9 @@ class MainGame {
     this.selectedAvatarIndex = 0;
     this.editingNickname = false;
     
+    // 启动时换取真实微信 openid（异步，不阻塞首屏；失败自动降级为本地兜底 ID）
+    initOpenId();
+
     // 初始化
     this.initCards();
     this.initParticles();

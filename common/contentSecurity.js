@@ -67,11 +67,13 @@ export function maskSensitive(text) {
  * @returns {Promise<boolean>} true=通过云端检查；后端不可用时 resolve(null) 视为跳过
  */
 function remoteTextCheck(content) {
+  let openid = '';
+  try { openid = wx.getStorageSync('game_openid') || ''; } catch (e) {}
   return new Promise((resolve) => {
     wx.request({
       url: `${API_BASE}/security/text-check`,
       method: 'POST',
-      data: { content },
+      data: { content, openid },  // msgSecCheck v2 需要真实微信 openid
       header: { 'content-type': 'application/json' },
       success: (res) => {
         if (res && res.data && res.data.success === true) {

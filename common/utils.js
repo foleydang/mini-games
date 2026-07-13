@@ -543,12 +543,12 @@ export function shareGame(gameName, score) {
 // 排行榜 - 使用服务器API（支持用户系统）
 const API_BASE = 'https://api.yanten.top/api/games';
 
-// 获取/生成用户唯一ID
+// 获取/生成用户唯一ID（同步，从本地存储读；真 openid 由 initOpenId 写入）
 function getOpenId() {
   try {
     let openid = wx.getStorageSync('game_openid');
     if (!openid) {
-      // 生成唯一ID: 时间戳 + 随机数
+      // 尚未换到真 openid 前的本地兜底 ID: 时间戳 + 随机数
       openid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       wx.setStorageSync('game_openid', openid);
     }
@@ -556,6 +556,44 @@ function getOpenId() {
   } catch (e) {
     return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
+}
+
+// 启动时换取真实微信 openid：wx.login 拿 code → 后端 jscode2session → 覆盖本地存储。
+// 本地兜底 ID 以 'user_' 开头；一旦换到真 openid 便持久化，后续启动直接复用。
+export async function initOpenId() {
+  try {
+    const existing = wx.getStorageSync('game_openid');
+    if (existing && !existing.startsWith('user_')) return existing;  // 已是真 openid
+
+    const code = await new Promise((resolve, reject) => {
+      wx.login({
+        success: (r) => (r && r.code ? resolve(r.code) : reject(new Error('wx.login 无 code'))),
+        fail: reject,
+      });
+    });
+
+    const openid = await new Promise((resolve) => {
+      wx.request({
+        url: `${API_BASE}/login`,
+        method: 'POST',
+        data: { code },
+        header: { 'content-type': 'application/json' },
+        success: (res) => {
+          if (res.data && res.data.success && res.data.openid) resolve(res.data.openid);
+          else resolve(null);
+        },
+        fail: () => resolve(null),
+      });
+    });
+
+    if (openid) {
+      wx.setStorageSync('game_openid', openid);
+      return openid;
+    }
+  } catch (e) {
+    console.log('换取真实 openid 失败，暂用本地兜底 ID:', e);
+  }
+  return getOpenId();  // 换取失败：保证有可用 ID，不阻断游戏
 }
 
 // 同步用户设置到服务器
