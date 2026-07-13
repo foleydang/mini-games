@@ -689,29 +689,24 @@ export const RankData = {
     // 上传前兜底：违规昵称不写入排行榜/服务器
     if (containsSensitive(nickname)) nickname = '玩家';
     
-    // 头像使用颜色索引，服务器端会转换为颜色
-    const avatar = `color:${avatarIndex}`;
-    
     // 本地存储
     const data = this.getRank(gameId, sortType);
     data.push({ 
       score, 
       name: nickname,
       nickname: nickname,
-      avatar: avatar,
+      avatarIndex: avatarIndex,
       date: new Date().toLocaleDateString("zh-CN") 
     });
     const top10 = data.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score).slice(0, 10);
     Storage.save('rank_' + gameId, top10);
     
-    // 异步提交到服务器
+    // 异步提交到服务器（后端从 users 表取昵称，不信任前端传值）
     wx.request({
       url: `${API_BASE}/rank/${gameId}`,
       method: 'POST',
       data: { 
         score, 
-        nickname: nickname,
-        avatar: avatar,
         openid: getOpenId()
       },
       header: { 'content-type': 'application/json' },
