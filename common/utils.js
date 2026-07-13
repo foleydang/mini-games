@@ -658,9 +658,13 @@ export const RankData = {
         });
       });
       
-      if (res.data && res.data.success && res.data.data) {
-        Storage.save('rank_' + gameId, res.data.data);
-        return res.data.data;
+      // 请求成功且后端 success:true 即以服务器为准:空结果(data 为 null/缺失/非数组)
+      // 统一归一为 [] 并覆盖本地缓存,确保服务器清理过的脏数据能被真正清掉。
+      // 只有请求失败(catch)才返回 null,保留本地缓存兜底。
+      if (res.data && res.data.success) {
+        const list = Array.isArray(res.data.data) ? res.data.data : [];
+        Storage.save('rank_' + gameId, list);
+        return list;
       }
     } catch (e) {
       console.log('服务器获取排行榜失败:', e);
