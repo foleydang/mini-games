@@ -138,10 +138,10 @@ class MainGame {
         height: cardHeight,
         theme,
         rankBtn: {
-          x: cardX + cardWidth - 80,
-          y: cardY + cardHeight - 36,
-          width: 64,
-          height: 26
+          x: cardX + cardWidth - 102,
+          y: cardY + cardHeight - 44,
+          width: 88,
+          height: 32
         }
       });
     });
@@ -392,10 +392,11 @@ class MainGame {
 
     // 检查每个卡片
     for (const card of this.cards) {
-      // 先检查排行榜按钮
+      // 先检查排行榜按钮:热区向外扩 16px(隐形热区),视觉不变但更易点中
       const rankBtn = card.rankBtn;
-      if (pos.x >= rankBtn.x && pos.x <= rankBtn.x + rankBtn.width &&
-          pos.y >= rankBtn.y && pos.y <= rankBtn.y + rankBtn.height) {
+      const slop = 16;
+      if (pos.x >= rankBtn.x - slop && pos.x <= rankBtn.x + rankBtn.width + slop &&
+          pos.y >= rankBtn.y - slop && pos.y <= rankBtn.y + rankBtn.height + slop) {
         this.showRank(card.game.id, card.game.name, card.theme);
         return;
       }
@@ -663,12 +664,12 @@ class MainGame {
     drawRoundRect(ctx, rankBtn.x, rankBtn.y, rankBtn.width, rankBtn.height, 12);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px sans-serif';
+    ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🏆', rankBtn.x + rankBtn.width / 2 - 8, rankBtn.y + rankBtn.height / 2);
-    ctx.font = 'bold 13px "PingFang SC", sans-serif';
-    ctx.fillText('排行', rankBtn.x + rankBtn.width / 2 + 8, rankBtn.y + rankBtn.height / 2);
+    ctx.fillText('🏆', rankBtn.x + rankBtn.width / 2 - 18, rankBtn.y + rankBtn.height / 2);
+    ctx.font = 'bold 16px "PingFang SC", sans-serif';
+    ctx.fillText('排行', rankBtn.x + rankBtn.width / 2 + 13, rankBtn.y + rankBtn.height / 2);
     ctx.restore();
   }
 renderProfile() {
