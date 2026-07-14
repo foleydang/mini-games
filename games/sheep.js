@@ -48,7 +48,6 @@ class SheepGame {
   }
 
   init() {
-    this.gameStartTime = Date.now();
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     this.slotSize = 80;
@@ -68,6 +67,8 @@ class SheepGame {
   }
 
   generateLevel(levelIndex) {
+    // 每关(含重玩/下一关)开始计时,保证上报耗时只统计本关
+    this.gameStartTime = Date.now();
     const { width } = this.designSize;
 
     // 羊了个羊风格：每关由多层堆叠而成,越往上层牌越少,形成交错金字塔
@@ -259,12 +260,14 @@ class SheepGame {
 
   showEndModal() {
     const isWin = this.gameWon;
-    if (isWin) completeLevel(this.gameId, this.currentLevel, { timeMs: this.gameStartTime ? Date.now() - this.gameStartTime : 0, stars });
     const hasNext = isWin && this.currentLevel < 1;
     const levelName = ['新手村', '地狱模式'][this.currentLevel] || `第${this.currentLevel + 1}关`;
     // 星级:洗牌次数(0/1/≥2 → 3/2/1 星)
     const stars = this.shuffleUsed <= 1 ? 3 : this.shuffleUsed <= 3 ? 2 : 1;
-    if (isWin) saveLevelStars(this.gameId, this.currentLevel, stars);
+    if (isWin) {
+      completeLevel(this.gameId, this.currentLevel, { timeMs: this.gameStartTime ? Date.now() - this.gameStartTime : 0, stars });
+      saveLevelStars(this.gameId, this.currentLevel, stars);
+    }
     this.result = new LevelResult(this.designSize, {
       win: isWin,
       score: this.score,

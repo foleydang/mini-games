@@ -135,16 +135,16 @@ export default class MemoryGame {
     this.win = win;
     // 耗时 = 预算时间 - 剩余时间 (秒转毫秒)
     const timeMs = win ? Math.round((this.timeLimit - this.timeLeft) * 1000) : 0;
-    if (win) {
-      completeLevel(this.gameId, this.currentLevel, { timeMs, stars });
-      audioManager.play && audioManager.play('levelup');
-    }
     const hasNext = win && this.currentLevel < this.levels.length - 1;
     // 星级:步数效率(完美步数 = 对数×2)
     const perfect = this.totalPairs * 2;
     const ratio = perfect > 0 ? this.moves / perfect : 1;
-    const stars = ratio <= 1.6 ? 3 : ratio <= 2.2 ? 2 : 1;
-    if (win) saveLevelStars(this.gameId, this.currentLevel, stars);
+    const stars = ratio <= 1.8 ? 3 : ratio <= 2.6 ? 2 : 1;
+    if (win) {
+      completeLevel(this.gameId, this.currentLevel, { timeMs, stars });
+      saveLevelStars(this.gameId, this.currentLevel, stars);
+      audioManager.play && audioManager.play('levelup');
+    }
     this.result = new LevelResult(this.designSize, {
       win,
       score: this.moves,

@@ -137,13 +137,14 @@ export default class BreakoutGame {
     if (won) playSound(SoundType.LEVEL_UP);
     else playSound(SoundType.GAME_OVER);
     if (this.score > this.bestScore) { this.bestScore = this.score; Storage.save('breakout_best', this.bestScore); }
-    if (won) completeLevel('breakout', this.level, { timeMs: this.elapsedMs, stars });
-
     const hasNext = won && this.level + 1 < this.levels.length;
     // 星级:通关用时(每块砖约 1.1s 预算,越快越高)
     const budget = Math.max(1, this.bricks.length) * 1100;
     const stars = this.elapsedMs <= budget * 1.6 ? 3 : this.elapsedMs <= budget * 2.6 ? 2 : 1;
-    if (won) saveLevelStars('breakout', this.level, stars);
+    if (won) {
+      completeLevel('breakout', this.level, { timeMs: this.elapsedMs, stars });
+      saveLevelStars('breakout', this.level, stars);
+    }
     this.result = new LevelResult(this.designSize, {
       win: won,
       score: this.score,

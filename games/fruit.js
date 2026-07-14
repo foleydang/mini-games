@@ -45,7 +45,6 @@ class FruitGame {
     this.buttons = null;
 
     this.animate = this.animate.bind(this);
-    this.gameStartTime = Date.now();
     this.setupLevel();
     this.startLoop();
   }
@@ -60,6 +59,8 @@ class FruitGame {
 
   // 依据当前关卡重建几何布局与牌面(可重复调用,用于换关/重试)
   setupLevel() {
+    // 每关(含重玩/下一关)开始计时,保证上报耗时只统计本关
+    this.gameStartTime = Date.now();
     this.applyLevelConfig();
 
     const { width, height, safeBottom } = this.designSize;
@@ -608,11 +609,13 @@ class FruitGame {
 
   showEndModal() {
     const isWin = this.gameWon;
-    if (isWin) completeLevel(this.gameId, this.currentLevel, { timeMs: this.gameStartTime ? Date.now() - this.gameStartTime : 0, stars });
     const hasNext = isWin && this.currentLevel < this.levels.length - 1;
-    // 星级:本关最大连击(≥5/≥3/其他 → 3/2/1 星)
-    const stars = this.maxCombo >= 4 ? 3 : this.maxCombo >= 2 ? 2 : 1;
-    if (isWin) saveLevelStars(this.gameId, this.currentLevel, stars);
+    // 星级:本关最大连击,放宽阈值让3星可达(奖励手感,不惩罚稳扎稳打)
+    const stars = this.maxCombo >= 3 ? 3 : this.maxCombo >= 1 ? 2 : 1;
+    if (isWin) {
+      completeLevel(this.gameId, this.currentLevel, { timeMs: this.gameStartTime ? Date.now() - this.gameStartTime : 0, stars });
+      saveLevelStars(this.gameId, this.currentLevel, stars);
+    }
     this.result = new LevelResult(this.designSize, {
       win: isWin,
       score: this.score,

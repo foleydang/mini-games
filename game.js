@@ -1007,6 +1007,30 @@ renderProfile() {
     drawText(ctx, '设置会自动保存', width / 2, height - safeBottom - 80, { fontSize: 22, color: '#a78bfa' });
   }
 
+  // 排行榜行内星级:以 cx 为中心横向居中绘制 3 颗星(金色实心 + 弱化空心)
+  drawRankStars(ctx, cx, cy, stars, top3) {
+    const size = 26;
+    const gap = 4;
+    const n = 3;
+    const totalW = n * size + (n - 1) * gap;
+    ctx.save();
+    ctx.font = `${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    let x = cx - totalW / 2 + size / 2;
+    for (let i = 0; i < n; i++) {
+      if (i < stars) {
+        ctx.fillStyle = top3 ? '#fde047' : '#f59e0b';
+        ctx.fillText('★', x, cy);
+      } else {
+        ctx.fillStyle = top3 ? 'rgba(255,255,255,0.4)' : '#d8b4fe';
+        ctx.fillText('☆', x, cy);
+      }
+      x += size + gap;
+    }
+    ctx.restore();
+  }
+
   renderRank(gameName) {
     const { width, height, safeTop, safeBottom } = this.designSize;
     console.log('renderRank 被调用');
@@ -1016,55 +1040,59 @@ renderProfile() {
     drawText(this.ctx, `${gameName}排行榜`, width / 2, safeTop + 50, { fontSize: 48, color: this.rankTheme.primary, bold: true });
 
     const startY = safeTop + 220;
-    const itemHeight = 65;  // 增加高度以显示头像
+    const itemHeight = 74;
+
+    const gameCfg = Games.find(g => g.id === this.currentRankGame);
+    const isLevelGame = gameCfg && gameCfg.type === 'levels';
 
     if (this.rankData.length === 0) {
       drawText(this.ctx, '暂无记录', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
       drawText(this.ctx, '快去玩游戏吧！', width / 2, startY + 150, { fontSize: 26, color: Colors.textMuted });
     } else {
+      const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
       this.rankData.forEach((item, index) => {
         const y = startY + index * itemHeight;
-        const bgColor = index < 3 ? this.rankTheme.primary : '#f3e8ff';
-        drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 8, 12, bgColor);
-        const rankColor = index < 3 ? '#fff' : '#5b21b6';
-        
+        const midY = y + (itemHeight - 8) / 2;
+        const top3 = index < 3;
+        const bgColor = top3 ? this.rankTheme.primary : '#f3e8ff';
+        drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 8, 14, bgColor);
+        const rankColor = top3 ? '#fff' : '#5b21b6';
+
         // 排名
-        drawText(this.ctx, `${index + 1}`, 70, y + 30, { fontSize: 28, color: rankColor, bold: true });
-        
-        // 头像（颜色圆形）
-        const avatarX = 120;
-        const avatarY = y + 30;
-        const avatarRadius = 20;
-        
-        // 解析头像颜色
-        const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
-        let avatarColor = avatarColors[item.avatarIndex] || '#7c3aed';
-        
-        drawCircle(this.ctx, avatarX, avatarY, avatarRadius, avatarColor);
+        drawText(this.ctx, `${index + 1}`, 66, midY, { fontSize: 28, color: rankColor, bold: true });
+
+        // 头像（颜色圆形 + 昵称首字）
+        const avatarX = 118;
+        const avatarColor = avatarColors[item.avatarIndex] || '#7c3aed';
+        drawCircle(this.ctx, avatarX, midY, 20, avatarColor);
         // 昵称展示端脱敏（防止服务器历史/未过滤的违规内容被展示）
         const nickname = maskSensitive(item.nickname || item.name || '玩家');
-        // 显示昵称首字
-        drawText(this.ctx, nickname.charAt(0), avatarX, avatarY, { fontSize: 24, color: '#fff', bold: true });
+        drawText(this.ctx, nickname.charAt(0), avatarX, midY, { fontSize: 24, color: '#fff', bold: true });
 
         // 昵称
-        drawText(this.ctx, nickname, 160, y + 30, { fontSize: 26, color: rankColor, align: 'left' });
-        
-        // 分数/关卡:关卡型游戏展示“到达关卡+耗时”,无限型展示分数
-        const gameCfg = Games.find(g => g.id === this.currentRankGame);
-        const isLevelGame = gameCfg && gameCfg.type === 'levels';
-        let displayScore;
+        drawText(this.ctx, nickname, 156, midY, { fontSize: 26, color: rankColor, align: 'left' });
+
         if (isLevelGame) {
-          displayScore = `第${item.score}关`;
-          if (item.timeMs && item.timeMs > 0) {
-            displayScore += ` · ${formatTimeMs(item.timeMs)}`;
-          }
+          // 中间空白区:星级(金色实心 + 弱化空心),纵向居中
           if (item.stars) {
-            displayScore += ` ${'★'.repeat(item.stars)}${'☆'.repeat(3 - item.stars)}`;
+            this.drawRankStars(this.ctx, width * 0.55, midY, item.stars, top3);
+          }
+          // 右侧上下两行:关卡(主) + 耗时(次)
+          const rightX = width - 48;
+          const hasTime = item.timeMs && item.timeMs > 0;
+          drawText(this.ctx, `第${item.score}关`, rightX, hasTime ? y + 24 : midY, {
+            fontSize: 28, color: rankColor, bold: true, align: 'right'
+          });
+          if (hasTime) {
+            drawText(this.ctx, formatTimeMs(item.timeMs), rightX, y + 49, {
+              fontSize: 20, color: top3 ? 'rgba(255,255,255,0.8)' : '#9333ea', align: 'right'
+            });
           }
         } else {
-          displayScore = item.score + '分';
+          drawText(this.ctx, item.score + '分', width - 48, midY, {
+            fontSize: 28, color: rankColor, bold: true, align: 'right'
+          });
         }
-        drawText(this.ctx, displayScore, width - 80, y + 30, { fontSize: 22, color: rankColor, bold: true });
       });
     }
 

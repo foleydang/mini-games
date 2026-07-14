@@ -78,17 +78,19 @@ class Match3Game {
     this.cols = cfg.cols;
     this.numColors = cfg.colors;
     this.moves = cfg.moves;
+    this.totalMoves = cfg.moves;
     this.target = cfg.target;
     this.levelName = cfg.name || `第${this.currentLevel + 1}关`;
   }
 
   init() {
-    this.gameStartTime = Date.now();
     this.setupBoard();
     this.startLoop();
   }
 
   setupBoard() {
+    // 每关(含重玩/下一关)开始计时,保证上报耗时只统计本关
+    this.gameStartTime = Date.now();
     const { width, height, safeTop, safeBottom } = this.designSize;
     const areaTop = safeTop + 250;
     const areaBottom = height - safeBottom - 40;
@@ -1063,12 +1065,14 @@ class Match3Game {
   finish(win) {
     this.phase = 'over';
     const timeMs = this.gameStartTime ? Date.now() - this.gameStartTime : 0;
-    if (win) completeLevel(this.gameId, this.currentLevel, { timeMs, stars });
     const hasNext = win && this.currentLevel < this.levels.length - 1;
-    // 星级:达标倍率(得分相对目标分)
-    const ratio = this.target > 0 ? this.score / this.target : 1;
-    const stars = ratio >= 1.4 ? 3 : ratio >= 1.2 ? 2 : 1;
-    if (win) saveLevelStars(this.gameId, this.currentLevel, stars);
+    // 星级:按剩余步数比例评(奖励高效,不惩罚认真思考),放宽阈值让3星可达
+    const leftover = this.totalMoves > 0 ? this.moves / this.totalMoves : 0;
+    const stars = leftover >= 0.3 ? 3 : leftover >= 0.1 ? 2 : 1;
+    if (win) {
+      completeLevel(this.gameId, this.currentLevel, { timeMs, stars });
+      saveLevelStars(this.gameId, this.currentLevel, stars);
+    }
     this.result = new LevelResult(this.designSize, {
       win,
       score: this.score,
