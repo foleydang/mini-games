@@ -72,6 +72,27 @@ class MainGame {
     // 启动时换取真实微信 openid（异步，不阻塞首屏；失败自动降级为本地兜底 ID）
     initOpenId();
 
+    // 前后台切换:后台时停音乐+停循环,回前台恢复,缓解低端机(如小米)
+    // 后台被系统回收后重进的黑屏/卡顿
+    this.hidden = false;
+    this._musicWasPlaying = false;
+    try {
+      wx.onHide(() => {
+        this.hidden = true;
+        this._musicWasPlaying = audioManager.bgMusicPlaying;
+        audioManager.stopBgMusic();
+      });
+      wx.onShow(() => {
+        this.hidden = false;
+        if (this._musicWasPlaying) audioManager.startBgMusic();
+        // 仅在停留于主界面(无子页/游戏)时重启主循环
+        if (!this.currentGame && !this.showingRank && !this.showingSettings &&
+            !this.showingProfile && !this.showingLevelSelect) {
+          this.startAnimation();
+        }
+      });
+    } catch (e) {}
+
     // 初始化
     this.initCards();
     this.initParticles();
@@ -213,8 +234,14 @@ class MainGame {
   }
 
   startAnimation() {
+    // 幂等:避免 onShow 与其它入口重复启动多个 RAF 循环
+    if (this.animRunning) return;
+    this.animRunning = true;
     const animate = () => {
-      if (this.currentGame || this.showingRank || this.showingSettings || this.showingProfile || this.showingLevelSelect) return;
+      if (this.hidden || this.currentGame || this.showingRank || this.showingSettings || this.showingProfile || this.showingLevelSelect) {
+        this.animRunning = false;
+        return;
+      }
       this.animFrame++;
       updateParticles(this.particles);
       this.render();

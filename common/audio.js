@@ -60,7 +60,8 @@ class AudioManager {
     this.sfxIndex = 0;
     this.poolSize = 5;
 
-    this.initBgMusic();
+    // 背景音乐改为懒加载:首次 startBgMusic 时才创建音频上下文,
+    // 避免冷启动阶段就占用解码资源(降低被系统回收的概率)
     this.initSfxPool();
   }
 
@@ -77,12 +78,14 @@ class AudioManager {
     });
   }
 
-  initBgMusic() {
+  // 懒加载背景音乐:仅在真正需要播放时创建一次上下文
+  _ensureBgMusic() {
+    if (this.bgMusic) return;
     try {
       this.bgMusic = wx.createInnerAudioContext();
       this.bgMusic.loop = true;
       this.bgMusic.volume = 0.3;
-      this.bgMusic.src = 'audio/bg.wav';
+      this.bgMusic.src = 'audio/bg.mp3';
       this.bgMusic.onError(() => {
         console.log('背景音乐加载失败');
       });
@@ -100,7 +103,9 @@ class AudioManager {
   }
 
   startBgMusic() {
-    if (!this.musicEnabled || !this.bgMusic || this.bgMusicPlaying) return;
+    if (!this.musicEnabled || this.bgMusicPlaying) return;
+    this._ensureBgMusic();
+    if (!this.bgMusic) return;
     try {
       this.bgMusic.play();
       this.bgMusicPlaying = true;
