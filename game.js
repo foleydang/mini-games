@@ -26,15 +26,6 @@ import BounceGame from './games/bounce.js';
 import SheepGame from './games/sheep.js';
 import FruitGame from './games/fruit.js';
 
-// 耗时格式化:毫秒 → "32秒" 或 "1分23秒"
-function formatTimeMs(ms) {
-  if (!ms || ms <= 0) return '';
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return s + '秒';
-  const m = Math.floor(s / 60);
-  return m + '分' + (s % 60) + '秒';
-}
-
 class MainGame {
   constructor() {
     this.canvas = wx.createCanvas();
@@ -1077,17 +1068,10 @@ renderProfile() {
           if (item.stars) {
             this.drawRankStars(this.ctx, width * 0.55, midY, item.stars, top3);
           }
-          // 右侧上下两行:关卡(主) + 耗时(次)
-          const rightX = width - 48;
-          const hasTime = item.timeMs && item.timeMs > 0;
-          drawText(this.ctx, `第${item.score}关`, rightX, hasTime ? y + 24 : midY, {
+          // 右侧:到达关卡(纵向居中)
+          drawText(this.ctx, `第${item.score}关`, width - 48, midY, {
             fontSize: 28, color: rankColor, bold: true, align: 'right'
           });
-          if (hasTime) {
-            drawText(this.ctx, formatTimeMs(item.timeMs), rightX, y + 49, {
-              fontSize: 20, color: top3 ? 'rgba(255,255,255,0.8)' : '#9333ea', align: 'right'
-            });
-          }
         } else {
           drawText(this.ctx, item.score + '分', width - 48, midY, {
             fontSize: 28, color: rankColor, bold: true, align: 'right'
