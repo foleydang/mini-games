@@ -196,11 +196,12 @@ class SheepGame {
         insertIndex = i + 1;
       }
     }
-    this.slot.splice(insertIndex, 0, { type: tile.type });
+    this.slot.splice(insertIndex, 0, { type: tile.type, _pop: { t: 0, dur: 160 } });
 
     this.checkAndRemoveMatches();
     this.checkGameState();
     this.draw();
+    this.ensureAnimLoop();
   }
 
   checkAndRemoveMatches() {
@@ -317,6 +318,12 @@ class SheepGame {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     drawGradientBg(ctx, width, height, '#fff5eb', '#ffe4c4', '#8b5cf6' + '08');
 
+    // 每帧仅计算一次可点击集合(避免 drawTiles 内对每张牌重复 O(n) 判定)
+    this._clickableSet = new Set();
+    for (const t of this.tiles) {
+      if (!t.removed && this.isTileClickable(t)) this._clickableSet.add(t);
+    }
+
     // 标题和关卡信息
     const levelNames = ['新手村', '地狱模式'];
     const levelName = levelNames[this.currentLevel] || '第' + (this.currentLevel + 1) + '关';
@@ -400,7 +407,7 @@ class SheepGame {
       const layerTiles = this.tiles.filter(t => !t.removed && t.layer === layer);
 
       for (const tile of layerTiles) {
-        const clickable = this.isTileClickable(tile);
+        const clickable = this._clickableSet ? this._clickableSet.has(tile) : this.isTileClickable(tile);
         const drawX = tile.x + inset;
         const drawY = tile.y + inset;
         const s = size - inset * 2;
@@ -464,7 +471,22 @@ class SheepGame {
 
       if (i < this.slot.length) {
         const item = this.slot[i];
-        
+        const ccx = sx + this.slotSize / 2;
+        const ccy = sy + this.slotSize / 2;
+
+        // 落位弹入:缩放 1.3→1(缓出),让放牌手感顺滑不生硬
+        let sc = 1;
+        if (item._pop) {
+          const t = Math.min(1, item._pop.t / item._pop.dur);
+          const e = 1 - Math.pow(1 - t, 3);
+          sc = 1.3 - 0.3 * e;
+        }
+
+        ctx.save();
+        ctx.translate(ccx, ccy);
+        ctx.scale(sc, sc);
+        ctx.translate(-ccx, -ccy);
+
         // 牌背景带高光
         const gradient = ctx.createLinearGradient(sx, sy, sx, sy + this.slotSize);
         gradient.addColorStop(0, '#ffffff');
@@ -476,7 +498,9 @@ class SheepGame {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000';
-        ctx.fillText(EMOJIS[item.type], sx + this.slotSize / 2, sy + this.slotSize / 2);
+        ctx.fillText(EMOJIS[item.type], ccx, ccy);
+
+        ctx.restore();
       }
     }
   }
@@ -543,14 +567,34 @@ class SheepGame {
            point.y >= rect.y && point.y <= rect.y + rect.height;
   }
 
+  // 事件驱动渲染:仅在状态变化时重绘;落位/消除动画期间由 ensureAnimLoop 驱动
   startLoop() {
     this.ended = false;
-    const loop = () => {
-      if (this.ended || this.gameOver || this.gameWon) return;
+    if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+    this._lastTs = null;
+    this.draw();
+  }
+
+  // 收集槽落位动画循环:仅在有牌正在弹入时逐帧运行,结束即停,不常驻空转
+  ensureAnimLoop() {
+    if (this.rafId || this.ended) return;
+    this._lastTs = null;
+    const step = (ts) => {
+      if (this.ended) { this.rafId = null; return; }
+      if (this._lastTs == null) this._lastTs = ts;
+      const dt = ts - this._lastTs;
+      this._lastTs = ts;
+      let active = false;
+      for (const it of this.slot) {
+        if (!it._pop) continue;
+        it._pop.t += dt;
+        if (it._pop.t >= it._pop.dur) it._pop = null;
+        else active = true;
+      }
       this.draw();
-      this.rafId = requestAnimationFrame(loop);
+      this.rafId = active ? requestAnimationFrame(step) : null;
     };
-    this.rafId = requestAnimationFrame(loop);
+    this.rafId = requestAnimationFrame(step);
   }
 
   exitGame() {

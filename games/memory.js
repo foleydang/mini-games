@@ -110,8 +110,42 @@ export default class MemoryGame {
     this.checkingMatch = false;
     this.timeLeft = this.timeLimit;
 
+    if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+    this._lastTs = null;
+
     this.startTimer();
     this.draw();
+  }
+
+  // 翻面动画:横向缩放到 0 再回到 1,中点切换正反面(像扑克牌被翻开)
+  startFlip(card, toFront) {
+    card.anim = {
+      t: 0,
+      dur: 260,
+      frontStart: !toFront, // 翻开:先背面;翻回:先正面
+      frontEnd: toFront
+    };
+    this.ensureAnimLoop();
+  }
+
+  ensureAnimLoop() {
+    if (this.rafId) return;
+    this._lastTs = null;
+    const step = (ts) => {
+      if (this._lastTs == null) this._lastTs = ts;
+      const dt = ts - this._lastTs;
+      this._lastTs = ts;
+      let active = false;
+      for (const c of this.cards) {
+        if (!c.anim) continue;
+        c.anim.t += dt;
+        if (c.anim.t >= c.anim.dur) c.anim = null;
+        else active = true;
+      }
+      this.draw();
+      this.rafId = active ? requestAnimationFrame(step) : null;
+    };
+    this.rafId = requestAnimationFrame(step);
   }
 
   startTimer() {
@@ -127,7 +161,10 @@ export default class MemoryGame {
     }, 250);
   }
 
-  destroy() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
+  destroy() {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+  }
 
   finish(win) {
     if (this.gameOver) return;
@@ -200,39 +237,53 @@ export default class MemoryGame {
   drawCard(card) {
     const ctx = this.ctx;
     const { x, y, width, height, flipped, matched, symbol, color } = card;
-    
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+
+    // 翻面动画:横向缩放 |cos|,中点切面
+    let scaleX = 1;
+    let showFront = flipped || matched;
+    if (card.anim) {
+      const t = Math.min(1, card.anim.t / card.anim.dur);
+      scaleX = Math.abs(Math.cos(t * Math.PI));
+      showFront = t < 0.5 ? card.anim.frontStart : card.anim.frontEnd;
+    }
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scaleX < 0.02 ? 0.02 : scaleX, 1);
+    ctx.translate(-cx, -cy);
+
     let bgColor, strokeColor;
     if (matched) {
       bgColor = 'rgba(200, 200, 200, 0.3)';
       strokeColor = '#ccc';
-    } else if (flipped) {
+    } else if (showFront) {
       bgColor = color;
       strokeColor = '#fff';
     } else {
       bgColor = '#2c3e50';
       strokeColor = '#1a252f';
     }
-    
+
     drawRoundRect(ctx, x, y, width, height, 12, bgColor, strokeColor, 3);
-    
+
     ctx.fillStyle = matched ? '#999' : '#fff';
     ctx.font = `bold ${Math.min(width, height) * 0.45}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
-    if (flipped || matched) {
-      ctx.fillText(symbol, x + width / 2, y + height / 2);
-    } else {
-      ctx.fillText('?', x + width / 2, y + height / 2);
-    }
-    
-    if (flipped && !matched) {
+    ctx.fillText(showFront || matched ? symbol : '?', cx, cy);
+
+    // 选中高亮(仅静止翻开且未匹配时)
+    if (!card.anim && flipped && !matched) {
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.rect(x - 2, y - 2, width + 4, height + 4);
       ctx.stroke();
     }
+
+    ctx.restore();
   }
 
   onTouchStart(pos) {
@@ -274,26 +325,28 @@ export default class MemoryGame {
     card.flipped = true;
     this.flippedCards.push(card);
     this.moves++;
-    this.draw();
-    
+    this.startFlip(card, true);
+
     if (this.flippedCards.length === 2) {
       this.checkingMatch = true;
       const [card1, card2] = this.flippedCards;
-      
+
       setTimeout(() => {
         if (card1.symbol === card2.symbol) {
           card1.matched = true;
           card2.matched = true;
           this.matchedPairs++;
           if (this.matchedPairs === this.totalPairs) { this.flippedCards = []; this.checkingMatch = false; this.finish(true); return; }
+          this.draw();
         } else {
           card1.flipped = false;
           card2.flipped = false;
+          this.startFlip(card1, false);
+          this.startFlip(card2, false);
         }
         this.flippedCards = [];
         this.checkingMatch = false;
-        this.draw();
-      }, 500);
+      }, 600);
     }
   }
 
