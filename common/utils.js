@@ -673,7 +673,7 @@ export const RankData = {
   },
   
   // 添加排行榜记录
-  addRank(gameId, score, name = '玩家', sortType = 'desc') {
+  addRank(gameId, score, name = '玩家', sortType = 'desc', extra = {}) {
     if (!score || score <= 0) return;
     
     // 获取用户设置的昵称和头像
@@ -700,6 +700,8 @@ export const RankData = {
       name: nickname,
       nickname: nickname,
       avatarIndex: avatarIndex,
+      timeMs: extra.timeMs || 0,
+      stars: extra.stars || 0,
       date: new Date().toLocaleDateString("zh-CN") 
     });
     const top10 = data.sort((a, b) => sortType === 'asc' ? a.score - b.score : b.score - a.score).slice(0, 10);
@@ -711,7 +713,9 @@ export const RankData = {
       method: 'POST',
       data: { 
         score, 
-        openid: getOpenId()
+        openid: getOpenId(),
+        timeMs: extra.timeMs || 0,
+        stars: extra.stars || 0
       },
       header: { 'content-type': 'application/json' },
       success: () => {},
@@ -738,11 +742,12 @@ export const RankData = {
 };
 
 // 关卡型游戏通关:解锁下一关 + 以“到达关卡”(最高通关关卡,1-based)提交排行榜
-export function completeLevel(gameId, levelIndex) {
+// extra: { timeMs, stars } 通关耗时(毫秒)和星级(1-3)
+export function completeLevel(gameId, levelIndex, extra = {}) {
   const saved = Storage.load(gameId + '_level') || 0;
   const reached = Math.max(saved, levelIndex + 1);
   if (reached > saved) Storage.save(gameId + '_level', reached);
-  RankData.addRank(gameId, reached, '玩家');
+  RankData.addRank(gameId, reached, '玩家', 'desc', extra);
   return reached;
 }
 

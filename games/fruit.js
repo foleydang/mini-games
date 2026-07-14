@@ -45,6 +45,7 @@ class FruitGame {
     this.buttons = null;
 
     this.animate = this.animate.bind(this);
+    this.gameStartTime = Date.now();
     this.setupLevel();
     this.startLoop();
   }
@@ -607,7 +608,7 @@ class FruitGame {
 
   showEndModal() {
     const isWin = this.gameWon;
-    if (isWin) completeLevel(this.gameId, this.currentLevel);
+    if (isWin) completeLevel(this.gameId, this.currentLevel, { timeMs: this.gameStartTime ? Date.now() - this.gameStartTime : 0, stars });
     const hasNext = isWin && this.currentLevel < this.levels.length - 1;
     // 星级:本关最大连击(≥5/≥3/其他 → 3/2/1 星)
     const stars = this.maxCombo >= 4 ? 3 : this.maxCombo >= 2 ? 2 : 1;

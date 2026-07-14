@@ -48,6 +48,7 @@ class SheepGame {
   }
 
   init() {
+    this.gameStartTime = Date.now();
     const { width, height, safeTop, safeBottom } = this.designSize;
 
     this.slotSize = 80;
@@ -258,7 +259,7 @@ class SheepGame {
 
   showEndModal() {
     const isWin = this.gameWon;
-    if (isWin) completeLevel(this.gameId, this.currentLevel);
+    if (isWin) completeLevel(this.gameId, this.currentLevel, { timeMs: this.gameStartTime ? Date.now() - this.gameStartTime : 0, stars });
     const hasNext = isWin && this.currentLevel < 1;
     const levelName = ['新手村', '地狱模式'][this.currentLevel] || `第${this.currentLevel + 1}关`;
     // 星级:洗牌次数(0/1/≥2 → 3/2/1 星)

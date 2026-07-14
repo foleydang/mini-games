@@ -133,8 +133,10 @@ export default class MemoryGame {
     if (this.gameOver) return;
     this.gameOver = true;
     this.win = win;
+    // 耗时 = 预算时间 - 剩余时间 (秒转毫秒)
+    const timeMs = win ? Math.round((this.timeLimit - this.timeLeft) * 1000) : 0;
     if (win) {
-      completeLevel(this.gameId, this.currentLevel);
+      completeLevel(this.gameId, this.currentLevel, { timeMs, stars });
       audioManager.play && audioManager.play('levelup');
     }
     const hasNext = win && this.currentLevel < this.levels.length - 1;

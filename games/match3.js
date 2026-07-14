@@ -83,6 +83,7 @@ class Match3Game {
   }
 
   init() {
+    this.gameStartTime = Date.now();
     this.setupBoard();
     this.startLoop();
   }
@@ -1061,7 +1062,8 @@ class Match3Game {
 
   finish(win) {
     this.phase = 'over';
-    if (win) completeLevel(this.gameId, this.currentLevel);
+    const timeMs = this.gameStartTime ? Date.now() - this.gameStartTime : 0;
+    if (win) completeLevel(this.gameId, this.currentLevel, { timeMs, stars });
     const hasNext = win && this.currentLevel < this.levels.length - 1;
     // 星级:达标倍率(得分相对目标分)
     const ratio = this.target > 0 ? this.score / this.target : 1;

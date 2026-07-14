@@ -26,6 +26,15 @@ import BounceGame from './games/bounce.js';
 import SheepGame from './games/sheep.js';
 import FruitGame from './games/fruit.js';
 
+// 耗时格式化:毫秒 → "32秒" 或 "1分23秒"
+function formatTimeMs(ms) {
+  if (!ms || ms <= 0) return '';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return s + '秒';
+  const m = Math.floor(s / 60);
+  return m + '分' + (s % 60) + '秒';
+}
+
 class MainGame {
   constructor() {
     this.canvas = wx.createCanvas();
@@ -1040,11 +1049,22 @@ renderProfile() {
         // 昵称
         drawText(this.ctx, nickname, 160, y + 30, { fontSize: 26, color: rankColor, align: 'left' });
         
-        // 分数/关卡:关卡型游戏展示“到达关卡”,无限型展示分数
+        // 分数/关卡:关卡型游戏展示“到达关卡+耗时”,无限型展示分数
         const gameCfg = Games.find(g => g.id === this.currentRankGame);
         const isLevelGame = gameCfg && gameCfg.type === 'levels';
-        const displayScore = isLevelGame ? `第${item.score}关` : item.score + '分';
-        drawText(this.ctx, displayScore, width - 80, y + 30, { fontSize: 26, color: rankColor, bold: true });
+        let displayScore;
+        if (isLevelGame) {
+          displayScore = `第${item.score}关`;
+          if (item.timeMs && item.timeMs > 0) {
+            displayScore += ` · ${formatTimeMs(item.timeMs)}`;
+          }
+          if (item.stars) {
+            displayScore += ` ${'★'.repeat(item.stars)}${'☆'.repeat(3 - item.stars)}`;
+          }
+        } else {
+          displayScore = item.score + '分';
+        }
+        drawText(this.ctx, displayScore, width - 80, y + 30, { fontSize: 22, color: rankColor, bold: true });
       });
     }
 
