@@ -27,6 +27,7 @@ export default class MemoryGame {
     this.checkingMatch = false;
     this.soundEnabled = audioManager.soundEnabled;
     this.timer = null;
+    this.ended = false;
 
     // 按钮配置
     this.backButton = getBackButton(designSize);
@@ -109,6 +110,7 @@ export default class MemoryGame {
     this.result = null;
     this.checkingMatch = false;
     this.timeLeft = this.timeLimit;
+    this.ended = false;
 
     if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
     this._lastTs = null;
@@ -129,9 +131,11 @@ export default class MemoryGame {
   }
 
   ensureAnimLoop() {
-    if (this.rafId) return;
+    if (this.rafId || this.ended) return;
     this._lastTs = null;
     const step = (ts) => {
+      // 已退出:立即停循环,避免野 rAF 画到主页/下个界面
+      if (this.ended) { this.rafId = null; return; }
       if (this._lastTs == null) this._lastTs = ts;
       const dt = ts - this._lastTs;
       this._lastTs = ts;
@@ -142,7 +146,14 @@ export default class MemoryGame {
         if (c.anim.t >= c.anim.dur) c.anim = null;
         else active = true;
       }
-      this.draw();
+      // 真机 canvas 抛错不得逃逸到帧回调外(否则小游戏闪退重启回首页)
+      try {
+        this.draw();
+      } catch (e) {
+        console.error('memory anim draw error:', e);
+        this.rafId = null;
+        return;
+      }
       this.rafId = active ? requestAnimationFrame(step) : null;
     };
     this.rafId = requestAnimationFrame(step);
@@ -151,17 +162,22 @@ export default class MemoryGame {
   startTimer() {
     if (this.timer) clearInterval(this.timer);
     this.timer = setInterval(() => {
-      if (this.gameOver) return;
-      this.timeLeft -= 0.25;
-      if (this.timeLeft <= 0) {
-        this.timeLeft = 0;
-        this.finish(false);
+      if (this.ended || this.gameOver) return;
+      try {
+        this.timeLeft -= 0.25;
+        if (this.timeLeft <= 0) {
+          this.timeLeft = 0;
+          this.finish(false);
+        }
+        this.draw();
+      } catch (e) {
+        console.error('memory timer error:', e);
       }
-      this.draw();
     }, 250);
   }
 
   destroy() {
+    this.ended = true;
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
   }
@@ -332,20 +348,30 @@ export default class MemoryGame {
       const [card1, card2] = this.flippedCards;
 
       setTimeout(() => {
-        if (card1.symbol === card2.symbol) {
-          card1.matched = true;
-          card2.matched = true;
-          this.matchedPairs++;
-          if (this.matchedPairs === this.totalPairs) { this.flippedCards = []; this.checkingMatch = false; this.finish(true); return; }
-          this.draw();
-        } else {
-          card1.flipped = false;
-          card2.flipped = false;
-          this.startFlip(card1, false);
-          this.startFlip(card2, false);
+        // 已退出本局:不再处理,避免操作已销毁状态
+        if (this.ended) return;
+        // 真机 canvas/结算抛错不得逃逸到定时器回调外(否则小游戏闪退重启回首页)
+        try {
+          if (card1.symbol === card2.symbol) {
+            card1.matched = true;
+            card2.matched = true;
+            this.matchedPairs++;
+            if (this.matchedPairs === this.totalPairs) { this.flippedCards = []; this.checkingMatch = false; this.finish(true); return; }
+            this.draw();
+          } else {
+            card1.flipped = false;
+            card2.flipped = false;
+            this.startFlip(card1, false);
+            this.startFlip(card2, false);
+          }
+          this.flippedCards = [];
+          this.checkingMatch = false;
+        } catch (e) {
+          console.error('memory match callback error:', e);
+          // 兜底恢复,保证游戏可继续,不整体崩溃
+          this.flippedCards = [];
+          this.checkingMatch = false;
         }
-        this.flippedCards = [];
-        this.checkingMatch = false;
       }, 600);
     }
   }

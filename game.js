@@ -199,7 +199,9 @@ class MainGame {
       } else if (this.showingRank) {
         this.handleRankTouch(pos);
       } else if (this.currentGame) {
-        this.currentGame.onTouchStart(pos);
+        // 游戏内触摸抛错不得逃逸(否则小游戏闪退重启回首页)
+        try { this.currentGame.onTouchStart(pos); }
+        catch (e) { console.error('game onTouchStart error:', e); }
       } else {
         this.handleHomeTouch(pos);
       }
@@ -212,7 +214,8 @@ class MainGame {
         return;
       }
       if (!this.showingSettings && !this.showingRank && this.currentGame) {
-        this.currentGame.onTouchMove(pos);
+        try { this.currentGame.onTouchMove(pos); }
+        catch (e) { console.error('game onTouchMove error:', e); }
       }
     });
 
@@ -228,7 +231,8 @@ class MainGame {
         return;
       }
       if (!this.showingSettings && !this.showingRank && this.currentGame) {
-        this.currentGame.onTouchEnd(pos);
+        try { this.currentGame.onTouchEnd(pos); }
+        catch (e) { console.error('game onTouchEnd error:', e); }
       }
     });
   }
