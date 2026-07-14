@@ -529,18 +529,28 @@ class MainGame {
     this.rankTheme = theme;
     // 统一按降序:关卡型比“到达关卡”越高越好,无限型比分数越高越好
     const sortType = 'desc';
-    
-    // 先显示本地数据
-    this.rankData = RankData.getRank(gameId, sortType);
+
+    // 排行榜完全以服务器为准:不拿本地脏缓存兜底(本地是本机通关流水,未去重,
+    // 展示出来会是一堆自己)。先显示加载中,只认云端结果。
+    this.rankData = [];
+    this.rankLoading = true;
+    this.rankLoadFailed = false;
     this.renderRank(gameName);
-    
-    // 异步从服务器获取最新数据（服务器为准，空数组也覆盖本地缓存）
+
+    // 异步从服务器获取:成功即以服务器为准(空数组也算有效结果);
+    // 失败(接口异常/超时)则显示失败态,绝不回落到本地脏缓存。
     RankData.getRankFromCloud(gameId, sortType).then(data => {
+      if (!this.showingRank || this.currentRankGame !== gameId) return; // 已离开榜单,丢弃迟到结果
+      this.rankLoading = false;
       if (data) {
+        this.rankLoadFailed = false;
         this.rankData = data;
         this.preloadAvatars(data);
-        this.renderRank(gameName);
+      } else {
+        this.rankLoadFailed = true;
+        this.rankData = [];
       }
+      this.renderRank(gameName);
     });
   }
 
@@ -1040,7 +1050,12 @@ renderProfile() {
     const gameCfg = Games.find(g => g.id === this.currentRankGame);
     const isLevelGame = gameCfg && gameCfg.type === 'levels';
 
-    if (this.rankData.length === 0) {
+    if (this.rankLoading) {
+      drawText(this.ctx, '加载中…', width / 2, startY + 120, { fontSize: 32, color: Colors.textLight });
+    } else if (this.rankLoadFailed) {
+      drawText(this.ctx, '排行榜暂时加载不出来', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
+      drawText(this.ctx, '请稍后重试', width / 2, startY + 150, { fontSize: 26, color: Colors.textMuted });
+    } else if (this.rankData.length === 0) {
       drawText(this.ctx, '暂无记录', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
       drawText(this.ctx, '快去玩游戏吧！', width / 2, startY + 150, { fontSize: 26, color: Colors.textMuted });
     } else {
