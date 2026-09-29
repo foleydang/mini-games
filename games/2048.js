@@ -3,7 +3,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, Storage, shareGame, drawTutorial
+  drawText, Storage, shareGame
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -34,7 +34,6 @@ export default class Game2048 {
 
     this.theme = Colors.themes['2048'];
     this.backButton = getBackButton(designSize);
-    this.showTutorial = !Storage.load('tutorial_2048');
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -106,7 +105,6 @@ export default class Game2048 {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
-    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_2048', true); return; }
     // 结算遮罩优先
     if (this.gameOver && this.result) {
       const action = this.result.onTouchStart(pos);
@@ -266,7 +264,6 @@ export default class Game2048 {
     drawText(this.ctx, hint, width / 2, height - safeBottom - 42, { fontSize: 24, color: Colors.textMuted });
 
     if (this.gameOver && this.result) this.result.draw(this.ctx);
-    if (this.showTutorial) drawTutorial(this.ctx, this.designSize, '滑动移动所有方块\n相同数字合并\n凑出更大数字');
   }
 
   drawCell(row, col) {

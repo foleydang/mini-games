@@ -1,5 +1,5 @@
 // 翻牌配对游戏
-import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, completeLevel, saveLevelStars, Storage, drawTutorial } from '../common/utils.js';
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, completeLevel, saveLevelStars, Storage } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { audioManager } from '../common/audio.js';
 import { Levels, MemorySymbols } from '../common/config.js';
@@ -12,7 +12,6 @@ export default class MemoryGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'memory';
-    this.showTutorial = !Storage.load('tutorial_memory');
     this.currentLevel = level;
     
     this.levels = Levels.memory;
@@ -249,7 +248,6 @@ export default class MemoryGame {
     for (const card of this.cards) this.drawCard(card);
 
     if (this.gameOver && this.result) this.result.draw(ctx);
-    if (this.showTutorial) drawTutorial(ctx, this.designSize, '翻开两张卡片\n配对相同图案\n用最少步数配对全部');
   }
 
   drawCard(card) {
@@ -305,7 +303,6 @@ export default class MemoryGame {
   }
 
   onTouchStart(pos) {
-    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_memory', true); return; }
     if (this.gameOver && this.result) {
       const action = this.result.onTouchStart(pos);
       if (action === 'next') this.nextLevel();
