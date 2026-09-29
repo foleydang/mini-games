@@ -475,22 +475,55 @@ class FruitGame {
   }
 
   trySettleOnOther(f) {
+    // 找所有下方相切的已稳定水果（潜在支撑）
+    const supports = [];
     for (const other of this.fruits) {
       if (other === f || !other.settled) continue;
-      const dy = other.y - f.y;
-      const dist = Math.abs(f.y - other.y);
-      if (dist < f.radius + other.radius + 4 && dy > 0 && Math.abs(f.x - other.x) < f.radius + other.radius) {
-        f.y = other.y - f.radius - other.radius;
-        f.inBucket = true; // 即使物理上在桶口上方，也算在桶堆里
-        if (Math.abs(f.vy) > 2) {
-          f.vy = -f.vy * BOUNCE;
-        } else {
-          f.vy = 0; f.vx = 0;
-          f.settled = true;
-          this.checkElimination();
-        }
-        break;
+      const dx = f.x - other.x;
+      const dy = other.y - f.y; // other 在下方时 >0
+      if (dy <= 0) continue;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= f.radius + other.radius + 2) {
+        supports.push({ other, dx, dist });
       }
+    }
+    if (supports.length === 0) return;
+
+    // 桶壁支撑
+    const nearLeft = f.x - f.radius <= this.bucketLeft + 4;
+    const nearRight = f.x + f.radius >= this.bucketRight - 4;
+
+    // 稳定条件：左右两个支撑夹住，或单支撑 + 一侧靠墙
+    let stable = false;
+    if (supports.length >= 2) {
+      const hasL = supports.some(s => s.dx < -1);
+      const hasR = supports.some(s => s.dx > 1);
+      stable = hasL && hasR;
+    }
+    if (!stable) {
+      const s = supports[0];
+      if ((s.dx < 0 && nearLeft) || (s.dx > 0 && nearRight)) stable = true;
+    }
+
+    // 贴到最近支撑表面（精确相切，无空隙）
+    supports.sort((a, b) => a.dist - b.dist);
+    const s = supports[0];
+    f.y = s.other.y - f.radius - s.other.radius;
+
+    if (stable) {
+      f.inBucket = true;
+      if (Math.abs(f.vy) > 2) {
+        f.vy = -f.vy * BOUNCE;
+      } else {
+        f.vy = 0; f.vx = 0;
+        f.settled = true;
+        this.checkElimination();
+      }
+    } else {
+      // 单点悬空不稳：朝偏离方向滚落（居中则朝桶中心方向）
+      const dir = s.dx !== 0 ? Math.sign(s.dx) : (f.x < this.bucketCenterX ? 1 : -1);
+      f.vx += dir * 0.4;
+      f.vy *= 0.4;
     }
   }
 
