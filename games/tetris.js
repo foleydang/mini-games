@@ -51,10 +51,10 @@ export default class TetrisGame {
     this.theme = Colors.themes.tetris;
     this.backButton = getBackButton(designSize);
     this.showTutorial = !Storage.load('tutorial_tetris');
-    this.paused = false;
-    this.pauseButton = { x: this.backButton.x - 100, y: this.backButton.y, width: 90, height: this.backButton.height };
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
+    this.paused = false;
+    this.pauseButton = { x: this.shareButton.x + this.shareButton.width + 20, y: this.backButton.y, width: 90, height: this.backButton.height };
 
     this.initGame();
     this.startLoop();

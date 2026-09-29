@@ -698,15 +698,15 @@ class MainGame {
     ctx.stroke();
     ctx.restore();
 
-    // "最近玩"角标
+    // "最近玩"角标（左上角，避免与右上角的关卡/无限标签重叠）
     if (card.isRecent) {
       const tagW = 64, tagH = 22;
-      drawRoundRect(ctx, x + width - tagW - 8, y + 8, tagW, tagH, 11, theme.primary);
+      drawRoundRect(ctx, x + 10, y + 8, tagW, tagH, 11, theme.primary);
       ctx.fillStyle = '#fff';
       ctx.font = '18px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('最近', x + width - tagW / 2 - 8, y + 8 + tagH / 2);
+      ctx.fillText('最近', x + 10 + tagW / 2, y + 8 + tagH / 2);
     }
 
     // 游戏图标圆形背景
