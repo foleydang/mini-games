@@ -591,7 +591,14 @@ class SheepGame {
         if (it._pop.t >= it._pop.dur) it._pop = null;
         else active = true;
       }
-      this.draw();
+      // 真机 canvas 抛错不得逃逸到帧回调外（否则小游戏闪退重启回首页）
+      try {
+        this.draw();
+      } catch (e) {
+        console.error('sheep anim draw error:', e);
+        this.rafId = null;
+        return;
+      }
       this.rafId = active ? requestAnimationFrame(step) : null;
     };
     this.rafId = requestAnimationFrame(step);

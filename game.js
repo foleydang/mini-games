@@ -9,7 +9,7 @@ import {
 } from './common/utils.js';
 import { Games, Levels } from './common/config.js';
 import { getUserInfo, createUserInfoButton, destroyUserInfoButton, drawAvatar, isAuthorized } from './common/userInfo.js';
-import { syncUserToServer, initOpenId } from './common/utils.js';
+import { syncUserToServer, initOpenId, getOpenId } from './common/utils.js';
 import { checkTextSecurity, maskSensitive, containsSensitive } from './common/contentSecurity.js';
 import { ModernThemes, drawModernButton, drawModernCard, drawModernNavbar, drawModernTag, drawModernProgress } from './common/modern-ui.js';
 import LevelSelector from './common/level-selector.js';
@@ -174,6 +174,27 @@ class MainGame {
       width: 80,
       height: 38
     };
+
+    // 最近玩的游戏排前
+    const recent = Storage.load('recentGames') || [];
+    this.cards.sort((a, b) => {
+      const ai = recent.indexOf(a.game.id);
+      const bi = recent.indexOf(b.game.id);
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    // 按新顺序重算坐标
+    this.cards.forEach((card, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      card.x = startX + col * (cardWidth + cardGapH);
+      card.y = startY + row * (cardHeight + cardGapV);
+      card.rankBtn.x = card.x + cardWidth - 102;
+      card.rankBtn.y = card.y + cardHeight - 44;
+      card.isRecent = recent.includes(card.game.id);
+    });
   }
 
   initParticles() {
@@ -295,6 +316,12 @@ class MainGame {
     };
     const GameClass = gameClasses[gameId];
     if (!GameClass) return;
+    // 记录最近玩（用于首页排序，最多保留3个）
+    const recent = Storage.load('recentGames') || [];
+    const idx = recent.indexOf(gameId);
+    if (idx !== -1) recent.splice(idx, 1);
+    recent.unshift(gameId);
+    Storage.save('recentGames', recent.slice(0, 3));
     // 防御:销毁上一局残留实例,避免旧渲染循环盖在新游戏画面上
     try {
       if (this.currentGame && typeof this.currentGame.destroy === 'function') {
@@ -381,52 +408,6 @@ class MainGame {
       return;
     }
     
-    // 检查主题切换按钮
-    if (this.showingSettings) {
-      const { width, safeTop } = this.designSize;
-      const cardY = safeTop + 240;
-      const themes = themeManager.getAllThemes();
-      const buttonWidth = 80;
-      const buttonHeight = 40;
-      const buttonSpacing = 15;
-      const totalWidth = themes.length * buttonWidth + (themes.length - 1) * buttonSpacing;
-      const startX = (width - totalWidth) / 2;
-      
-      // 检查主题按钮点击
-      for (const theme of themes) {
-        const index = themes.indexOf(theme);
-        const x = startX + index * (buttonWidth + buttonSpacing);
-        const themeBtn = { x, y: cardY + 110, width: buttonWidth, height: buttonHeight };
-        if (this.hitTest(pos, themeBtn)) {
-          themeManager.setTheme(theme.id);
-          this.currentTheme = themeManager.getCurrentTheme();
-          this.showingSettings = false;
-          return;
-        }
-      }
-      
-      // 检查游戏主题按钮点击
-      const gameCardY = cardY + 220;
-      const gameThemes = themeManager.getAllGameThemes();
-      const gameButtonWidth = 70;
-      const gameButtonHeight = 35;
-      const gameButtonSpacing = 10;
-      const gameTotalWidth = Math.min(gameThemes.length, 4) * gameButtonWidth + (Math.min(gameThemes.length, 4) - 1) * gameButtonSpacing;
-      const gameStartX = (width - gameTotalWidth) / 2;
-      
-      for (const theme of gameThemes.slice(0, 4)) {
-        const index = gameThemes.indexOf(theme);
-        const x = gameStartX + index * (gameButtonWidth + gameButtonSpacing);
-        const gameThemeBtn = { x, y: gameCardY + 110, width: gameButtonWidth, height: gameButtonHeight };
-        if (this.hitTest(pos, gameThemeBtn)) {
-          themeManager.setGameTheme(theme.id);
-          this.currentGameTheme = themeManager.getCurrentGameTheme();
-          this.showingSettings = false;
-          return;
-        }
-      }
-    }
-
     // 检查每个卡片
     for (const card of this.cards) {
       // 先检查排行榜按钮:热区向外扩 16px(隐形热区),视觉不变但更易点中
@@ -462,6 +443,39 @@ class MainGame {
       this.showingSettings = false;
       this.startAnimation();
       return;
+    }
+
+    // 主题切换按钮（坐标与 renderSettings 一致）
+    const cardY = safeTop + 240;
+    const themes = themeManager.getAllThemes();
+    const themeBtnW = 80, themeBtnH = 40, themeBtnSp = 15;
+    const themeTotalW = themes.length * themeBtnW + (themes.length - 1) * themeBtnSp;
+    const themeStartX = (width - themeTotalW) / 2;
+    for (let i = 0; i < themes.length; i++) {
+      const themeBtn = { x: themeStartX + i * (themeBtnW + themeBtnSp), y: cardY + 110, width: themeBtnW, height: themeBtnH };
+      if (this.hitTest(pos, themeBtn)) {
+        themeManager.setTheme(themes[i].id);
+        this.currentTheme = themeManager.getCurrentTheme();
+        this.renderSettings();
+        return;
+      }
+    }
+
+    // 游戏主题切换按钮
+    const gameCardY = cardY + 220;
+    const gameThemes = themeManager.getAllGameThemes();
+    const gameBtnW = 70, gameBtnH = 35, gameBtnSp = 10;
+    const gameCount = Math.min(gameThemes.length, 4);
+    const gameTotalW = gameCount * gameBtnW + (gameCount - 1) * gameBtnSp;
+    const gameStartX = (width - gameTotalW) / 2;
+    for (let i = 0; i < gameCount; i++) {
+      const gameThemeBtn = { x: gameStartX + i * (gameBtnW + gameBtnSp), y: gameCardY + 110, width: gameBtnW, height: gameBtnH };
+      if (this.hitTest(pos, gameThemeBtn)) {
+        themeManager.setGameTheme(gameThemes[i].id);
+        this.currentGameTheme = themeManager.getCurrentGameTheme();
+        this.renderSettings();
+        return;
+      }
     }
 
     // 开关按钮区域
@@ -504,6 +518,7 @@ class MainGame {
     if (pos.x >= startX && pos.x <= startX + toggleWidth &&
         pos.y >= vibrationY && pos.y <= vibrationY + toggleHeight) {
       this.settings = GameSettings.toggle('vibrationEnabled');
+      audioManager.vibrationEnabled = this.settings.vibrationEnabled;
       if (this.settings.vibrationEnabled) {
         wx.vibrateShort({ type: 'light' });
       }
@@ -520,6 +535,14 @@ class MainGame {
       this.showingRank = false;
       this.currentRankGame = null;
       this.startAnimation();
+      return;
+    }
+    // 失败重试按钮
+    if (this.rankRetryBtn && pos.x >= this.rankRetryBtn.x && pos.x <= this.rankRetryBtn.x + this.rankRetryBtn.width &&
+        pos.y >= this.rankRetryBtn.y && pos.y <= this.rankRetryBtn.y + this.rankRetryBtn.height) {
+      const gameId = this.currentRankGame;
+      const gameName = Games.find(g => g.id === gameId)?.name || '';
+      this.showRank(gameId, gameName, this.rankTheme);
     }
   }
 
@@ -669,6 +692,17 @@ class MainGame {
     ctx.stroke();
     ctx.restore();
 
+    // "最近玩"角标
+    if (card.isRecent) {
+      const tagW = 64, tagH = 22;
+      drawRoundRect(ctx, x + width - tagW - 8, y + 8, tagW, tagH, 11, theme.primary);
+      ctx.fillStyle = '#fff';
+      ctx.font = '18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('最近', x + width - tagW / 2 - 8, y + 8 + tagH / 2);
+    }
+
     // 游戏图标圆形背景
     const iconX = x + 48;
     const iconY = y + height / 2;
@@ -685,7 +719,7 @@ class MainGame {
     ctx.restore();
 
     // 图标
-    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, theme.primary, game.shape);
+    drawGameIcon(ctx, iconX, iconY, iconRadius * 0.6, theme.primary, game.shape, game.icon);
 
     // 游戏名称(上下大致居中于卡片)
     drawText(ctx, game.name, x + 86, y + 44, { fontSize: 28, color: '#1e293b', bold: true, align: 'left' });
@@ -1055,18 +1089,27 @@ renderProfile() {
     } else if (this.rankLoadFailed) {
       drawText(this.ctx, '排行榜暂时加载不出来', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
       drawText(this.ctx, '请稍后重试', width / 2, startY + 150, { fontSize: 26, color: Colors.textMuted });
+      // 重新加载按钮
+      const retryW = 220, retryH = 56;
+      this.rankRetryBtn = { x: (width - retryW) / 2, y: startY + 200, width: retryW, height: retryH };
+      drawButton(this.ctx, this.rankRetryBtn.x, this.rankRetryBtn.y, retryW, retryH, '重新加载', this.rankTheme.primary, { fontSize: 28, radius: 16 });
     } else if (this.rankData.length === 0) {
       drawText(this.ctx, '暂无记录', width / 2, startY + 100, { fontSize: 32, color: Colors.textLight });
       drawText(this.ctx, '快去玩游戏吧！', width / 2, startY + 150, { fontSize: 26, color: Colors.textMuted });
+      this.rankRetryBtn = null;
     } else {
+      this.rankRetryBtn = null;
+      const myOpenid = getOpenId();
       const avatarColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
       this.rankData.forEach((item, index) => {
         const y = startY + index * itemHeight;
         const midY = y + (itemHeight - 8) / 2;
         const top3 = index < 3;
-        const bgColor = top3 ? this.rankTheme.primary : '#f3e8ff';
+        const isMe = item.openid && myOpenid && item.openid === myOpenid;
+        // 高亮自己：用金黄色底 + "我" 标记
+        const bgColor = isMe ? '#fde68a' : (top3 ? this.rankTheme.primary : '#f3e8ff');
         drawRoundRect(this.ctx, 30, y, width - 60, itemHeight - 8, 14, bgColor);
-        const rankColor = top3 ? '#fff' : '#5b21b6';
+        const rankColor = isMe ? '#b45309' : (top3 ? '#fff' : '#5b21b6');
 
         // 排名
         drawText(this.ctx, `${index + 1}`, 66, midY, { fontSize: 28, color: rankColor, bold: true });
@@ -1099,6 +1142,18 @@ renderProfile() {
       });
     }
 
+    // 我的最佳（从本机通关流水取最高分/最高关卡，跨设备不可靠但本机可见）
+    const localRank = Storage.load('rank_' + this.currentRankGame) || [];
+    if (Array.isArray(localRank) && localRank.length > 0) {
+      const myBest = localRank.reduce((max, it) => (it.score > (max || 0) ? it.score : max), 0);
+      if (myBest > 0) {
+        const bestY = height - safeBottom - 70;
+        const bestText = isLevelGame ? `我的最佳：第${myBest}关` : `我的最佳：${myBest}分`;
+        drawRoundRect(this.ctx, 30, bestY, width - 60, 50, 14, '#eef2ff');
+        drawText(this.ctx, bestText, width / 2, bestY + 25, { fontSize: 26, color: '#4338ca', bold: true });
+      }
+    }
+
     drawButton(this.ctx, 30, safeTop + 110, 140, 50, '← 返回', '#dc2626', { fontSize: 32, radius: 16 });
   }
 
@@ -1128,7 +1183,7 @@ renderProfile() {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    drawGameIcon(ctx, iconX, centerY, iconRadius * 0.65, '#fff', game.shape);
+    drawGameIcon(ctx, iconX, centerY, iconRadius * 0.65, '#fff', game.shape, game.icon);
 
     drawText(ctx, game.name, x + width * 0.55, centerY - 10, { fontSize: 30, color: '#1f2937', bold: true });
     drawText(ctx, game.desc, x + width * 0.55, centerY + 20, { fontSize: 20, color: '#6b7280' });

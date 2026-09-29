@@ -270,10 +270,20 @@ export function drawCircle(ctx, x, y, radius, color) {
 }
 
 // 绘制游戏图标（替代emoji，用几何图形）
-export function drawGameIcon(ctx, x, y, radius, color, shape) {
+export function drawGameIcon(ctx, x, y, radius, color, shape, icon) {
   ctx.save();
 
-  // 根据shape绘制不同图形
+  // 优先用 emoji 图标（辨识度高于抽象 shape）
+  if (icon) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(radius * 2.2)}px sans-serif`;
+    ctx.fillText(icon, x, y);
+    ctx.restore();
+    return;
+  }
+
+  // 根据 shape 绘制不同图形（无 icon 时的回退）
   switch(shape) {
     case 'star':  // 六角星 - 消消乐
       drawStar(ctx, x, y, radius, color);
@@ -544,7 +554,7 @@ export function shareGame(gameName, score) {
 const API_BASE = 'https://api.yanten.top/api/games';
 
 // 获取/生成用户唯一ID（同步，从本地存储读；真 openid 由 initOpenId 写入）
-function getOpenId() {
+export function getOpenId() {
   try {
     let openid = wx.getStorageSync('game_openid');
     if (!openid) {
@@ -653,6 +663,7 @@ export const RankData = {
           url: `${API_BASE}/rank/${gameId}`,
           method: 'GET',
           data: { sort: sortType, limit: 10 },
+          timeout: 8000,
           success: resolve,
           fail: reject
         });

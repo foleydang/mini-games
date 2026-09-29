@@ -52,6 +52,7 @@ class AudioManager {
     const saved = Storage.load('gameSettings') || {};
     this.soundEnabled = saved.soundEnabled !== undefined ? saved.soundEnabled : true;
     this.musicEnabled = saved.musicEnabled !== undefined ? saved.musicEnabled : true;
+    this.vibrationEnabled = saved.vibrationEnabled !== undefined ? saved.vibrationEnabled : true;
     this.lastVibrateTime = 0;
     this.minInterval = 100;
     this.bgMusic = null;
@@ -74,7 +75,8 @@ class AudioManager {
     Storage.save('gameSettings', {
       ...existing,
       soundEnabled: this.soundEnabled,
-      musicEnabled: this.musicEnabled
+      musicEnabled: this.musicEnabled,
+      vibrationEnabled: this.vibrationEnabled
     });
   }
 
@@ -143,10 +145,8 @@ class AudioManager {
   toggle() { return this.toggleSound(); }
 
   play(type, options) {
-    if (!this.soundEnabled) return;
-
-    // 震动反馈
-    if (shouldVibrate[type]) {
+    // 震动反馈独立于音效开关：关音效仍可振动（除非振动开关也关了）
+    if (this.vibrationEnabled && shouldVibrate[type]) {
       const now = Date.now();
       if (now - this.lastVibrateTime > this.minInterval) {
         this.lastVibrateTime = now;
@@ -162,6 +162,7 @@ class AudioManager {
       }
     }
 
+    if (!this.soundEnabled) return;
     // 音效文件播放
     if (soundFiles[type]) {
       try {

@@ -146,8 +146,16 @@ class Match3Game {
       let dt = (t - this.lastT) / 1000;
       this.lastT = t;
       if (dt > 0.05) dt = 0.05;
-      this.update(dt);
-      this.draw();
+      // 真机 canvas 抛错不得逃逸到帧回调外（否则小游戏闪退重启回首页）
+      try {
+        this.update(dt);
+        this.draw();
+      } catch (e) {
+        console.error('match3 loop error:', e);
+        this.running = false;
+        this.phase = 'idle';
+        return;
+      }
       requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
