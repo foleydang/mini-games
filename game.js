@@ -181,24 +181,9 @@ class MainGame {
       height: 38
     };
 
-    // 最近玩的游戏排前
+    // 最近玩只打角标，不调整顺序（避免位置闪动记不住）
     const recent = Storage.load('recentGames') || [];
-    this.cards.sort((a, b) => {
-      const ai = recent.indexOf(a.game.id);
-      const bi = recent.indexOf(b.game.id);
-      if (ai === -1 && bi === -1) return 0;
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
-    // 按新顺序重算坐标
-    this.cards.forEach((card, index) => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
-      card.x = startX + col * (cardWidth + cardGapH);
-      card.y = startY + row * (cardHeight + cardGapV);
-      card.rankBtn.x = card.x + cardWidth - 102;
-      card.rankBtn.y = card.y + cardHeight - 44;
+    this.cards.forEach((card) => {
       card.isRecent = recent.includes(card.game.id);
     });
   }

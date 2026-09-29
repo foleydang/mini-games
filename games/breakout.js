@@ -3,7 +3,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle, Storage, shareGame, completeLevel, saveLevelStars
+  drawText, drawCircle, Storage, shareGame, completeLevel, saveLevelStars, drawPauseOverlay
 } from '../common/utils.js';
 import { Levels, BrickColors } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -37,6 +37,8 @@ export default class BreakoutGame {
     this.backButton = getBackButton(designSize);
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
+    this.paused = false;
+    this.pauseButton = { x: this.shareButton.x + this.shareButton.width + 20, y: this.backButton.y, width: 90, height: this.backButton.height };
 
     this.initGame();
     this.startLoop();
@@ -91,12 +93,16 @@ export default class BreakoutGame {
 
   startLoop() {
     this.timer = setInterval(() => {
-      if (!this.gameOver) this.update();
+      if (!this.gameOver && !this.paused) this.update();
       this.render();
     }, 28);
   }
 
   destroy() { if (this.timer) clearInterval(this.timer); }
+
+  // 切后台自动暂停，回到前台自动恢复
+  pause() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
+  resume() { if (!this.gameOver) this.startLoop(); }
 
   update() {
     this.elapsedMs += 28;
@@ -176,6 +182,8 @@ export default class BreakoutGame {
       return;
     }
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd({ score: this.score, passed: false }); return; }
+    if (this.checkButton(pos, this.pauseButton)) { playSound(SoundType.CLICK); this.paused = !this.paused; this.render(); return; }
+    if (this.paused) { this.paused = false; this.render(); return; }
     if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('打砖块', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     this.movePaddle(pos);
@@ -225,5 +233,8 @@ export default class BreakoutGame {
     drawText(this.ctx, '滑动移动挡板', width / 2, height - safeBottom - 38, { fontSize: 24, color: Colors.textMuted });
 
     if (this.gameOver && this.result) this.result.draw(this.ctx);
+    // 暂停按钮 + 暂停遮罩
+    drawButton(this.ctx, this.pauseButton.x, this.pauseButton.y, this.pauseButton.width, this.pauseButton.height, this.paused ? '▶' : '⏸', Colors.info, { fontSize: 32, radius: 16 });
+    if (this.paused) drawPauseOverlay(this.ctx, this.designSize);
   }
 }

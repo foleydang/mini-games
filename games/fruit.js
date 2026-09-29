@@ -1,5 +1,5 @@
 // 接水果 - 窄桶 + 双斜坡 + 上方等待网格(整片下滚)
-import { drawText, Colors, completeLevel, saveLevelStars, Storage } from '../common/utils.js';
+import { drawText, Colors, completeLevel, saveLevelStars, Storage, drawRoundRect } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, checkBottomButtons } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 import { Levels } from '../common/config.js';
@@ -797,6 +797,11 @@ class FruitGame {
 
     // 标准按钮栏
     this.buttons = this.drawButtons(ctx, safeTop);
+
+    // 游戏场地边框（包住斜坡+水桶+水果区）
+    const fieldY = safeTop + 125;
+    const fieldH = Math.max(240, height - safeBottom - fieldY);
+    drawRoundRect(ctx, 16, fieldY, width - 32, fieldH, 24, 'rgba(255,248,231,0.45)', '#c4390a', 3);
 
     // 绘制场景
     this.drawSlopes(ctx);

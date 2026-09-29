@@ -229,18 +229,19 @@ export default class MemoryGame {
     drawGradientBg(ctx, width, height, '#f0f9ff', '#e0f2fe', '#06b6d4' + '11');
     
     drawText(ctx, '翻牌配对', width / 2, safeTop + 80, { fontSize: 48, color: '#7c3aed', bold: true });
-    drawText(ctx, `第${this.currentLevel + 1}关 · 步数: ${this.moves}  配对: ${this.matchedPairs}/${this.totalPairs}`, width / 2, safeTop + 135, { fontSize: 24, color: '#4b5563' });
+    drawText(ctx, `第${this.currentLevel + 1}关 · 步数: ${this.moves} · 配对: ${this.matchedPairs}/${this.totalPairs}`, width / 2, safeTop + 132, { fontSize: 24, color: '#4b5563' });
 
-    // 倒计时条
+    // 倒计时条（位于信息行与顶部按钮之间，避开按钮区）
     const remain = Math.max(0, this.timeLeft || 0);
     const ratio = this.timeLimit > 0 ? remain / this.timeLimit : 0;
     const barW = width - 100;
     const barX = 50;
-    const barY = safeTop + 165;
+    const barY = safeTop + 158;
     drawRoundRect(ctx, barX, barY, barW, 14, 7, '#e5e7eb');
     const barColor = ratio > 0.3 ? '#10b981' : '#ef4444';
     if (ratio > 0) drawRoundRect(ctx, barX, barY, barW * ratio, 14, 7, barColor);
-    drawText(ctx, `⏱ ${Math.ceil(remain)}s`, width / 2, barY + 32, { fontSize: 22, color: barColor, bold: true });
+    // 进度条右端标剩余秒数（不与顶部按钮文字重叠）
+    drawText(ctx, `${Math.ceil(remain)}s`, barX + barW - 8, barY + 7, { fontSize: 18, color: '#374151', bold: true, align: 'right' });
 
     // 底部按钮（返回在左边）
     this.buttons = drawBottomButtons(ctx, this.designSize, '← 返回', this.soundEnabled);
