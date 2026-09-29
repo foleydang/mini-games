@@ -8,6 +8,7 @@ import {
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
+import LevelResult from '../common/level-result.js';
 
 export default class Game2048 {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -60,6 +61,7 @@ export default class Game2048 {
 
     this.score = 0;
     this.gameOver = false;
+    this.result = null;
     this.maxBlock = 0;
     this.achievedMilestone = -1;
 
@@ -103,6 +105,13 @@ export default class Game2048 {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
+    // 结算遮罩优先
+    if (this.gameOver && this.result) {
+      const action = this.result.onTouchStart(pos);
+      if (action === 'retry' || action === 'replay') { this.destroy(); this.initGame(); this.startLoop(); }
+      else if (action === 'back') { this.destroy(); this.onEnd(this.score); }
+      return;
+    }
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
     if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('2048', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
@@ -204,15 +213,13 @@ export default class Game2048 {
     if (this.maxBlock > this.bestBlock) { this.bestBlock = this.maxBlock; Storage.save('2048_best_block', this.bestBlock); }
 
     const milestone = this.getCurrentMilestone();
-    wx.showModal({
-      title: milestone >= 0 ? `🎉 ${this.milestoneNames[milestone]}` : '游戏结束',
-      content: `最高块: ${this.maxBlock}${milestone >= 0 ? '\n成就: ' + this.milestoneNames[milestone] : ''}\n得分: ${this.score}\n历史最高块: ${this.bestBlock}`,
-      confirmText: '重试',
-      cancelText: '返回',
-      success: (res) => {
-        if (res.confirm) { this.destroy(); this.initGame(); this.startLoop(); }
-        else { this.destroy(); this.onEnd(this.score); }
-      }
+    this.result = new LevelResult(this.designSize, {
+      win: false,
+      score: this.score,
+      scoreLabel: '得分',
+      levelName: milestone >= 0 ? this.milestoneNames[milestone] : `最高块 ${this.maxBlock}`,
+      hasNext: false,
+      primaryColor: this.theme.primary
     });
   }
 
@@ -256,11 +263,7 @@ export default class Game2048 {
     }
     drawText(this.ctx, hint, width / 2, height - safeBottom - 42, { fontSize: 24, color: Colors.textMuted });
 
-    if (this.gameOver) {
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      this.ctx.fillRect(0, 0, width, height);
-      drawText(this.ctx, '游戏结束', width / 2, height / 2, { fontSize: 32, color: this.theme.primary, bold: true });
-    }
+    if (this.gameOver && this.result) this.result.draw(this.ctx);
   }
 
   drawCell(row, col) {

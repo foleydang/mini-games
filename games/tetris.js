@@ -8,6 +8,7 @@ import {
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 import { getBackButton, getShareButton, getSoundButton } from '../common/ui.js';
+import LevelResult from '../common/level-result.js';
 
 export default class TetrisGame {
   constructor(canvas, ctx, designSize, onEnd) {
@@ -79,6 +80,7 @@ export default class TetrisGame {
     this.score = 0;
     this.lines = 0;
     this.gameOver = false;
+    this.result = null;
     this.speed = this.speedStart;
     this.achievedMilestone = -1;
 
@@ -131,15 +133,13 @@ export default class TetrisGame {
       if (this.lines > this.bestLines) { this.bestLines = this.lines; Storage.save('tetris_best_lines', this.bestLines); }
 
       const milestone = this.getCurrentMilestone();
-      wx.showModal({
-        title: milestone >= 0 ? `🎉 ${this.milestoneNames[milestone]}` : '游戏结束',
-        content: `消除: ${this.lines}行\n得分: ${this.score}\n最高行数: ${this.bestLines}`,
-        confirmText: '重试',
-        cancelText: '返回',
-        success: (res) => {
-          if (res.confirm) { this.destroy(); this.initGame(); this.startLoop(); }
-          else { this.destroy(); this.onEnd(this.score); }
-        }
+      this.result = new LevelResult(this.designSize, {
+        win: false,
+        score: this.score,
+        scoreLabel: '得分',
+        levelName: milestone >= 0 ? this.milestoneNames[milestone] : '',
+        hasNext: false,
+        primaryColor: this.theme.primary
       });
     }
   }
@@ -241,6 +241,13 @@ export default class TetrisGame {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
+    // 结算遮罩优先
+    if (this.gameOver && this.result) {
+      const action = this.result.onTouchStart(pos);
+      if (action === 'retry' || action === 'replay') { this.destroy(); this.initGame(); this.startLoop(); }
+      else if (action === 'back') { this.destroy(); this.onEnd(this.score); }
+      return;
+    }
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
     if (this.checkButton(pos, this.pauseButton)) { playSound(SoundType.CLICK); this.paused = !this.paused; this.render(); return; }
     if (this.paused) { this.paused = false; this.render(); return; }
@@ -332,6 +339,8 @@ export default class TetrisGame {
     // 暂停按钮 + 暂停遮罩
     drawButton(this.ctx, this.pauseButton.x, this.pauseButton.y, this.pauseButton.width, this.pauseButton.height, this.paused ? '▶' : '⏸', Colors.info, { fontSize: 32, radius: 16 });
     if (this.paused) drawPauseOverlay(this.ctx, this.designSize);
+    // 结算遮罩
+    if (this.gameOver && this.result) this.result.draw(this.ctx);
   }
 
   drawCell(col, row, color) {
