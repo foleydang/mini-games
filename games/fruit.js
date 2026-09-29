@@ -762,14 +762,32 @@ class FruitGame {
     const ctx = this.ctx;
     const { width, height, safeTop, safeBottom } = this.designSize;
 
-    // 清新暖色背景
-    const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-    bgGradient.addColorStop(0, '#fff8e7');
-    bgGradient.addColorStop(0.35, '#fde8d0');
-    bgGradient.addColorStop(0.7, '#f9d89a');
-    bgGradient.addColorStop(1, '#e8b86a');
-    ctx.fillStyle = bgGradient;
+    // 天空 → 草地渐变（清新果园）
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, height);
+    skyGradient.addColorStop(0, '#6ec0f0');
+    skyGradient.addColorStop(0.4, '#aee3ff');
+    skyGradient.addColorStop(0.62, '#d8f5cf');
+    skyGradient.addColorStop(1, '#7ec850');
+    ctx.fillStyle = skyGradient;
     ctx.fillRect(0, 0, width, height);
+
+    // 草地条带
+    const grassY = height - safeBottom - 56;
+    const grassGrad = ctx.createLinearGradient(0, grassY, 0, height);
+    grassGrad.addColorStop(0, '#76c83e');
+    grassGrad.addColorStop(1, '#4f9a2e');
+    ctx.fillStyle = grassGrad;
+    ctx.fillRect(0, grassY, width, height - grassY);
+    // 草尖锯齿
+    ctx.fillStyle = '#5fb33a';
+    for (let i = 0; i < width; i += 26) {
+      ctx.beginPath();
+      ctx.moveTo(i, grassY + 6);
+      ctx.lineTo(i + 13, grassY - 9);
+      ctx.lineTo(i + 26, grassY + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // 氛围装饰
     this.drawDecorations(ctx, width, height);
@@ -797,11 +815,6 @@ class FruitGame {
 
     // 标准按钮栏
     this.buttons = this.drawButtons(ctx, safeTop);
-
-    // 游戏场地边框（包住斜坡+水桶+水果区）
-    const fieldY = safeTop + 125;
-    const fieldH = Math.max(240, height - safeBottom - fieldY);
-    drawRoundRect(ctx, 16, fieldY, width - 32, fieldH, 24, 'rgba(255,248,231,0.45)', '#c4390a', 3);
 
     // 绘制场景
     this.drawSlopes(ctx);
@@ -862,144 +875,90 @@ class FruitGame {
   }
 
   drawDecorations(ctx, width, height) {
-    // 左侧装饰树
     ctx.save();
-    ctx.globalAlpha = 0.15;
-    // 树干
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(35, 120, 20, 100);
-    // 树冠
-    ctx.fillStyle = '#6B8E23';
+    // 太阳
+    const sunX = width - 95, sunY = 95;
+    ctx.fillStyle = 'rgba(255,226,122,0.35)';
     ctx.beginPath();
-    ctx.arc(45, 110, 50, 0, Math.PI * 2);
+    ctx.arc(sunX, sunY, 48, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#7BA428';
+    ctx.fillStyle = '#ffe27a';
     ctx.beginPath();
-    ctx.arc(35, 90, 40, 0, Math.PI * 2);
+    ctx.arc(sunX, sunY, 32, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#8FBC8F';
-    ctx.beginPath();
-    ctx.arc(55, 95, 35, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 右侧装饰树
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(width - 55, 130, 20, 90);
-    ctx.fillStyle = '#6B8E23';
-    ctx.beginPath();
-    ctx.arc(width - 45, 120, 45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#7BA428';
-    ctx.beginPath();
-    ctx.arc(width - 35, 100, 35, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 飘落的叶子
-    const leafPositions = [
-      { x: 60, y: 180, s: 0.8, a: 0.12 },
-      { x: 80, y: 250, s: 0.6, a: 0.1 },
-      { x: width - 70, y: 200, s: 0.7, a: 0.12 },
-      { x: width - 90, y: 280, s: 0.5, a: 0.08 },
-      { x: 100, y: 320, s: 0.4, a: 0.06 },
-      { x: width - 100, y: 350, s: 0.5, a: 0.07 },
-    ];
-    for (const leaf of leafPositions) {
-      ctx.save();
-      ctx.globalAlpha = leaf.a;
-      ctx.translate(leaf.x, leaf.y);
-      ctx.rotate(0.5);
-      ctx.scale(1, 0.5);
-      ctx.fillStyle = '#8FBC8F';
+    ctx.strokeStyle = '#ffd23a';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
       ctx.beginPath();
-      ctx.arc(0, 0, 8 * leaf.s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      ctx.moveTo(sunX + Math.cos(a) * 38, sunY + Math.sin(a) * 38);
+      ctx.lineTo(sunX + Math.cos(a) * 52, sunY + Math.sin(a) * 52);
+      ctx.stroke();
     }
-
-    // 地上的小花
-    const flowerPositions = [
-      { x: 50, y: height - 20, c: '#f8bbd0', s: 1 },
-      { x: 120, y: height - 15, c: '#fff9c4', s: 0.8 },
-      { x: width - 60, y: height - 25, c: '#bbdefb', s: 0.9 },
-      { x: width - 130, y: height - 18, c: '#f8bbd0', s: 0.7 },
-      { x: 200, y: height - 22, c: '#e1bee7', s: 0.7 },
-      { x: width - 200, y: height - 20, c: '#fff9c4', s: 0.8 },
-    ];
-    for (const flower of flowerPositions) {
-      ctx.globalAlpha = 0.2;
-      for (let i = 0; i < 5; i++) {
-        const angle = (Math.PI * 2 * i) / 5;
-        const px = flower.x + Math.cos(angle) * 6 * flower.s;
-        const py = flower.y + Math.sin(angle) * 6 * flower.s;
-        ctx.fillStyle = flower.c;
-        ctx.beginPath();
-        ctx.arc(px, py, 3 * flower.s, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = '#fff9c4';
-      ctx.beginPath();
-      ctx.arc(flower.x, flower.y, 2.5 * flower.s, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 天空装饰 - 云朵
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#fff';
+    // 云朵
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
     const clouds = [
-      { x: 80, y: 50, s: 1 },
-      { x: 200, y: 35, s: 0.7 },
-      { x: width - 100, y: 55, s: 0.9 },
-      { x: width - 220, y: 40, s: 0.6 },
+      { x: 90, y: 80, s: 1 },
+      { x: 250, y: 58, s: 0.7 },
+      { x: width - 200, y: 72, s: 0.85 }
     ];
     for (const cloud of clouds) {
       ctx.beginPath();
-      ctx.arc(cloud.x, cloud.y, 25 * cloud.s, 0, Math.PI * 2);
-      ctx.arc(cloud.x + 20 * cloud.s, cloud.y - 10 * cloud.s, 18 * cloud.s, 0, Math.PI * 2);
-      ctx.arc(cloud.x + 40 * cloud.s, cloud.y, 22 * cloud.s, 0, Math.PI * 2);
-      ctx.arc(cloud.x + 20 * cloud.s, cloud.y + 5 * cloud.s, 20 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x, cloud.y, 26 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x + 22 * cloud.s, cloud.y - 12 * cloud.s, 20 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x + 44 * cloud.s, cloud.y, 24 * cloud.s, 0, Math.PI * 2);
+      ctx.arc(cloud.x + 22 * cloud.s, cloud.y + 6 * cloud.s, 22 * cloud.s, 0, Math.PI * 2);
       ctx.fill();
     }
-
-    ctx.restore();
+    // 草地小花
+    const flowers = [
+      { x: 50, y: height - 18, c: '#ff8fab', s: 1 },
+      { x: 130, y: height - 12, c: '#fff176', s: 0.8 },
+      { x: width - 60, y: height - 22, c: '#ce93d8', s: 0.9 },
+      { x: width - 140, y: height - 14, c: '#ff8fab', s: 0.7 }
+    ];
+    for (const fl of flowers) {
+      ctx.globalAlpha = 0.85;
+      for (let i = 0; i < 5; i++) {
+        const a = Math.PI * 2 * i / 5;
+        ctx.fillStyle = fl.c;
+        ctx.beginPath();
+        ctx.arc(fl.x + Math.cos(a) * 5 * fl.s, fl.y + Math.sin(a) * 5 * fl.s, 2.5 * fl.s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#fff176';
+      ctx.beginPath();
+      ctx.arc(fl.x, fl.y, 2 * fl.s, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   drawSlopes(ctx) {
     const thick = 12;
-
-    // 左斜坡：从屏幕左边缘到桶口，~5度
-    ctx.fillStyle = '#d4a574';
-    ctx.beginPath();
-    ctx.moveTo(this.slopeLeftStartX, this.slopeTopY - thick);
-    ctx.lineTo(this.slopeLeftStartX, this.slopeTopY + thick);
-    ctx.lineTo(this.bucketLeft, this.bucketTop + thick);
-    ctx.lineTo(this.bucketLeft, this.bucketTop - thick);
-    ctx.closePath();
-    ctx.fill();
-    
-    ctx.strokeStyle = '#8b5a2b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(this.slopeLeftStartX, this.slopeTopY);
-    ctx.lineTo(this.bucketLeft, this.bucketTop);
-    ctx.stroke();
-
-    // 右斜坡
-    ctx.fillStyle = '#d4a574';
-    ctx.beginPath();
-    ctx.moveTo(this.slopeRightStartX, this.slopeTopY - thick);
-    ctx.lineTo(this.slopeRightStartX, this.slopeTopY + thick);
-    ctx.lineTo(this.bucketRight, this.bucketTop + thick);
-    ctx.lineTo(this.bucketRight, this.bucketTop - thick);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#8b5a2b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(this.slopeRightStartX, this.slopeTopY);
-    ctx.lineTo(this.bucketRight, this.bucketTop);
-    ctx.stroke();
+    const drawOne = (startX, bucketX) => {
+      // 草绿斜坡主体
+      ctx.fillStyle = '#5fb33a';
+      ctx.beginPath();
+      ctx.moveTo(startX, this.slopeTopY - thick);
+      ctx.lineTo(startX, this.slopeTopY + thick);
+      ctx.lineTo(bucketX, this.bucketTop + thick);
+      ctx.lineTo(bucketX, this.bucketTop - thick);
+      ctx.closePath();
+      ctx.fill();
+      // 顶部亮边（草叶高光）
+      ctx.strokeStyle = '#8ee05a';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(startX, this.slopeTopY - thick + 3);
+      ctx.lineTo(bucketX, this.bucketTop - thick + 3);
+      ctx.stroke();
+    };
+    drawOne(this.slopeLeftStartX, this.bucketLeft);
+    drawOne(this.slopeRightStartX, this.bucketRight);
   }
 
   drawBucket(ctx) {
@@ -1007,68 +966,52 @@ class FruitGame {
     const outerL = this.bucketLeft - thick;
     const outerR = this.bucketRight + thick;
 
-    // 桶壁阴影
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = 4;
 
-    // 左桶壁 - 木纹色
-    const wallGradient = ctx.createLinearGradient(outerL, 0, this.bucketLeft, 0);
-    wallGradient.addColorStop(0, '#4a2008');
-    wallGradient.addColorStop(0.5, '#7a3d15');
-    wallGradient.addColorStop(1, '#5c2d0a');
-    ctx.fillStyle = wallGradient;
+    // 篮壁 - 编织棕黄渐变
+    const wallGrad = ctx.createLinearGradient(outerL, 0, this.bucketLeft, 0);
+    wallGrad.addColorStop(0, '#a36a2c');
+    wallGrad.addColorStop(1, '#cf9347');
+    ctx.fillStyle = wallGrad;
     ctx.fillRect(outerL, this.bucketTop, thick, this.bucketHeight);
-
-    // 右桶壁
-    const wallGradientR = ctx.createLinearGradient(this.bucketRight, 0, outerR, 0);
-    wallGradientR.addColorStop(0, '#5c2d0a');
-    wallGradientR.addColorStop(0.5, '#7a3d15');
-    wallGradientR.addColorStop(1, '#4a2008');
-    ctx.fillStyle = wallGradientR;
+    const wallGradR = ctx.createLinearGradient(this.bucketRight, 0, outerR, 0);
+    wallGradR.addColorStop(0, '#cf9347');
+    wallGradR.addColorStop(1, '#a36a2c');
+    ctx.fillStyle = wallGradR;
     ctx.fillRect(this.bucketRight, this.bucketTop, thick, this.bucketHeight);
 
-    // 桶底
-    const bottomGradient = ctx.createLinearGradient(0, this.bucketBottom, 0, this.bucketBottom + thick);
-    bottomGradient.addColorStop(0, '#7a3d15');
-    bottomGradient.addColorStop(1, '#3a1805');
-    ctx.fillStyle = bottomGradient;
+    // 篮底
+    ctx.fillStyle = '#7d4f1f';
     ctx.fillRect(outerL, this.bucketBottom, this.bucketHalfWidth * 2 + thick * 2, thick);
 
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // 桶壁装饰铆钉
-    ctx.fillStyle = '#d4a574';
-    for (let i = 0; i < 3; i++) {
-      const ry = this.bucketTop + 30 + i * (this.bucketHeight / 3);
+    // 编织横纹（篮壁纹理）
+    ctx.strokeStyle = 'rgba(92,55,20,0.5)';
+    ctx.lineWidth = 2;
+    for (let y = this.bucketTop + 10; y < this.bucketBottom; y += 14) {
       ctx.beginPath();
-      ctx.arc(this.bucketLeft - thick / 2, ry, 4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(outerL, y);
+      ctx.lineTo(this.bucketLeft, y);
+      ctx.stroke();
       ctx.beginPath();
-      ctx.arc(this.bucketRight + thick / 2, ry, 4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(this.bucketRight, y);
+      ctx.lineTo(outerR, y);
+      ctx.stroke();
     }
 
-    // 桶内壁高光
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(this.bucketLeft, this.bucketTop);
-    ctx.lineTo(this.bucketLeft, this.bucketBottom);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(this.bucketRight, this.bucketTop);
-    ctx.lineTo(this.bucketRight, this.bucketBottom);
-    ctx.stroke();
+    // 篮口藤编 rim
+    ctx.fillStyle = '#8b5a2b';
+    ctx.fillRect(outerL - 3, this.bucketTop - 7, outerR - outerL + 6, 11);
+    ctx.fillStyle = '#b0742f';
+    ctx.fillRect(outerL - 3, this.bucketTop - 7, outerR - outerL + 6, 3);
 
-    // 桶口框
-    ctx.strokeStyle = '#8b5a2b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(outerL, this.bucketTop);
-    ctx.lineTo(outerR, this.bucketTop);
-    ctx.stroke();
+    // 内壁阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(this.bucketLeft, this.bucketTop, this.bucketRight - this.bucketLeft, 5);
   }
 
   drawButtons(ctx, safeTop) {
