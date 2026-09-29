@@ -6,7 +6,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle, Storage, shareGame
+  drawText, drawCircle, Storage, shareGame, drawPauseOverlay
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -57,6 +57,8 @@ export default class SnakeGame {
 
     this.theme = Colors.themes.snake;
     this.backButton = getBackButton(designSize);
+    this.paused = false;
+    this.pauseButton = { x: this.backButton.x - 100, y: this.backButton.y, width: 90, height: this.backButton.height };
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -112,7 +114,7 @@ export default class SnakeGame {
     this.lastT = t;
     this.animTime += dt;
 
-    if (!this.gameOver) {
+    if (!this.gameOver && !this.paused) {
       this.acc += dt;
       let guard = 0;
       while (this.acc >= this.stepDur && !this.gameOver && guard++ < 5) {
@@ -129,6 +131,14 @@ export default class SnakeGame {
   destroy() {
     this.ended = true;
     if (this.rafId) cancelAnimationFrame(this.rafId);
+  }
+
+  // 切后台自动暂停，回到前台自动恢复（接电话场景）
+  pause() {
+    if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+  }
+  resume() {
+    if (!this.ended && !this.gameOver) this.startLoop();
   }
 
   getCurrentMilestone() {
@@ -247,6 +257,8 @@ export default class SnakeGame {
     }
     // 按钮
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
+    if (this.checkButton(pos, this.pauseButton)) { playSound(SoundType.CLICK); this.paused = !this.paused; return; }
+    if (this.paused) { this.paused = false; return; }
     if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('贪吃蛇', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); return; }
 
@@ -359,6 +371,10 @@ export default class SnakeGame {
 
     // 底部提示
     drawText(ctx, '点击或滑动改变方向', width / 2, height - safeBottom - 38, { fontSize: 22, color: Colors.textMuted });
+
+    // 暂停按钮 + 暂停遮罩
+    drawButton(ctx, this.pauseButton.x, this.pauseButton.y, this.pauseButton.width, this.pauseButton.height, this.paused ? '▶' : '⏸', Colors.info, { fontSize: 32, radius: 16 });
+    if (this.paused) drawPauseOverlay(ctx, this.designSize);
 
     // 结算遮罩
     if (this.gameOver && this.result) this.result.draw(ctx);

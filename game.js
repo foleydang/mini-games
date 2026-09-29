@@ -81,12 +81,18 @@ class MainGame {
         this.hidden = true;
         this._musicWasPlaying = audioManager.bgMusicPlaying;
         audioManager.stopBgMusic();
+        // 切后台自动暂停实时游戏循环，避免接电话回来已死亡
+        if (this.currentGame && !this.currentGame.gameOver && this.currentGame.pause) {
+          this.currentGame.pause();
+        }
       });
       wx.onShow(() => {
         this.hidden = false;
         if (this._musicWasPlaying) audioManager.startBgMusic();
-        // 仅在停留于主界面(无子页/游戏)时重启主循环
-        if (!this.currentGame && !this.showingRank && !this.showingSettings &&
+        if (this.currentGame && !this.currentGame.gameOver && this.currentGame.resume) {
+          // 游戏进行中切回来：恢复循环
+          this.currentGame.resume();
+        } else if (!this.currentGame && !this.showingRank && !this.showingSettings &&
             !this.showingProfile && !this.showingLevelSelect) {
           this.startAnimation();
         }

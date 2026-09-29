@@ -3,7 +3,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle, Storage, shareGame
+  drawText, drawCircle, Storage, shareGame, drawPauseOverlay
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -33,6 +33,8 @@ export default class BounceGame {
 
     this.theme = Colors.themes.bounce;
     this.backButton = getBackButton(designSize);
+    this.paused = false;
+    this.pauseButton = { x: this.backButton.x - 100, y: this.backButton.y, width: 90, height: this.backButton.height };
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -69,12 +71,16 @@ export default class BounceGame {
 
   startLoop() {
     this.timer = setInterval(() => {
-      if (!this.gameOver) this.update();
+      if (!this.gameOver && !this.paused) this.update();
       this.render();
     }, 28);
   }
 
   destroy() { if (this.timer) clearInterval(this.timer); }
+
+  // 切后台自动暂停，回到前台自动恢复
+  pause() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
+  resume() { if (!this.gameOver) this.startLoop(); }
 
   getCurrentMilestone() {
     for (let i = this.targets.length - 1; i >= 0; i--) {
@@ -151,6 +157,8 @@ export default class BounceGame {
 
   onTouchStart(pos) {
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
+    if (this.checkButton(pos, this.pauseButton)) { playSound(SoundType.CLICK); this.paused = !this.paused; this.render(); return; }
+    if (this.paused) { this.paused = false; this.render(); return; }
     if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('弹球', this.score); return; }
     if (this.checkButton(pos, this.soundButton)) { audioManager.toggle(); this.render(); return; }
     const { width } = this.designSize;
@@ -209,5 +217,9 @@ export default class BounceGame {
       if (this.score < this.targets[i]) break;
     }
     drawText(this.ctx, hint, width / 2, height - safeBottom - 40, { fontSize: 26, color: Colors.textMuted });
+
+    // 暂停按钮 + 暂停遮罩
+    drawButton(this.ctx, this.pauseButton.x, this.pauseButton.y, this.pauseButton.width, this.pauseButton.height, this.paused ? '▶' : '⏸', Colors.info, { fontSize: 32, radius: 16 });
+    if (this.paused) drawPauseOverlay(this.ctx, this.designSize);
   }
 }

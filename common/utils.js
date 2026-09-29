@@ -316,6 +316,23 @@ export function drawGameIcon(ctx, x, y, radius, color, shape, icon) {
   ctx.restore();
 }
 
+// 暂停遮罩（实时游戏点击 ⏸ 后显示）
+export function drawPauseOverlay(ctx, designSize) {
+  const { width, height } = designSize;
+  ctx.save();
+  ctx.fillStyle = 'rgba(17, 24, 39, 0.55)';
+  ctx.fillRect(0, 0, width, height);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 56px sans-serif';
+  ctx.fillText('⏸ 已暂停', width / 2, height / 2 - 30);
+  ctx.font = '28px sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.fillText('点击屏幕继续', width / 2, height / 2 + 30);
+  ctx.restore();
+}
+
 // 六角星
 function drawStar(ctx, x, y, radius, color) {
   ctx.fillStyle = color;
