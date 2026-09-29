@@ -326,6 +326,15 @@ class FruitGame {
       }
     }
 
+    // 掉落水果与等待区水果碰撞（等待区视为静态障碍，只推开掉落方，不穿过）
+    for (const f of this.fruits) {
+      if (f.settled) continue;
+      for (const w of this.topFruits) {
+        if (w.removed) continue;
+        this.resolveCollisionStatic(f, w);
+      }
+    }
+
     // 等待区整片下滚
     this.updateWaiting(dt);
 
@@ -520,6 +529,26 @@ class FruitGame {
         b.vy = -Math.abs(b.vy) * 0.3;
       } else if (b.settled && !a.settled) {
         a.vy = -Math.abs(a.vy) * 0.3;
+      }
+    }
+  }
+
+  resolveCollisionStatic(a, b) {
+    // b 视为不动障碍，只把 a 推开 + 反弹，避免 a 穿过 b
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const minDist = a.radius + b.radius;
+    if (dist < minDist && dist > 0.1) {
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const overlap = minDist - dist;
+      a.x += nx * overlap;
+      a.y += ny * overlap;
+      const vDotN = a.vx * nx + a.vy * ny;
+      if (vDotN < 0) {
+        a.vx -= vDotN * nx * 1.4;
+        a.vy -= vDotN * ny * 1.4;
       }
     }
   }
