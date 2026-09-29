@@ -316,6 +316,22 @@ export function drawGameIcon(ctx, x, y, radius, color, shape, icon) {
   ctx.restore();
 }
 
+// 新手教程遮罩（首次进入游戏显示，点屏幕消失）
+export function drawTutorial(ctx, designSize, text) {
+  const { width, height } = designSize;
+  ctx.save();
+  ctx.fillStyle = 'rgba(17, 24, 39, 0.62)';
+  ctx.fillRect(0, 0, width, height);
+  const cardW = Math.min(520, width - 80), cardH = 300;
+  const cardX = (width - cardW) / 2, cardY = (height - cardH) / 2;
+  drawRoundRect(ctx, cardX, cardY, cardW, cardH, 24, '#ffffff');
+  drawText(ctx, '怎么玩', width / 2, cardY + 50, { fontSize: 40, color: '#7c3aed', bold: true });
+  const lines = text.split('\n');
+  lines.forEach((line, i) => drawText(ctx, line, width / 2, cardY + 110 + i * 40, { fontSize: 26, color: '#374151' }));
+  drawText(ctx, '点击屏幕开始', width / 2, cardY + cardH - 38, { fontSize: 24, color: '#9ca3af' });
+  ctx.restore();
+}
+
 // 暂停遮罩（实时游戏点击 ⏸ 后显示）
 export function drawPauseOverlay(ctx, designSize) {
   const { width, height } = designSize;

@@ -3,7 +3,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle, Storage, shareGame, completeLevel, saveLevelStars
+  drawText, drawCircle, Storage, shareGame, completeLevel, saveLevelStars, drawTutorial
 } from '../common/utils.js';
 import { Levels, BrickColors } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -35,6 +35,7 @@ export default class BreakoutGame {
     this.theme = Colors.themes.breakout;
 
     this.backButton = getBackButton(designSize);
+    this.showTutorial = !Storage.load('tutorial_breakout');
     this.shareButton = getShareButton(designSize);
     this.soundButton = getSoundButton(designSize);
 
@@ -168,6 +169,7 @@ export default class BreakoutGame {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_breakout', true); return; }
     if (this.gameOver && this.result) {
       const action = this.result.onTouchStart(pos);
       if (action === 'next') this.nextLevel();
@@ -225,5 +227,6 @@ export default class BreakoutGame {
     drawText(this.ctx, '滑动移动挡板', width / 2, height - safeBottom - 38, { fontSize: 24, color: Colors.textMuted });
 
     if (this.gameOver && this.result) this.result.draw(this.ctx);
+    if (this.showTutorial) drawTutorial(this.ctx, this.designSize, '滑动移动挡板\n弹球击碎砖块\n清空所有砖块过关');
   }
 }

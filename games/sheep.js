@@ -1,5 +1,5 @@
 // 叠叠消 - 羊了个羊风格多层堆叠消除游戏
-import { drawRoundRect, drawText, drawGradientBg, Storage, completeLevel, saveLevelStars } from '../common/utils.js';
+import { drawRoundRect, drawText, drawGradientBg, Storage, completeLevel, saveLevelStars, drawTutorial } from '../common/utils.js';
 import { getBackButton, drawBottomButtons, checkBottomButtons } from '../common/ui.js';
 import { Levels } from '../common/config.js';
 import { audioManager } from '../common/audio.js';
@@ -14,6 +14,7 @@ class SheepGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'sheep';
+    this.showTutorial = !Storage.load('tutorial_sheep');
 
     // 游戏状态
     this.tiles = [];
@@ -351,6 +352,7 @@ class SheepGame {
     if ((this.gameWon || this.gameOver) && this.result) {
       this.result.draw(ctx);
     }
+    if (this.showTutorial) drawTutorial(ctx, this.designSize, '点击未覆盖的牌移入底部槽\n槽内3张相同自动消除\n槽满7张无三消即失败');
   }
 
   drawActionButtons() {
@@ -506,6 +508,7 @@ class SheepGame {
   }
 
   onTouchStart(pos) {
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_sheep', true); return; }
     // 结算遮罩优先处理
     if ((this.gameOver || this.gameWon) && this.result) {
       const action = this.result.onTouchStart(pos);

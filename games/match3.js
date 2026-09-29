@@ -1,5 +1,5 @@
 // 消消乐游戏 - 特殊道具 / 连击 / 手感反馈(粒子·飘字·震屏·缓动) / 死局重排 / 闲置提示
-import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData, completeLevel, saveLevelStars } from '../common/utils.js';
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, Storage, RankData, completeLevel, saveLevelStars, drawTutorial } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { audioManager } from '../common/audio.js';
 import { Levels } from '../common/config.js';
@@ -20,6 +20,7 @@ class Match3Game {
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'match3';
+    this.showTutorial = !Storage.load('tutorial_match3');
     this.currentLevel = level;
 
     this.levels = Levels.match3;
@@ -280,6 +281,7 @@ class Match3Game {
     if (this.phase === 'over' && this.result) {
       this.result.draw(ctx);
     }
+    if (this.showTutorial) drawTutorial(ctx, this.designSize, '点击两个相邻方块交换\n连成3个或以上同色即可消除\n达成目标分数过关');
   }
 
   drawBoard() {
@@ -588,6 +590,7 @@ class Match3Game {
 
   // ---------- 输入 ----------
   onTouchStart(pos) {
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_match3', true); return; }
     const btn = checkBottomButtons(pos, this.buttons);
     if (btn === 'backBtn') { this.running = false; this.onEnd({ score: this.score, passed: this.score >= this.target }); return; }
     if (btn === 'soundBtn') {

@@ -1,5 +1,5 @@
 // 接水果 - 窄桶 + 双斜坡 + 上方等待网格(整片下滚)
-import { drawText, Colors, completeLevel, saveLevelStars } from '../common/utils.js';
+import { drawText, Colors, completeLevel, saveLevelStars, Storage, drawTutorial } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, checkBottomButtons } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 import { Levels } from '../common/config.js';
@@ -29,6 +29,7 @@ class FruitGame {
     this.designSize = designSize;
     this.onEnd = onEnd;
     this.gameId = 'fruit';
+    this.showTutorial = !Storage.load('tutorial_fruit');
 
     this.levels = Levels.fruit;
     this.currentLevel = Math.max(0, Math.min(level, this.levels.length - 1));
@@ -628,6 +629,7 @@ class FruitGame {
   }
 
   onTouchStart(pos) {
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_fruit', true); return; }
     // 结算遮罩优先处理
     if ((this.gameOver || this.gameWon) && this.result) {
       const action = this.result.onTouchStart(pos);
@@ -854,6 +856,7 @@ class FruitGame {
     if ((this.gameWon || this.gameOver) && this.result) {
       this.result.draw(ctx);
     }
+    if (this.showTutorial) drawTutorial(ctx, this.designSize, '滑动移动水桶\n接住掉落的水果\n漏接太多即失败');
   }
 
   drawDecorations(ctx, width, height) {

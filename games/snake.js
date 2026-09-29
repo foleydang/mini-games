@@ -6,7 +6,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle, Storage, shareGame, drawPauseOverlay
+  drawText, drawCircle, Storage, shareGame, drawPauseOverlay, drawTutorial
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -57,6 +57,7 @@ export default class SnakeGame {
 
     this.theme = Colors.themes.snake;
     this.backButton = getBackButton(designSize);
+    this.showTutorial = !Storage.load('tutorial_snake');
     this.paused = false;
     this.pauseButton = { x: this.backButton.x - 100, y: this.backButton.y, width: 90, height: this.backButton.height };
     this.shareButton = getShareButton(designSize);
@@ -248,6 +249,7 @@ export default class SnakeGame {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_snake', true); return; }
     // 结算遮罩优先
     if (this.gameOver && this.result) {
       const action = this.result.onTouchStart(pos);
@@ -378,6 +380,7 @@ export default class SnakeGame {
 
     // 结算遮罩
     if (this.gameOver && this.result) this.result.draw(ctx);
+    if (this.showTutorial) drawTutorial(ctx, this.designSize, '点击或滑动改变方向\n吃食物变长\n撞墙或自己即结束');
   }
 
   drawSnake(ctx) {

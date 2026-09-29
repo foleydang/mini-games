@@ -3,7 +3,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, Storage, shareGame, drawPauseOverlay
+  drawText, Storage, shareGame, drawPauseOverlay, drawTutorial
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -50,6 +50,7 @@ export default class TetrisGame {
     this.touchStartPos = null;
     this.theme = Colors.themes.tetris;
     this.backButton = getBackButton(designSize);
+    this.showTutorial = !Storage.load('tutorial_tetris');
     this.paused = false;
     this.pauseButton = { x: this.backButton.x - 100, y: this.backButton.y, width: 90, height: this.backButton.height };
     this.shareButton = getShareButton(designSize);
@@ -249,6 +250,7 @@ export default class TetrisGame {
       return;
     }
     if (this.checkButton(pos, this.backButton)) { playSound(SoundType.CLICK); this.destroy(); this.onEnd(this.score); return; }
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_tetris', true); this.render(); return; }
     if (this.checkButton(pos, this.pauseButton)) { playSound(SoundType.CLICK); this.paused = !this.paused; this.render(); return; }
     if (this.paused) { this.paused = false; this.render(); return; }
     if (this.checkButton(pos, this.shareButton)) { playSound(SoundType.SUCCESS); shareGame('俄罗斯方块', this.score); return; }
@@ -341,6 +343,7 @@ export default class TetrisGame {
     if (this.paused) drawPauseOverlay(this.ctx, this.designSize);
     // 结算遮罩
     if (this.gameOver && this.result) this.result.draw(this.ctx);
+    if (this.showTutorial) drawTutorial(this.ctx, this.designSize, '滑动移动 | 点击旋转\n下滑快速落下\n填满一行消除');
   }
 
   drawCell(col, row, color) {

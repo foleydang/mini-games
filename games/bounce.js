@@ -3,7 +3,7 @@
  */
 import {
   Colors, drawGradientBg, drawRoundRect, drawButton,
-  drawText, drawCircle, Storage, shareGame, drawPauseOverlay
+  drawText, drawCircle, Storage, shareGame, drawPauseOverlay, drawTutorial
 } from '../common/utils.js';
 import { Milestones } from '../common/config.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
@@ -34,6 +34,7 @@ export default class BounceGame {
 
     this.theme = Colors.themes.bounce;
     this.backButton = getBackButton(designSize);
+    this.showTutorial = !Storage.load('tutorial_bounce');
     this.paused = false;
     this.pauseButton = { x: this.backButton.x - 100, y: this.backButton.y, width: 90, height: this.backButton.height };
     this.shareButton = getShareButton(designSize);
@@ -156,6 +157,7 @@ export default class BounceGame {
   checkButton(pos, btn) { return pos.x >= btn.x && pos.x <= btn.x + btn.width && pos.y >= btn.y && pos.y <= btn.y + btn.height; }
 
   onTouchStart(pos) {
+    if (this.showTutorial) { this.showTutorial = false; Storage.save('tutorial_bounce', true); return; }
     // 结算遮罩优先
     if (this.gameOver && this.result) {
       const action = this.result.onTouchStart(pos);
@@ -230,5 +232,6 @@ export default class BounceGame {
     if (this.paused) drawPauseOverlay(this.ctx, this.designSize);
     // 结算遮罩
     if (this.gameOver && this.result) this.result.draw(this.ctx);
+    if (this.showTutorial) drawTutorial(this.ctx, this.designSize, '点击屏幕左/右控制弹球\n落在平台上反弹\n掉落即结束');
   }
 }
