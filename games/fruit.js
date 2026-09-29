@@ -760,7 +760,7 @@ class FruitGame {
 
   draw() {
     const ctx = this.ctx;
-    const { width, height, safeTop } = this.designSize;
+    const { width, height, safeTop, safeBottom } = this.designSize;
 
     // 清新暖色背景
     const bgGradient = ctx.createLinearGradient(0, 0, 0, height);

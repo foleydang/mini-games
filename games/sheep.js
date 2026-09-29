@@ -341,9 +341,9 @@ class SheepGame {
     // 操作按钮
     this.drawActionButtons();
 
-    // 游戏场地边框（包住牌堆+收集槽）
-    const fieldY = safeTop + 230;
-    const fieldH = Math.max(200, height - safeBottom - fieldY - 95);
+    // 游戏场地边框（包住牌堆+收集槽，避开顶部按钮区）
+    const fieldY = safeTop + 245;
+    const fieldH = Math.max(200, height - safeBottom - fieldY - 10);
     drawRoundRect(ctx, 20, fieldY, width - 40, fieldH, 24, 'rgba(255,255,255,0.4)', '#e85d04', 3);
 
     // 牌堆
