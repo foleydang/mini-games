@@ -1169,21 +1169,61 @@ class FruitGame {
   drawFruit(fruit, alpha, scale) {
     const ctx = this.ctx;
     const r = fruit.radius * scale;
-
+    const color = fruit.color || '#ff4757';
     ctx.globalAlpha = alpha;
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 2;
 
-    ctx.font = `${Math.floor(r * 2)}px sans-serif`;
+    // 投影
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 3;
+
+    // 主体圆：径向渐变（高光偏左上）体现立体感，颜色饱和
+    const grad = ctx.createRadialGradient(fruit.x - r * 0.3, fruit.y - r * 0.35, r * 0.15, fruit.x, fruit.y, r);
+    grad.addColorStop(0, this._lighten(color, 55));
+    grad.addColorStop(0.7, color);
+    grad.addColorStop(1, this._darken(color, 20));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(fruit.x, fruit.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // 深色边框：让相邻水果之间的物理边缘清晰可感
+    ctx.strokeStyle = this._darken(color, 45);
+    ctx.lineWidth = Math.max(2, r * 0.09);
+    ctx.beginPath();
+    ctx.arc(fruit.x, fruit.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // emoji 居中（略小，露出彩色边框）
+    ctx.font = `${Math.floor(r * 1.25)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(fruit.emoji, fruit.x, fruit.y);
 
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
+    // 高光点
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(fruit.x - r * 0.35, fruit.y - r * 0.4, r * 0.2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
+
+  // 颜色明暗辅助
+  _shade(hex, amt) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const r = Math.max(0, Math.min(255, ((n >> 16) & 0xff) + amt));
+    const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amt));
+    const b = Math.max(0, Math.min(255, (n & 0xff) + amt));
+    return `rgb(${r},${g},${b})`;
+  }
+  _lighten(hex, amt) { return this._shade(hex, amt); }
+  _darken(hex, amt) { return this._shade(hex, -amt); }
 
   roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
