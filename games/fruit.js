@@ -1,5 +1,5 @@
 // 接水果 - 窄桶 + 双斜坡 + 上方等待网格(整片下滚)
-import { drawText, Colors, completeLevel, saveLevelStars, Storage, drawRoundRect } from '../common/utils.js';
+import { drawText, Colors, completeLevel, saveLevelStars } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, checkBottomButtons } from '../common/ui.js';
 import { playSound, SoundType, audioManager } from '../common/audio.js';
 import { Levels } from '../common/config.js';

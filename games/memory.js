@@ -1,5 +1,5 @@
 // 翻牌配对游戏
-import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, completeLevel, saveLevelStars, Storage } from '../common/utils.js';
+import { Colors, drawRoundRect, drawButton, drawText, drawGradientBg, completeLevel, saveLevelStars } from '../common/utils.js';
 import { getBackButton, getShareButton, getSoundButton, drawBottomButtons, checkBottomButtons, drawHint } from '../common/ui.js';
 import { audioManager } from '../common/audio.js';
 import { Levels, MemorySymbols } from '../common/config.js';
