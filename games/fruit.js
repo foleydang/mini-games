@@ -800,14 +800,14 @@ class FruitGame {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // 信息行
-    drawText(ctx, `分数: ${this.score}`, width / 2 - 70, safeTop + 78, { fontSize: 22, color: '#a3330a', bold: true });
-    
+    // 信息行（下移避开标题）
+    drawText(ctx, `分数: ${this.score}`, width / 2 - 70, safeTop + 92, { fontSize: 22, color: '#a3330a', bold: true });
+
     const remaining = this.topFruits.filter(f => !f.removed).length + this.fruits.length;
-    drawText(ctx, `剩余: ${remaining}`, width / 2 + 70, safeTop + 78, { fontSize: 22, color: '#a3330a', bold: true });
-    
+    drawText(ctx, `剩余: ${remaining}`, width / 2 + 70, safeTop + 92, { fontSize: 22, color: '#a3330a', bold: true });
+
     if (this.combo > 1) {
-      drawText(ctx, `🔥 连击 x${this.combo}`, width / 2, safeTop + 108, { fontSize: 20, color: '#d84315', bold: true });
+      drawText(ctx, `🔥 连击 x${this.combo}`, width / 2, safeTop + 122, { fontSize: 20, color: '#d84315', bold: true });
     }
 
     // 锤子图标（桶左边）
@@ -938,9 +938,12 @@ class FruitGame {
 
   drawSlopes(ctx) {
     const thick = 12;
-    const drawOne = (startX, bucketX) => {
-      // 草绿斜坡主体
-      ctx.fillStyle = '#5fb33a';
+    const drawOne = (startX, bucketX, dir) => {
+      // 草绿斜坡主体（上亮下深）
+      const g = ctx.createLinearGradient(0, this.slopeTopY - thick, 0, this.slopeTopY + thick);
+      g.addColorStop(0, '#8ee05a');
+      g.addColorStop(1, '#4a9a2a');
+      ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(startX, this.slopeTopY - thick);
       ctx.lineTo(startX, this.slopeTopY + thick);
@@ -948,70 +951,87 @@ class FruitGame {
       ctx.lineTo(bucketX, this.bucketTop - thick);
       ctx.closePath();
       ctx.fill();
-      // 顶部亮边（草叶高光）
-      ctx.strokeStyle = '#8ee05a';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(startX, this.slopeTopY - thick + 3);
-      ctx.lineTo(bucketX, this.bucketTop - thick + 3);
-      ctx.stroke();
+      // 草叶纹理
+      ctx.fillStyle = '#6fc03a';
+      const steps = 8;
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        const px = startX + (bucketX - startX) * t;
+        const py = this.slopeTopY - thick + (this.bucketTop - this.slopeTopY) * t;
+        ctx.beginPath();
+        ctx.moveTo(px - 3, py + 4);
+        ctx.lineTo(px, py - 6);
+        ctx.lineTo(px + 3, py + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
     };
-    drawOne(this.slopeLeftStartX, this.bucketLeft);
-    drawOne(this.slopeRightStartX, this.bucketRight);
+    drawOne(this.slopeLeftStartX, this.bucketLeft, 1);
+    drawOne(this.slopeRightStartX, this.bucketRight, -1);
   }
 
   drawBucket(ctx) {
     const thick = this.bucketWallThick;
     const outerL = this.bucketLeft - thick;
     const outerR = this.bucketRight + thick;
+    const bodyTop = this.bucketTop;
+    const bodyH = this.bucketHeight;
 
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowColor = 'rgba(0,0,0,0.28)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = 4;
 
-    // 篮壁 - 编织棕黄渐变
-    const wallGrad = ctx.createLinearGradient(outerL, 0, this.bucketLeft, 0);
-    wallGrad.addColorStop(0, '#a36a2c');
-    wallGrad.addColorStop(1, '#cf9347');
+    // 篮身：暖蜜色渐变（上亮下暗）
+    const wallGrad = ctx.createLinearGradient(outerL, bodyTop, this.bucketLeft, bodyTop);
+    wallGrad.addColorStop(0, '#c98a3e');
+    wallGrad.addColorStop(1, '#e8b063');
     ctx.fillStyle = wallGrad;
-    ctx.fillRect(outerL, this.bucketTop, thick, this.bucketHeight);
-    const wallGradR = ctx.createLinearGradient(this.bucketRight, 0, outerR, 0);
-    wallGradR.addColorStop(0, '#cf9347');
-    wallGradR.addColorStop(1, '#a36a2c');
+    ctx.fillRect(outerL, bodyTop, thick, bodyH);
+    const wallGradR = ctx.createLinearGradient(this.bucketRight, bodyTop, outerR, bodyTop);
+    wallGradR.addColorStop(0, '#e8b063');
+    wallGradR.addColorStop(1, '#c98a3e');
     ctx.fillStyle = wallGradR;
-    ctx.fillRect(this.bucketRight, this.bucketTop, thick, this.bucketHeight);
+    ctx.fillRect(this.bucketRight, bodyTop, thick, bodyH);
 
     // 篮底
-    ctx.fillStyle = '#7d4f1f';
+    ctx.fillStyle = '#8a5a26';
     ctx.fillRect(outerL, this.bucketBottom, this.bucketHalfWidth * 2 + thick * 2, thick);
 
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // 编织横纹（篮壁纹理）
-    ctx.strokeStyle = 'rgba(92,55,20,0.5)';
+    // 竖向编织纹（篮壁）
+    ctx.strokeStyle = 'rgba(120,72,20,0.4)';
     ctx.lineWidth = 2;
-    for (let y = this.bucketTop + 10; y < this.bucketBottom; y += 14) {
+    for (let x = outerL + 4; x < this.bucketLeft; x += 6) {
       ctx.beginPath();
-      ctx.moveTo(outerL, y);
-      ctx.lineTo(this.bucketLeft, y);
+      ctx.moveTo(x, bodyTop + 4);
+      ctx.lineTo(x, this.bucketBottom);
       ctx.stroke();
+    }
+    for (let x = this.bucketRight + 4; x < outerR; x += 6) {
       ctx.beginPath();
-      ctx.moveTo(this.bucketRight, y);
-      ctx.lineTo(outerR, y);
+      ctx.moveTo(x, bodyTop + 4);
+      ctx.lineTo(x, this.bucketBottom);
       ctx.stroke();
     }
 
-    // 篮口藤编 rim
-    ctx.fillStyle = '#8b5a2b';
-    ctx.fillRect(outerL - 3, this.bucketTop - 7, outerR - outerL + 6, 11);
-    ctx.fillStyle = '#b0742f';
-    ctx.fillRect(outerL - 3, this.bucketTop - 7, outerR - outerL + 6, 3);
+    // 篮口厚边沿（奶油色 rim，双线）
+    ctx.fillStyle = '#f3d9a0';
+    ctx.beginPath();
+    ctx.moveTo(outerL - 3, bodyTop - 6);
+    ctx.lineTo(outerR + 3, bodyTop - 6);
+    ctx.lineTo(outerR + 1, bodyTop + 4);
+    ctx.lineTo(outerL - 1, bodyTop + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#a97530';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
     // 内壁阴影
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(this.bucketLeft, this.bucketTop, this.bucketRight - this.bucketLeft, 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(this.bucketLeft, bodyTop, this.bucketRight - this.bucketLeft, 5);
   }
 
   drawButtons(ctx, safeTop) {
