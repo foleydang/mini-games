@@ -969,11 +969,11 @@ renderProfile() {
     ctx.fill();
     
     // 主题标题
-    drawText(ctx, '🎨 主题设置', width / 2, cardY + 40, { fontSize: 28, color: '#7c3aed', bold: true });
-    
+    drawText(ctx, '🏠 主页配色', width / 2, cardY + 40, { fontSize: 28, color: '#7c3aed', bold: true });
+
     // 当前主题
     const currentTheme = themeManager.getCurrentTheme();
-    drawText(ctx, `当前主题: ${themeManager.currentTheme === 'default' ? '默认' : themeManager.currentTheme}`, width / 2, cardY + 80, { fontSize: 20, color: '#64748b' });
+    drawText(ctx, `主页配色：${themeManager.currentTheme === 'default' ? '默认' : themeManager.currentTheme}`, width / 2, cardY + 80, { fontSize: 20, color: '#64748b' });
     
     // 主题切换按钮
     const themes = themeManager.getAllThemes();
@@ -1005,11 +1005,11 @@ renderProfile() {
     ctx.fill();
     
     // 游戏主题标题
-    drawText(ctx, '🎮 游戏主题', width / 2, gameCardY + 40, { fontSize: 28, color: '#7c3aed', bold: true });
-    
+    drawText(ctx, '🎮 游戏内配色', width / 2, gameCardY + 40, { fontSize: 28, color: '#7c3aed', bold: true });
+
     // 当前游戏主题
     const currentGameTheme = themeManager.getCurrentGameTheme();
-    drawText(ctx, `当前游戏主题: ${currentGameTheme.themeName}`, width / 2, gameCardY + 80, { fontSize: 20, color: '#64748b' });
+    drawText(ctx, `游戏内配色：${currentGameTheme.themeName}`, width / 2, gameCardY + 80, { fontSize: 20, color: '#64748b' });
     
     // 游戏主题切换按钮
     const gameThemes = themeManager.getAllGameThemes();

@@ -203,7 +203,7 @@ export default class LevelSelector {
     const progress = this.levels.length > 0 ? (this.currentLevel / this.levels.length) : 0;
 
     // 进度标题
-    drawText(ctx, `进度`, width / 2 - 100, safeTop + 218, {
+    drawText(ctx, `进度 ${this.currentLevel}/${this.levels.length}`, width / 2 - 100, safeTop + 218, {
       fontSize: 22, color: '#64748b', bold: true
     });
 
